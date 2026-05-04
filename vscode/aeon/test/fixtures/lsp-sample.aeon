@@ -1,0 +1,6 @@
+aeon:pro
+config = {
+  host = "localhost"
+}
+server = ~config.h
+coords:tuple<int32, int32> = (1, 2)

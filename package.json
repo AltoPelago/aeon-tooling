@@ -1,0 +1,15 @@
+{
+  "name": "aeon-tooling",
+  "type": "module",
+  "scripts": {
+    "test": "npm run test --prefix web/aeon-code-block && npm run test --prefix packages/md-to-and",
+    "test:web": "npm run test --prefix web/aeon-code-block",
+    "test:md-to-and": "npm run test --prefix packages/md-to-and",
+    "test:vscode:grammar": "pnpm --dir vscode/aeon test:grammar",
+    "test:tree-sitter": "npm run test --prefix tree-sitter-aeon",
+    "clean": "bash scripts/cleanup-public.sh --write",
+    "clean:check": "bash scripts/cleanup-public.sh --check",
+    "check:local-paths": "bash scripts/check-no-local-paths.sh",
+    "precommit": "bash scripts/pre-commit-check.sh"
+  }
+}

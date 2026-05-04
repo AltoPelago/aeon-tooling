@@ -1,0 +1,15 @@
+[package]
+name = "tree-sitter-aeon"
+version = "0.0.1"
+edition = "2021"
+description = "Tree-sitter grammar for AEON"
+license = "MIT"
+
+[lib]
+path = "bindings/rust/lib.rs"
+
+[dependencies]
+tree-sitter-language = "0.1"
+
+[build-dependencies]
+cc = "1.0"

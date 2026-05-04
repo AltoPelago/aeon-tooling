@@ -1,0 +1,93 @@
+{
+  "name": "aeon-vscode",
+  "displayName": "AEON",
+  "description": "Syntax highlighting, diagnostics, hover, and completion for the AEON data language.",
+  "publisher": "altopelago",
+  "version": "0.0.1",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AltoPelago/aeon-tooling"
+  },
+  "main": "./extension.js",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Languages", "Themes", "Programming Languages"],
+  "files": [
+    "extension.js",
+    "language-configuration.json",
+    "README.md",
+    "LICENSE",
+    "package.json",
+    "syntaxes/**",
+    "themes/**",
+    "server/**"
+  ],
+  "activationEvents": [
+    "onLanguage:aeon"
+  ],
+  "scripts": {
+    "test:grammar": "./node_modules/.bin/mocha --ui tdd ./test/suite/grammar.test.js",
+    "test:extension": "pnpm -C ../../../aeon/implementations/typescript --filter @aeon/aeon-lsp build && node ./test/runTest.js",
+    "test": "pnpm run test:grammar && pnpm run test:extension",
+    "package": "vsce package --allow-missing-repository",
+    "vscode:prepublish": "echo 'no build step'"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@vscode/test-electron": "^2.0.0",
+    "@vscode/vsce": "^3.0.0",
+    "mocha": "^9.2.0",
+    "glob": "^8.0.3"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "aeon",
+        "aliases": ["AEON", "aeon"],
+        "extensions": [".aeon"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "configuration": {
+      "title": "AEON",
+      "properties": {
+        "aeon.validation.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable schema/profile-aware AEON editor validation."
+        },
+        "aeon.validation.contractRegistry": {
+          "type": "string",
+          "default": "",
+          "description": "Path to a trusted contract registry JSON file. Relative paths resolve from the workspace."
+        },
+        "aeon.validation.profile": {
+          "type": "string",
+          "default": "",
+          "description": "Active AEON profile id for editor validation. Falls back to aeon:profile in the document."
+        },
+        "aeon.validation.schema": {
+          "type": "string",
+          "default": "",
+          "description": "Active schema id or schema file path for editor validation. Falls back to aeon:schema in the document."
+        }
+      }
+    },
+    "grammars": [
+      {
+        "language": "aeon",
+        "scopeName": "source.aeon",
+        "path": "./syntaxes/aeon.tmLanguage.json"
+      }
+    ],
+    "themes": [
+      {
+        "label": "AEON Dark",
+        "uiTheme": "vs-dark",
+        "path": "./themes/aeon-color-theme.json"
+      }
+    ]
+  }
+}

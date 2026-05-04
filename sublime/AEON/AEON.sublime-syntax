@@ -1,0 +1,290 @@
+%YAML 1.2
+---
+name: AEON
+file_extensions:
+  - aeon
+scope: source.aeon
+
+contexts:
+  main:
+    - include: comments
+    - include: directives
+    - include: node-literals-annotated
+    - include: node-literals
+    - include: attributes
+    - include: typed-keys-annotated
+    - include: typed-keys
+    - include: bindings
+    - include: strings
+    - include: literals
+    - include: numbers
+    - include: keys
+    - include: containers
+    - include: punctuation
+
+  comments:
+    - match: '^//!(?!/).*$'
+      scope: comment.line.host.aeon
+    - match: '^//#.*$'
+      scope: comment.line.doc.aeon
+    - match: '^//@.*$'
+      scope: comment.line.annotation.aeon
+    - match: '^//\?.*$'
+      scope: comment.line.hint.aeon
+    - match: '^//\{.*$'
+      scope: comment.line.reserved.structure.aeon
+    - match: '^//\[.*$'
+      scope: comment.line.reserved.profile.aeon
+    - match: '^//\(.*$'
+      scope: comment.line.reserved.future.aeon
+    - match: '//.*$'
+      scope: comment.line.double-slash.aeon
+    - match: '/#'
+      scope: punctuation.definition.comment.begin.aeon
+      push: block-doc-comment
+    - match: '/@'
+      scope: punctuation.definition.comment.begin.aeon
+      push:
+        - meta_scope: comment.block.annotation.aeon
+        - match: '@/'
+          scope: punctuation.definition.comment.end.aeon
+          pop: true
+    - match: '/\?'
+      scope: punctuation.definition.comment.begin.aeon
+      push:
+        - meta_scope: comment.block.inline-hint.aeon
+        - match: '\?/'
+          scope: punctuation.definition.comment.end.aeon
+          pop: true
+
+  block-doc-comment:
+    - meta_scope: comment.block.doc.aeon
+    - match: '#/'
+      scope: punctuation.definition.comment.end.aeon
+      pop: true
+    - match: '^\s{0,3}(#{1,6})(\s+.*)$'
+      captures:
+        1: punctuation.definition.heading.markdown
+        2: markup.heading.markdown
+    - match: '^\s*((?:[-*+])|\d+\.)(\s+.*)$'
+      captures:
+        1: markup.list.markdown
+        2: markup.list.markdown
+    - match: '(\*\*|__)(?=\S)(.+?)(?<=\S)\1'
+      captures:
+        1: punctuation.definition.bold.markdown
+        2: markup.bold.markdown
+    - match: '(\*|_)(?=\S)(.+?)(?<=\S)\1'
+      captures:
+        1: punctuation.definition.italic.markdown
+        2: markup.italic.markdown
+    - match: '(``+)(.+?)(\1)'
+      captures:
+        1: punctuation.definition.raw.markdown
+        2: markup.inline.raw.string.markdown
+        3: punctuation.definition.raw.markdown
+    - match: '(`)([^`]+)(`)'
+      captures:
+        1: punctuation.definition.raw.markdown
+        2: markup.inline.raw.string.markdown
+        3: punctuation.definition.raw.markdown
+
+  directives:
+    - match: '\b(aeon)(:)([A-Za-z][A-Za-z0-9_.:-]*)\b'
+      captures:
+        1: keyword.control.directive.aeon
+        2: punctuation.separator.directive.aeon
+        3: entity.name.directive.aeon
+
+  attributes:
+    - match: '@\{'
+      scope: punctuation.definition.attribute.begin.aeon
+      push: attribute-body
+
+  attribute-body:
+    - meta_scope: meta.attribute.map.aeon
+    - match: '\}'
+      scope: punctuation.definition.attribute.end.aeon
+      pop: true
+    - include: comments
+    - include: strings
+    - include: literals
+    - include: numbers
+    - match: '(?<![A-Za-z0-9_])[A-Za-z_][A-Za-z0-9_:-]*\b(?=\s*(?::[A-Za-z_][A-Za-z0-9_]*(?:<[^>\n]+>|\[[^\]\n]+\])?)?\s*=)'
+      scope: variable.other.key.aeon
+    - match: '='
+      scope: keyword.operator.assign.aeon
+    - match: ','
+      scope: punctuation.separator.comma.aeon
+
+  typed-keys-annotated:
+    - match: '((?:[A-Za-z_][A-Za-z0-9_:-]*|"(?:\\.|[^"])*"|''(?:\\.|[^''])*''))\s*(@\{)'
+      captures:
+        1: variable.other.key.aeon
+        2: punctuation.definition.attribute.begin.aeon
+      push: typed-key-annotated-tail
+
+  typed-key-annotated-tail:
+    - meta_scope: meta.key.annotated.aeon
+    - include: attribute-body-inner
+
+  attribute-body-inner:
+    - match: '\}(?:\s*(:)\s*([A-Za-z_][A-Za-z0-9_]*)(?:\s*(<[^>\n]+>|\[[^\]\n]+\]))?)?(?=\s*=)'
+      captures:
+        0: punctuation.definition.attribute.end.aeon
+        1: punctuation.separator.type-annotation.aeon
+        2: storage.type.aeon
+        3: storage.type.parameters.aeon
+      pop: true
+    - include: comments
+    - include: strings
+    - include: literals
+    - include: numbers
+    - match: '(?<![A-Za-z0-9_])[A-Za-z_][A-Za-z0-9_:-]*\b(?=\s*(?::[A-Za-z_][A-Za-z0-9_]*(?:<[^>\n]+>|\[[^\]\n]+\])?)?\s*=)'
+      scope: variable.other.key.aeon
+    - match: '='
+      scope: keyword.operator.assign.aeon
+    - match: ','
+      scope: punctuation.separator.comma.aeon
+
+  typed-keys:
+    - match: '((?:[A-Za-z_][A-Za-z0-9_:-]*|"(?:\\.|[^"])*"|''(?:\\.|[^''])*''))\s*(:)\s*([A-Za-z_][A-Za-z0-9_]*)(?:\s*(<[^>\n]+>|\[[^\]\n]+\]))?(?=\s*=)'
+      captures:
+        1: variable.other.key.aeon
+        2: punctuation.separator.type-annotation.aeon
+        3: storage.type.aeon
+        4: storage.type.parameters.aeon
+
+  bindings:
+    - match: '(~>)(\s*)(\$?(?:\.?[A-Za-z_][A-Za-z0-9_]*|\[\d+\]|\["(?:\\.|[^"])*"\]|@\[[^\]]+\]|@[A-Za-z_][A-Za-z0-9_]*)+)'
+      captures:
+        1: keyword.other.binding.alias.aeon
+        2: meta.whitespace.binding.aeon
+        3: variable.other.readwrite.aeon
+    - match: '(~)(?!>)(\$?(?:\.?[A-Za-z_][A-Za-z0-9_]*|\[\d+\]|\["(?:\\.|[^"])*"\]|@\[[^\]]+\]|@[A-Za-z_][A-Za-z0-9_]*)+)'
+      captures:
+        1: keyword.other.binding.sigil.aeon
+        2: variable.other.readwrite.aeon
+    - match: '='
+      scope: keyword.operator.assign.aeon
+
+  node-literals-annotated:
+    - match: '(<)([A-Za-z_][A-Za-z0-9_:-]*)(@\{)'
+      captures:
+        1: punctuation.definition.node.begin.aeon
+        2: entity.name.tag.aeon
+        3: punctuation.definition.attribute.begin.aeon
+      push: node-attribute-tail
+
+  node-attribute-tail:
+    - meta_scope: meta.node.literal.annotated.aeon
+    - match: '\}(?=\s*[\(\[\{])'
+      scope: punctuation.definition.attribute.end.aeon
+      pop: true
+    - include: comments
+    - include: strings
+    - include: literals
+    - include: numbers
+    - match: '(?<![A-Za-z0-9_])[A-Za-z_][A-Za-z0-9_:-]*\b(?=\s*(?::[A-Za-z_][A-Za-z0-9_]*(?:<[^>\n]+>|\[[^\]\n]+\])?)?\s*=)'
+      scope: variable.other.key.aeon
+    - match: '='
+      scope: keyword.operator.assign.aeon
+    - match: ','
+      scope: punctuation.separator.comma.aeon
+
+  node-literals:
+    - match: '(<)([A-Za-z_][A-Za-z0-9_:-]*)'
+      captures:
+        1: punctuation.definition.node.begin.aeon
+        2: entity.name.tag.aeon
+
+  strings:
+    - match: '"'
+      scope: punctuation.definition.string.begin.aeon
+      push:
+        - meta_scope: string.quoted.double.aeon
+        - match: '"'
+          scope: punctuation.definition.string.end.aeon
+          pop: true
+        - match: '\\.'
+          scope: constant.character.escape.aeon
+    - match: "'"
+      scope: punctuation.definition.string.begin.aeon
+      push:
+        - meta_scope: string.quoted.single.aeon
+        - match: "'"
+          scope: punctuation.definition.string.end.aeon
+          pop: true
+        - match: '\\.'
+          scope: constant.character.escape.aeon
+    - match: '`'
+      scope: punctuation.definition.string.begin.aeon
+      push:
+        - meta_scope: string.quoted.template.aeon
+        - match: '`'
+          scope: punctuation.definition.string.end.aeon
+          pop: true
+
+  literals:
+    - match: '\b(true|false)\b'
+      scope: constant.language.boolean.aeon
+    - match: '\b(yes|no|on|off)\b'
+      scope: constant.language.switch.aeon
+    - match: '\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z)?&[A-Za-z0-9_./+-]+\b'
+      scope: constant.language.datetime.zoned.aeon
+    - match: '\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\b'
+      scope: constant.language.datetime.utc.aeon
+    - match: '\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\b'
+      scope: constant.language.datetime.local.aeon
+    - match: '\b\d{2}:\d{2}:\d{2}(?:Z)?\b'
+      scope: constant.language.time.aeon
+    - match: '\b\d{4}-\d{2}-\d{2}\b'
+      scope: constant.language.date.aeon
+    - match: '\b(?:Z&|&)(?:[A-Za-z0-9_./+-]+)\b'
+      scope: constant.language.zrut.aeon
+
+  numbers:
+    - match: '(#)([0-9A-Fa-f_]+)'
+      captures:
+        1: keyword.other.value-sigil.aeon
+        2: constant.numeric.hex.aeon
+    - match: '(%)([A-Za-z0-9_]+)'
+      captures:
+        1: keyword.other.value-sigil.aeon
+        2: constant.numeric.binary.aeon
+    - match: '(\$)([A-Za-z0-9+/=_-]+)'
+      captures:
+        1: keyword.other.value-sigil.aeon
+        2: constant.numeric.base64.aeon
+    - match: '(\^)([^\s,\]\)\}]+)'
+      captures:
+        1: keyword.other.value-sigil.aeon
+        2: constant.numeric.dimension.aeon
+    - match: '(?<![A-Za-z0-9_])[+-]?\d[\d_]*\.\d[\d_]*(?:[eE][+-]?\d[\d_]*)?(?![A-Za-z0-9_])'
+      scope: constant.numeric.float.aeon
+    - match: '(?<![A-Za-z0-9_])[+-]?\d[\d_]*(?:[eE][+-]?\d[\d_]*)?(?![A-Za-z0-9_])'
+      scope: constant.numeric.integer.aeon
+
+  keys:
+    - match: '(?:\b[A-Za-z_][A-Za-z0-9_-]*(?::(?!\s*[A-Za-z_][A-Za-z0-9_]*(?:\s*=))[A-Za-z0-9_-]+)*\b|"(?:\\.|[^"])*"|''(?:\\.|[^''])*'')(?=\s*(?:@\{|:|=))'
+      scope: variable.other.key.aeon
+
+  containers:
+    - match: '\{'
+      scope: punctuation.section.block.begin.aeon
+    - match: '\}'
+      scope: punctuation.section.block.end.aeon
+    - match: '\['
+      scope: punctuation.section.list.begin.aeon
+    - match: '\]'
+      scope: punctuation.section.list.end.aeon
+    - match: '\('
+      scope: punctuation.section.tuple.begin.aeon
+    - match: '\)'
+      scope: punctuation.section.tuple.end.aeon
+
+  punctuation:
+    - match: ','
+      scope: punctuation.separator.comma.aeon
+    - match: ':'
+      scope: punctuation.separator.type-annotation.aeon

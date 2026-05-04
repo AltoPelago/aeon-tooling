@@ -1,0 +1,13 @@
+aeon:header = {
+  encoding = "utf-8"
+  mode = "strict"
+  profile = "core"
+  version = 1
+}
+
+config = {
+  host = "localhost"
+}
+
+server = ~config.h
+coords:tuple<int32, int32> = (1, 2)

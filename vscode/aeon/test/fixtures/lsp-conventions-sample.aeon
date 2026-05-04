@@ -1,0 +1,24 @@
+aeon:header = {
+  conventions:conventionSet = [
+    "aeon.gp.document.v1"
+    "aeon.gp.context.v1"
+    "aeon.gp.convention.v1"
+    "aeon.gp.security.v1"
+    "aeon.gp.integrity.v1"
+    "aeon.gp.signature.v1"
+  ]
+  document = {
+    title = "Quarterly operations report"
+    subject = "Q1 summary"
+  }
+}
+
+type@{ns="aeon"} = "document"
+title@{role="headline", audience="executive"} = "Quarterly operations report"
+
+"aeon:envelope":securityEnvelope = {
+  integrity:integrityBlock = {
+    alg:string = "sha-256"
+    hash:string = "deadbeef"
+  }
+}

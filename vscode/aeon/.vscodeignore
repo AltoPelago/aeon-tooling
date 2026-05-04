@@ -1,0 +1,6 @@
+# See https://code.visualstudio.com/api/working-with-extensions/publishing-extension#vscodeignore
+node_modules
+dist
+*.map
+*.ts
+/.vscode

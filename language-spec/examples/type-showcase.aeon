@@ -1,0 +1,88 @@
+//! shebang
+/# 
+
+# AEON Type Showcase
+
+Use this file to verify highlighting across editors.
+
+- core scalar literals
+- typed and untyped bindings
+- dates, times, datetimes, and ZRUT
+- references
+- lists, tuples, objects, and nodes
+
+  **attributes** and *doc-comment* inline code like `value:type = ...`
+
+#/
+
+aeon:header = {
+  profile = "aeon.gp.profile.v1"
+}
+
+//# Strings
+name = "John"
+alias:string = 'J'
+multiline:string = `Hello
+World`
+
+//# Numbers
+count = 42
+ratio:number = 3.14e-2
+large:int32 = 1_000_000
+
+//# Booleans and switches
+enabled = true
+visible:boolean = false
+state = on
+mode:switch = off
+
+//# Encoded and symbolic literals
+color = #ff00aa
+bits:radix2 = %1011
+payload:base64 = $QmFzZTY0IQ==
+size:sep[x] = ^300x250
+
+//# Date and time family
+start:date = 2025-01-01
+at:time = 09:30:00
+utc_time:time = 09:30:00Z
+ts:datetime = 2025-01-01T09:30:00Z
+launch:zrut = 2026-06-01T12:00:00Z&Asia/Tokyo
+local_launch:zrut = 2026-06-01T12:00:00&Local
+
+//# Containers
+user:object = {
+  id:string = "u_1"
+  active:boolean = true
+}
+
+scores:list<number> = [
+  10
+  20
+  30
+]
+
+point:tuple<int32, int32> = (
+  10,
+  20
+)
+
+//# References
+copied_name:string = ~name
+user_ptr:object = ~>user
+
+//# Attributes
+title@{role="headline", audience="executive"} = "Quarterly operations report"
+event@{ns="clock", kind="launch"}:zrut = 2026-06-01T12:00:00Z&Asia/Tokyo
+
+//# Nodes
+world = {
+  <scene (
+    <entity@{id="player_1", type="hero"} (
+      {
+        hp:int32 = 100
+        label:string = "Player 1"
+      }
+    )
+  )
+}

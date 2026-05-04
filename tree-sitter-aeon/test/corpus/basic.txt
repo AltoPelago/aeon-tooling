@@ -1,0 +1,81 @@
+==================
+directive and typed binding
+==================
+
+aeon:header = {
+  profile = "aeon.gp.profile.v1"
+}
+
+season_launch:zrut = 2026-06-01T12:00:00Z&Asia/Tokyo
+
+---
+
+(source_file
+  (binding
+    key: (directive_key
+      name: (identifier))
+    value: (object
+      (binding
+        key: (identifier)
+        value: (string))))
+  (binding
+    key: (typed_key
+      name: (identifier)
+      datatype: (type_name))
+    value: (zoned_datetime)))
+
+==================
+annotated key
+==================
+
+title@{role="headline", audience="executive"} = "Quarterly operations report"
+
+---
+
+(source_file
+  (binding
+    key: (annotated_key
+      name: (identifier)
+      attributes: (attribute_map
+        (attribute_assignment
+          key: (attribute_key)
+          value: (string))
+        (attribute_assignment
+          key: (attribute_key)
+          value: (string))))
+    value: (string)))
+
+==================
+annotated node literal
+==================
+
+world = {
+  <scene (
+    <entity@{id="player_1", type="hero"} (
+      hp:int32 = 100
+    )
+  )
+}
+
+---
+
+(source_file
+  (binding
+    key: (identifier)
+    value: (object
+      (node_literal
+        tag: (identifier)
+        (node_literal
+          tag: (identifier)
+          attributes: (attribute_map
+            (attribute_assignment
+              key: (attribute_key)
+              value: (string))
+            (attribute_assignment
+              key: (attribute_key)
+              value: (string)))
+          (binding
+            key: (typed_key
+              name: (identifier)
+              datatype: (type_name))
+            value: (number)))))))

@@ -1,0 +1,36 @@
+{
+  "name": "@aeon-tooling/md-to-and",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Markdown to &ND converter with CLI and library APIs.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "md-to-and": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "tsc -p tsconfig.json && node --test dist/**/*.test.js",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "remark-frontmatter": "^5.0.0",
+    "remark-parse": "^11.0.0",
+    "unified": "^11.0.5"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.0",
+    "typescript": "^5.9.2"
+  }
+}

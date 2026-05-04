@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AEON Code Block Demo</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        padding: 2.5rem;
+        background:
+          radial-gradient(circle at top, rgba(127, 178, 255, 0.14), transparent 34rem),
+          linear-gradient(180deg, #0b1220 0%, #111827 100%);
+        color: #e5e7eb;
+        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      }
+
+      main {
+        max-width: 920px;
+        margin: 0 auto;
+      }
+
+      h1 {
+        margin: 0 0 0.6rem;
+        font-size: clamp(2rem, 6vw, 3.5rem);
+        line-height: 0.95;
+      }
+
+      p {
+        max-width: 42rem;
+        color: #b9c1cc;
+        line-height: 1.6;
+      }
+    </style>
+    <script type="module" src="./aeon-code-block.js"></script>
+  </head>
+  <body>
+    <main>
+      <h1>AEON Code Block</h1>
+      <p>
+        Lightweight documentation component with AEON token colors and a copy button.
+      </p>
+
+      <aeon-code-block title="Highlight Cases">
+        <script type="text/plain">
+aeon:header = {
+  profile = "aeon.gp.profile.v1"
+}
+
+season_launch:zrut = 2026-06-01T12:00:00Z&Asia/Tokyo
+title@{role="headline", audience="executive"} = "Quarterly operations report"
+
+world = {
+  <scene (
+    <entity@{id="player_1", type="hero"} (
+      hp:int32 = 100
+    )
+  )
+}
+        </script>
+      </aeon-code-block>
+    </main>
+  </body>
+  </html>

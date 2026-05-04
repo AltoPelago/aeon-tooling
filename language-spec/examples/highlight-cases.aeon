@@ -1,0 +1,24 @@
+/# 
+# AEON Highlight Cases
+
+- typed bindings like `season_launch:zrut = ...`
+- annotated keys like `title@{role="headline"} = ...`
+- annotated node tags like `<entity@{id="player_1"} (`
+
+Use this fixture to keep cross-editor highlighting aligned.
+#/
+
+aeon:header = {
+  profile = "aeon.gp.profile.v1"
+}
+
+season_launch:zrut = 2026-06-01T12:00:00Z&Asia/Tokyo
+title@{role="headline", audience="executive"} = "Quarterly operations report"
+
+world = {
+  <scene (
+    <entity@{id="player_1", type="hero"} (
+      hp:int32 = 100
+    )
+  )
+}

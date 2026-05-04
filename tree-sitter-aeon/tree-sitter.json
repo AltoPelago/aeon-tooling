@@ -1,0 +1,25 @@
+{
+  "grammars": [
+    {
+      "name": "aeon",
+      "camelcase": "Aeon",
+      "title": "AEON",
+      "scope": "source.aeon",
+      "file-types": [
+        "aeon"
+      ],
+      "injection-regex": "^aeon$",
+      "class-name": "TreeSitterAeon"
+    }
+  ],
+  "metadata": {
+    "version": "0.0.1",
+    "license": "MIT",
+    "description": "Tree-sitter grammar for AEON.",
+    "authors": [
+      {
+        "name": "altopelago"
+      }
+    ]
+  }
+}

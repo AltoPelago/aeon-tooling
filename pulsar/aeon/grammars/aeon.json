@@ -1,0 +1,22 @@
+{
+  "name": "AEON",
+  "scopeName": "source.aeon",
+  "fileTypes": [
+    "aeon"
+  ],
+  "patterns": [
+    {
+      "include": "#bootstrap-note"
+    }
+  ],
+  "repository": {
+    "bootstrap-note": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.aeon",
+          "match": "//.*$"
+        }
+      ]
+    }
+  }
+}

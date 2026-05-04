@@ -1,0 +1,392 @@
+{
+  "name": "AEON",
+  "scopeName": "source.aeon",
+  "patterns": [
+    { "include": "#shebang" },
+    { "include": "#comments" },
+    { "include": "#directives" },
+    { "include": "#node-literals-annotated" },
+    { "include": "#node-literals" },
+    { "include": "#attributes" },
+    { "include": "#typed-key-annotated" },
+    { "include": "#typed-key" },
+    { "include": "#bindings" },
+    { "include": "#containers" },
+    { "include": "#lists" },
+    { "include": "#tuples" },
+    { "include": "#strings" },
+    { "include": "#literals" },
+    { "include": "#numbers" },
+    { "include": "#keys" },
+    { "include": "#punctuation" }
+  ],
+  "repository": {
+    "shebang": {
+      "patterns": [
+        { "name": "comment.line.shebang.aeon", "match": "^//!.*$" }
+      ]
+    },
+    "comments": {
+      "patterns": [
+        { "name": "comment.line.doc.aeon", "match": "//#.*$" },
+        { "name": "comment.line.annotation.aeon", "match": "//@.*$" },
+        { "name": "comment.line.hint.aeon", "match": "//\\?.*$" },
+        { "name": "comment.line.host.aeon", "match": "//!.*$" },
+        { "name": "comment.line.reserved.structure.aeon", "match": "//\\{.*$" },
+        { "name": "comment.line.reserved.profile.aeon", "match": "//\\[.*$" },
+        { "name": "comment.line.reserved.future.aeon", "match": "//\\(.*$" },
+        { "name": "comment.line.double-slash.aeon", "match": "//.*$" },
+        {
+          "name": "comment.block.doc.aeon",
+          "begin": "/#",
+          "end": "#/",
+          "beginCaptures": { "0": { "name": "punctuation.definition.comment.begin.aeon" } },
+          "endCaptures": { "0": { "name": "punctuation.definition.comment.end.aeon" } },
+          "patterns": [
+            { "name": "markup.heading.markdown", "match": "^\\s{0,3}#{1,6}\\s+.*$" },
+            { "name": "markup.list.markdown", "match": "^\\s*(?:[-*+]\\s+|\\d+\\.\\s+).*$" },
+            {
+              "name": "markup.bold.markdown",
+              "match": "(\\*\\*|__)(?=\\S)(.+?[*_]*)(?<=\\S)\\1",
+              "captures": {
+                "1": { "name": "punctuation.definition.bold.markdown" },
+                "2": { "name": "markup.bold.markdown" }
+              }
+            },
+            {
+              "name": "markup.italic.markdown",
+              "match": "(\\*|_)(?=\\S)(.+?)(?<=\\S)\\1",
+              "captures": {
+                "1": { "name": "punctuation.definition.italic.markdown" },
+                "2": { "name": "markup.italic.markdown" }
+              }
+            },
+            {
+              "name": "markup.inline.raw.string.markdown",
+              "match": "(``+)(.+?)(\\1)",
+              "captures": {
+                "1": { "name": "punctuation.definition.raw.markdown" },
+                "2": { "name": "markup.inline.raw.string.markdown" },
+                "3": { "name": "punctuation.definition.raw.markdown" }
+              }
+            },
+            {
+              "name": "markup.inline.raw.string.markdown",
+              "match": "(`)([^`]+)(`)",
+              "captures": {
+                "1": { "name": "punctuation.definition.raw.markdown" },
+                "2": { "name": "markup.inline.raw.string.markdown" },
+                "3": { "name": "punctuation.definition.raw.markdown" }
+              }
+            }
+          ]
+        },
+        {
+          "name": "comment.block.annotation.aeon",
+          "begin": "/@",
+          "end": "@/",
+          "beginCaptures": { "0": { "name": "punctuation.definition.comment.begin.aeon" } },
+          "endCaptures": { "0": { "name": "punctuation.definition.comment.end.aeon" } }
+        },
+        {
+          "name": "comment.block.inline-hint.aeon",
+          "begin": "/\\?",
+          "end": "\\?/",
+          "beginCaptures": { "0": { "name": "punctuation.definition.comment.begin.aeon" } },
+          "endCaptures": { "0": { "name": "punctuation.definition.comment.end.aeon" } }
+        },
+        {
+          "name": "comment.block.reserved.structure.aeon",
+          "begin": "/\\{",
+          "end": "\\}/",
+          "beginCaptures": { "0": { "name": "punctuation.definition.comment.begin.aeon" } },
+          "endCaptures": { "0": { "name": "punctuation.definition.comment.end.aeon" } }
+        },
+        {
+          "name": "comment.block.reserved.profile.aeon",
+          "begin": "/\\[",
+          "end": "\\]/",
+          "beginCaptures": { "0": { "name": "punctuation.definition.comment.begin.aeon" } },
+          "endCaptures": { "0": { "name": "punctuation.definition.comment.end.aeon" } }
+        },
+        {
+          "name": "comment.block.reserved.future.aeon",
+          "begin": "/\\(",
+          "end": "\\)/",
+          "beginCaptures": { "0": { "name": "punctuation.definition.comment.begin.aeon" } },
+          "endCaptures": { "0": { "name": "punctuation.definition.comment.end.aeon" } }
+        },
+        {
+          "name": "comment.block.aeon",
+          "begin": "/\\*",
+          "end": "\\*/",
+          "beginCaptures": { "0": { "name": "punctuation.definition.comment.begin.aeon" } },
+          "endCaptures": { "0": { "name": "punctuation.definition.comment.end.aeon" } }
+        }
+      ]
+    },
+    "directives": {
+      "patterns": [
+        {
+          "name": "meta.directive.aeon",
+          "match": "\\b(aeon)(:)([A-Za-z][A-Za-z0-9_.:-]*)\\b",
+          "captures": {
+            "1": { "name": "keyword.control.directive.aeon" },
+            "2": { "name": "punctuation.separator.directive.aeon" },
+            "3": { "name": "entity.name.directive.aeon" }
+          }
+        }
+      ]
+    },
+    "attributes": {
+      "patterns": [
+        {
+          "name": "meta.attribute.map.aeon",
+          "begin": "@\\{",
+          "beginCaptures": { "0": { "name": "punctuation.definition.attribute.begin.aeon" } },
+          "end": "\\}",
+          "endCaptures": { "0": { "name": "punctuation.definition.attribute.end.aeon" } },
+          "patterns": [
+            { "include": "#attribute-body" }
+          ]
+        }
+      ]
+    },
+    "attribute-body": {
+      "patterns": [
+        { "include": "#comments" },
+        { "include": "#strings" },
+        { "include": "#literals" },
+        { "include": "#numbers" },
+        { "name": "variable.other.key.aeon", "match": "(?<![A-Za-z0-9_])[A-Za-z_][A-Za-z0-9_:-]*\\b(?=\\s*(?::[A-Za-z_][A-Za-z0-9_]*(?:<[^>]+>|\\[[^\\]]+\\])?)?\\s*=)" },
+        { "name": "punctuation.separator.comma.aeon", "match": "," },
+        { "name": "keyword.operator.assign.aeon", "match": "=" }
+      ]
+    },
+    "typed-key-annotated": {
+      "patterns": [
+        {
+          "name": "meta.key.annotated.aeon",
+          "begin": "((?:[A-Za-z_][A-Za-z0-9_:-]*|\"(?:\\\\.|[^\"])*\"|'(?:\\\\.|[^'])*'))\\s*(@\\{)",
+          "beginCaptures": {
+            "1": { "name": "variable.other.key.aeon" },
+            "2": { "name": "punctuation.definition.attribute.begin.aeon" }
+          },
+          "end": "(\\})(?:\\s*(:)\\s*([A-Za-z_][A-Za-z0-9_]*)(?:\\s*(<[^>\\n]+>|(?:\\[[^\\]\\n]+\\])+))?)?(?=\\s*=)",
+          "endCaptures": {
+            "1": { "name": "punctuation.definition.attribute.end.aeon" },
+            "2": { "name": "punctuation.separator.type-annotation.aeon" },
+            "3": { "name": "storage.type.aeon" },
+            "4": { "name": "storage.type.parameters.aeon" }
+          },
+          "patterns": [
+            { "include": "#attribute-body" }
+          ]
+        }
+      ]
+    },
+    "node-literals-annotated": {
+      "patterns": [
+        {
+          "name": "meta.node.literal.annotated.aeon",
+          "begin": "(<)([A-Za-z_][A-Za-z0-9_:-]*)(@\\{)",
+          "beginCaptures": {
+            "1": { "name": "punctuation.definition.node.begin.aeon" },
+            "2": { "name": "entity.name.tag.aeon" },
+            "3": { "name": "punctuation.definition.attribute.begin.aeon" }
+          },
+          "end": "(\\})(?=\\s*[\\(\\[\\{])",
+          "endCaptures": {
+            "1": { "name": "punctuation.definition.attribute.end.aeon" }
+          },
+          "patterns": [
+            { "include": "#attribute-body" }
+          ]
+        }
+      ]
+    },
+    "typed-key": {
+      "patterns": [
+        {
+          "name": "meta.key.typed.aeon",
+          "match": "((?:[A-Za-z_][A-Za-z0-9_:-]*|\"(?:\\\\.|[^\"])*\"|'(?:\\\\.|[^'])*'))\\s*(:)\\s*([A-Za-z_][A-Za-z0-9_]*)(?:\\s*(<[^>\\n]+>|(?:\\[[^\\]\\n]+\\])+))?(?=\\s*=)",
+          "captures": {
+            "1": { "name": "variable.other.key.aeon" },
+            "2": { "name": "punctuation.separator.type-annotation.aeon" },
+            "3": { "name": "storage.type.aeon" },
+            "4": { "name": "storage.type.parameters.aeon" }
+          }
+        }
+      ]
+    },
+    "bindings": {
+      "patterns": [
+        {
+          "name": "meta.binding.alias.aeon",
+          "match": "(~>)(\\s*)(\\$?(?:\\.?[A-Za-z_][A-Za-z0-9_]*|\\[\\d+\\]|\\[@?\"(?:\\\\.|[^\"])*\"\\]|@\\[[^\\]]+\\]|@[A-Za-z_][A-Za-z0-9_]*)+)",
+          "captures": {
+            "1": { "name": "keyword.other.binding.alias.aeon" },
+            "2": { "name": "meta.whitespace.binding.aeon" },
+            "3": { "name": "variable.other.readwrite.aeon" }
+          }
+        },
+        {
+          "name": "meta.binding.ref.aeon",
+          "match": "(~)(?!>)(\\$?(?:\\.?[A-Za-z_][A-Za-z0-9_]*|\\[\\d+\\]|\\[\"(?:\\\\.|[^\"])*\"\\]|@\\[[^\\]]+\\]|@[A-Za-z_][A-Za-z0-9_]*)+)",
+          "captures": {
+            "1": { "name": "keyword.other.binding.sigil.aeon" },
+            "2": { "name": "variable.other.readwrite.aeon" }
+          }
+        },
+        { "name": "keyword.operator.assign.aeon", "match": "=" }
+      ]
+    },
+    "node-literals": {
+      "patterns": [
+        {
+          "name": "meta.node.literal.aeon",
+          "match": "(<)([A-Za-z_][A-Za-z0-9_:-]*)",
+          "captures": {
+            "1": { "name": "punctuation.definition.node.begin.aeon" },
+            "2": { "name": "entity.name.tag.aeon" }
+          }
+        }
+      ]
+    },
+    "containers": {
+      "patterns": [
+        {
+          "name": "meta.block.aeon",
+          "begin": "\\{",
+          "beginCaptures": { "0": { "name": "punctuation.section.block.begin.aeon" } },
+          "end": "\\}",
+          "endCaptures": { "0": { "name": "punctuation.section.block.end.aeon" } },
+          "patterns": [
+            { "include": "#comments" },
+            { "include": "#directives" },
+            { "include": "#node-literals-annotated" },
+            { "include": "#attributes" },
+            { "include": "#typed-key-annotated" },
+            { "include": "#typed-key" },
+            { "include": "#bindings" },
+            { "include": "#node-literals" },
+            { "include": "#containers" },
+            { "include": "#lists" },
+            { "include": "#tuples" },
+            { "include": "#strings" },
+            { "include": "#literals" },
+            { "include": "#numbers" },
+            { "include": "#keys" },
+            { "include": "#punctuation" }
+          ]
+        }
+      ]
+    },
+    "lists": {
+      "patterns": [
+        {
+          "name": "meta.list.aeon",
+          "begin": "\\[",
+          "beginCaptures": { "0": { "name": "punctuation.section.list.begin.aeon" } },
+          "end": "\\]",
+          "endCaptures": { "0": { "name": "punctuation.section.list.end.aeon" } },
+          "patterns": [
+            { "include": "#comments" },
+            { "include": "#node-literals-annotated" },
+            { "include": "#node-literals" },
+            { "include": "#strings" },
+            { "include": "#literals" },
+            { "include": "#numbers" },
+            { "include": "#bindings" },
+            { "name": "punctuation.separator.comma.aeon", "match": "," }
+          ]
+        }
+      ]
+    },
+    "tuples": {
+      "patterns": [
+        {
+          "name": "meta.tuple.aeon",
+          "begin": "\\(",
+          "beginCaptures": { "0": { "name": "punctuation.section.tuple.begin.aeon" } },
+          "end": "\\)",
+          "endCaptures": { "0": { "name": "punctuation.section.tuple.end.aeon" } },
+          "patterns": [
+            { "include": "#comments" },
+            { "include": "#node-literals-annotated" },
+            { "include": "#node-literals" },
+            { "include": "#strings" },
+            { "include": "#literals" },
+            { "include": "#numbers" },
+            { "include": "#bindings" },
+            { "name": "punctuation.separator.tuple.aeon", "match": "," }
+          ]
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.aeon",
+          "begin": "\"",
+          "end": "\"",
+          "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.aeon" } },
+          "endCaptures": { "0": { "name": "punctuation.definition.string.end.aeon" } },
+          "patterns": [
+            { "name": "constant.character.escape.aeon", "match": "\\\\." }
+          ]
+        },
+        {
+          "name": "string.quoted.single.aeon",
+          "begin": "'",
+          "end": "'",
+          "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.aeon" } },
+          "endCaptures": { "0": { "name": "punctuation.definition.string.end.aeon" } },
+          "patterns": [
+            { "name": "constant.character.escape.aeon", "match": "\\\\." }
+          ]
+        },
+        {
+          "name": "string.quoted.template.aeon",
+          "begin": "`",
+          "end": "`",
+          "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.aeon" } },
+          "endCaptures": { "0": { "name": "punctuation.definition.string.end.aeon" } }
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        { "match": "(#)([0-9A-Fa-f_]+)", "captures": { "1": { "name": "keyword.other.value-sigil.aeon" }, "2": { "name": "constant.numeric.hex.aeon" } } },
+        { "match": "(%)([A-Za-z0-9_]+)", "captures": { "1": { "name": "keyword.other.value-sigil.aeon" }, "2": { "name": "constant.numeric.binary.aeon" } } },
+        { "match": "(\\$)([A-Za-z0-9+/=_-]+)", "captures": { "1": { "name": "keyword.other.value-sigil.aeon" }, "2": { "name": "constant.numeric.base64.aeon" } } },
+        { "match": "(\\^)([^\\s,\\]\\)\\}]+)", "captures": { "1": { "name": "keyword.other.value-sigil.aeon" }, "2": { "name": "constant.numeric.dimension.aeon" } } },
+        { "name": "constant.numeric.float.aeon", "match": "(?<![A-Za-z0-9_])[+-]?\\d[\\d_]*\\.\\d[\\d_]*(?:[eE][+-]?\\d[\\d_]*)?(?![A-Za-z0-9_])" }
+      ]
+    },
+    "literals": {
+      "patterns": [
+        { "name": "constant.language.boolean.aeon", "match": "\\b(true|false)\\b" },
+        { "name": "constant.language.switch.aeon", "match": "\\b(yes|no|on|off)\\b" },
+        { "name": "constant.language.datetime.zoned.aeon", "match": "\\b\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:Z)?&[A-Za-z0-9_./+-]+\\b" },
+        { "name": "constant.language.datetime.utc.aeon",   "match": "\\b\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z\\b" },
+        { "name": "constant.language.datetime.local.aeon", "match": "\\b\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\b" },
+        { "name": "constant.language.time.aeon", "match": "\\b\\d{2}:\\d{2}:\\d{2}(?:Z)?\\b" },
+        { "name": "constant.language.date.aeon", "match": "\\b\\d{4}-\\d{2}-\\d{2}\\b" },
+        { "name": "constant.language.zrut.aeon", "match": "\\b(?:Z&|&)(?:[A-Za-z0-9_./+-]+)\\b" },
+        
+        { "name": "constant.numeric.integer.aeon", "match": "(?<![A-Za-z0-9_])[+-]?\\d[\\d_]*(?:[eE][+-]?\\d[\\d_]*)?(?![A-Za-z0-9_])" }
+      ]
+    },
+    "keys": {
+      "patterns": [
+        { "name": "variable.other.key.aeon", "match": "(?:\\b[A-Za-z_][A-Za-z0-9_-]*(?::(?!\\s*[A-Za-z_][A-Za-z0-9_]*(?:\\s*=))[A-Za-z0-9_-]+)*\\b|\"(?:\\\\.|[^\"])*\"|'(?:\\\\.|[^'])*')(?=\\s*(?:@\\{|:|=))" }
+      ]
+    },
+    "punctuation": {
+      "patterns": [
+        { "name": "punctuation.separator.comma.aeon", "match": "," }
+      ]
+    }
+  }
+}

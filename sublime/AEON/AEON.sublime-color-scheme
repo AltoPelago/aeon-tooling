@@ -1,0 +1,206 @@
+{
+  "name": "AEON Dark",
+  "variables": {
+    "bg": "#111827",
+    "fg": "#e5e7eb",
+    "comment": "#a8adb8",
+    "doc_comment": "#9aa9c7",
+    "annotation_comment": "#7fc7d4",
+    "hint_comment": "#d9ad7c",
+    "future_comment": "#c7b8ff",
+    "host_comment": "#a7b2c4",
+    "directive": "#8ec7d9",
+    "key": "#7fb2ff",
+    "type": "#c7b8ff",
+    "attribute": "#caa0bf",
+    "attribute_punct": "#d8b070",
+    "tag": "#e2c97a",
+    "string": "#d9c58b",
+    "template_string": "#cfb07a",
+    "escape": "#aacb95",
+    "number": "#c7d98a",
+    "number_alt": "#d6b071",
+    "number_muted": "#b79a69",
+    "switch": "#9fc0de",
+    "punct": "#8d96a6",
+    "assign": "#d3d9e3",
+    "selection": "#223047",
+    "line_highlight": "#1b2433"
+  },
+  "globals": {
+    "background": "var(bg)",
+    "foreground": "var(fg)",
+    "selection": "var(selection)",
+    "selection_border": "var(selection)",
+    "line_highlight": "var(line_highlight)",
+    "caret": "var(tag)"
+  },
+  "rules": [
+    {
+      "scope": "comment",
+      "foreground": "var(comment)",
+      "font_style": "italic"
+    },
+    {
+      "scope": "comment.line.doc.aeon, comment.block.doc.aeon",
+      "foreground": "var(doc_comment)",
+      "font_style": "italic"
+    },
+    {
+      "scope": "comment.line.annotation.aeon, comment.block.annotation.aeon",
+      "foreground": "var(annotation_comment)",
+      "font_style": "italic"
+    },
+    {
+      "scope": "comment.line.hint.aeon, comment.block.inline-hint.aeon",
+      "foreground": "var(hint_comment)",
+      "font_style": "italic"
+    },
+    {
+      "scope": "comment.line.host.aeon",
+      "foreground": "var(host_comment)",
+      "font_style": "italic"
+    },
+    {
+      "scope": "comment.line.reserved.structure.aeon, comment.block.reserved.structure.aeon",
+      "foreground": "var(tag)",
+      "font_style": "italic"
+    },
+    {
+      "scope": "comment.line.reserved.profile.aeon, comment.block.reserved.profile.aeon",
+      "foreground": "var(hint_comment)",
+      "font_style": "italic"
+    },
+    {
+      "scope": "comment.line.reserved.future.aeon, comment.block.reserved.future.aeon",
+      "foreground": "var(future_comment)",
+      "font_style": "italic"
+    },
+    {
+      "scope": "markup.heading.markdown",
+      "foreground": "#d7def5",
+      "font_style": "bold"
+    },
+    {
+      "scope": "markup.list.markdown",
+      "foreground": "#bec8dd"
+    },
+    {
+      "scope": "markup.bold.markdown",
+      "foreground": "#edf1f7",
+      "font_style": "bold"
+    },
+    {
+      "scope": "markup.italic.markdown",
+      "foreground": "#d4d1e8",
+      "font_style": "italic"
+    },
+    {
+      "scope": "markup.inline.raw.string.markdown",
+      "foreground": "#bfb7a1"
+    },
+    {
+      "scope": "punctuation.definition.raw.markdown",
+      "foreground": "#bfb7a1"
+    },
+    {
+      "scope": "keyword.control.directive.aeon, entity.name.directive.aeon",
+      "foreground": "var(directive)"
+    },
+    {
+      "scope": "variable.other.key.aeon",
+      "foreground": "var(key)"
+    },
+    {
+      "scope": "storage.type.aeon, storage.type.parameters.aeon",
+      "foreground": "var(type)"
+    },
+    {
+      "scope": "meta.attribute.map.aeon",
+      "foreground": "var(attribute)"
+    },
+    {
+      "scope": "punctuation.definition.attribute.begin.aeon, punctuation.definition.attribute.end.aeon",
+      "foreground": "var(attribute_punct)"
+    },
+    {
+      "scope": "entity.name.tag.aeon, punctuation.definition.node.begin.aeon",
+      "foreground": "var(tag)",
+      "font_style": "bold"
+    },
+    {
+      "scope": "keyword.other.binding.alias.aeon, keyword.other.binding.sigil.aeon",
+      "foreground": "var(key)"
+    },
+    {
+      "scope": "variable.other.readwrite.aeon, variable.other.member.aeon",
+      "foreground": "#d4b3e8"
+    },
+    {
+      "scope": "keyword.operator.assign.aeon",
+      "foreground": "var(assign)"
+    },
+    {
+      "scope": "string.quoted.double.aeon, string.quoted.single.aeon",
+      "foreground": "var(string)"
+    },
+    {
+      "scope": "string.quoted.template.aeon",
+      "foreground": "var(template_string)",
+      "font_style": "italic"
+    },
+    {
+      "scope": "constant.character.escape.aeon",
+      "foreground": "var(escape)"
+    },
+    {
+      "scope": "keyword.other.value-sigil.aeon",
+      "foreground": "var(fg)"
+    },
+    {
+      "scope": "constant.numeric.hex.aeon, constant.numeric.binary.aeon",
+      "foreground": "var(number_alt)"
+    },
+    {
+      "scope": "constant.numeric.base64.aeon",
+      "foreground": "var(number_muted)"
+    },
+    {
+      "scope": "constant.numeric.dimension.aeon",
+      "foreground": "#d3d68c"
+    },
+    {
+      "scope": "constant.numeric.float.aeon, constant.numeric.integer.aeon",
+      "foreground": "var(number)"
+    },
+    {
+      "scope": "constant.language.boolean.aeon",
+      "foreground": "var(number)",
+      "font_style": "bold"
+    },
+    {
+      "scope": "constant.language.switch.aeon",
+      "foreground": "var(switch)"
+    },
+    {
+      "scope": "constant.language.date.aeon, constant.language.time.aeon, constant.language.datetime.utc.aeon, constant.language.datetime.local.aeon, constant.language.datetime.zoned.aeon, constant.language.zrut.aeon",
+      "foreground": "var(number)"
+    },
+    {
+      "scope": "punctuation.separator.directive.aeon, punctuation.separator.comma.aeon, punctuation.separator.type-annotation.aeon",
+      "foreground": "var(punct)"
+    },
+    {
+      "scope": "punctuation.section.block.begin.aeon, punctuation.section.block.end.aeon",
+      "foreground": "#d8c98d"
+    },
+    {
+      "scope": "punctuation.section.list.begin.aeon, punctuation.section.list.end.aeon",
+      "foreground": "#8db4d7"
+    },
+    {
+      "scope": "punctuation.section.tuple.begin.aeon, punctuation.section.tuple.end.aeon",
+      "foreground": "#8ec7d9"
+    }
+  ]
+}

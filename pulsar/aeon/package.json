@@ -1,0 +1,16 @@
+{
+  "name": "aeon-pulsar",
+  "version": "0.0.1",
+  "description": "AEON language support for Pulsar.",
+  "engines": {
+    "pulsar": ">=1.0.0"
+  },
+  "keywords": [
+    "aeon",
+    "language",
+    "grammar",
+    "syntax"
+  ],
+  "providedServices": {},
+  "consumedServices": {}
+}

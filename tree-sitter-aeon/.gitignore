@@ -1,0 +1,5 @@
+src/parser.c
+src/node-types.json
+bindings/node/*.node
+build/
+parser.so
