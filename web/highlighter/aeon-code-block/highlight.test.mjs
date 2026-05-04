@@ -35,7 +35,7 @@ test('highlights zoned values and annotated keys', () => {
 });
 
 test('renders &ND styling inside semantic document comments', () => {
-  const source = `/#\n&ND v1\n# Heading [*bold]\n- hello [/item] [$code]\n[@ link | https://example.test]\n+++custom/block\n#/`;
+  const source = `/#\n&ND v1\n# Heading [*bold]\n- hello [/item] [$code]\n> quoted text\n[@ link | https://example.test]\n+++custom/block\n#/`;
   const html = highlightAeon(source);
 
   assert.match(html, /tok-and-header/);
@@ -44,6 +44,8 @@ test('renders &ND styling inside semantic document comments', () => {
   assert.match(html, /tok-and-strong/);
   assert.match(html, /tok-and-emphasis/);
   assert.match(html, /tok-and-list-marker/);
+  assert.match(html, /tok-and-list-text/);
+  assert.match(html, /tok-and-quote-text/);
   assert.match(html, /tok-and-code/);
   assert.match(html, /tok-and-link-target/);
   assert.match(html, /tok-and-extension-fence/);

@@ -123,7 +123,7 @@ function renderDocComment(value) {
 
     const quote = /^(\s*(?:>\s*)+)(.*)$/.exec(line);
     if (quote) {
-      return `${wrap('and-quote', quote[1])}${wrapRaw('comment-doc', renderAndInline(quote[2]))}`;
+      return `${wrap('and-quote', quote[1])}${wrapRaw('and-quote-text', renderAndInline(quote[2]))}`;
     }
 
     const heading = /^(\s{0,3})(#{1,6})(\s+.*)$/.exec(line);
@@ -133,7 +133,7 @@ function renderDocComment(value) {
 
     const list = /^(\s*)(-\s+|\d+\.\s+)(.*)$/.exec(line);
     if (list) {
-      return `${escapeHtml(list[1])}${wrap('and-list-marker', list[2])}${wrapRaw('comment-doc', renderAndInline(list[3]))}`;
+      return `${escapeHtml(list[1])}${wrap('and-list-marker', list[2])}${wrapRaw('and-list-text', renderAndInline(list[3]))}`;
     }
 
     return wrapRaw('comment-doc', renderAndInline(line));
@@ -441,7 +441,7 @@ const templateHtml = `
     }
 
     .tok-comment { color: var(--aeon-comment); font-style: italic; }
-    .tok-comment-doc { color: var(--aeon-comment-doc); font-style: italic; }
+    .tok-comment-doc { color: var(--aeon-comment-doc); font-style: normal; }
     .tok-comment-annotation { color: var(--aeon-comment-annotation); font-style: italic; }
     .tok-comment-hint { color: var(--aeon-comment-hint); font-style: italic; }
     .tok-comment-host { color: var(--aeon-comment-host); font-style: italic; }
@@ -452,15 +452,23 @@ const templateHtml = `
     .tok-and-heading { color: var(--aeon-fg); font-weight: 700; font-style: normal; }
     .tok-and-version,
     .tok-and-heading-marker,
-    .tok-and-list-marker,
-    .tok-and-quote,
     .tok-and-rule,
     .tok-and-table-pipe,
     .tok-and-link-separator { color: var(--aeon-comment-doc); font-style: normal; }
     .tok-and-strong { color: var(--aeon-fg); font-weight: 700; font-style: normal; }
-    .tok-and-emphasis { color: var(--aeon-comment-doc); font-style: italic; }
+
+    .tok-and-list-marker,
+    .tok-and-list-text,
+    .tok-and-quote,
+    .tok-and-quote-text,
+    .tok-and-emphasis {
+      color: var(--aeon-comment-doc);
+      color: color-mix(in srgb, var(--aeon-comment-doc) 72%, var(--aeon-fg));
+      font-style: italic;
+    }
     .tok-and-code {
       color: var(--aeon-fg);
+      color: color-mix(in srgb, var(--aeon-fg) 88%, #fff);
       font-style: normal;
       background: rgba(255, 255, 255, 0.06);
       border-radius: 6px;
@@ -469,7 +477,11 @@ const templateHtml = `
     .tok-and-link { color: var(--aeon-directive); font-style: normal; }
     .tok-and-link-target { color: var(--aeon-string); font-style: normal; }
     .tok-and-fence,
-    .tok-and-extension-fence { color: var(--aeon-attribute-punct); font-style: normal; }
+    .tok-and-extension-fence {
+      color: var(--aeon-attribute-punct);
+      color: color-mix(in srgb, var(--aeon-attribute-punct) 78%, var(--aeon-fg));
+      font-style: normal;
+    }
     .tok-and-fence-label,
     .tok-and-extension-name,
     .tok-and-escape { color: var(--aeon-type); font-style: normal; }
