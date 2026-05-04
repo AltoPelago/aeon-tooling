@@ -34,6 +34,23 @@ function makeRegExp(source) {
   try { return new RegExp(source, 'm'); } catch (e) { return null; }
 }
 
+function findPatternByName(value, name) {
+  if (!value || typeof value !== 'object') return null;
+  if (value.name === name) return value;
+  for (const child of Object.values(value)) {
+    if (Array.isArray(child)) {
+      for (const item of child) {
+        const found = findPatternByName(item, name);
+        if (found) return found;
+      }
+    } else if (child && typeof child === 'object') {
+      const found = findPatternByName(child, name);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
 suite('AEON grammar regex tests', () => {
   const grammarPath = path.resolve(__dirname, '..', '..', 'syntaxes', 'aeon.tmLanguage.json');
   const toolingRepoRoot = path.resolve(__dirname, '..', '..', '..', '..', '..');
@@ -175,6 +192,8 @@ suite('AEON grammar regex tests', () => {
     assert(refPat && refPat.match, 'ref binding meta pattern not found');
     assert(makeRegExp(refPat.match).test('~numbers[1]'));
     assert(makeRegExp(refPat.match).test('~finance.revenue'));
+    assert(makeRegExp(refPat.match).test('~"a.b"'));
+    assert(makeRegExp(refPat.match).test('~$.["a.b"]'));
     assert(makeRegExp(refPat.match).test('~a@meta'));
     assert(makeRegExp(refPat.match).test('~a@["x.y"]'));
   });
@@ -208,6 +227,27 @@ suite('AEON grammar regex tests', () => {
     assert(makeRegExp(pat.begin).test('/# first element doc'));
     assert(makeRegExp(pat.end).test('#/'));
     assert(makeRegExp(pat.begin).test(sample));
+  });
+
+  test('line doc comment //# is a region so &ND can be tokenized', () => {
+    const entry = repo['comments'];
+    const pat = entry && entry.patterns.find(p => p.name === 'comment.line.doc.aeon');
+    assert(pat && pat.begin, 'line doc comment region pattern not found');
+    assert(pat.begin === '//#', `expected //# but got "${pat.begin}"`);
+    assert(pat.end === '$', `expected line doc end to be $ but got "${pat.end}"`);
+    assert(pat.patterns.some(p => p.include === '#and-doc-line'));
+  });
+
+  test('&ND document comment scopes replace markdown scopes', () => {
+    assert(repo['and-doc'], '&ND document comment repository not found');
+    assert(repo['and-doc-line'], '&ND line document comment repository not found');
+    assert(findPatternByName(repo['and-doc'], 'meta.header.and.aeon'));
+    assert(findPatternByName(repo['and-doc-line'], 'meta.header.and.aeon'));
+    assert(findPatternByName(repo['and-doc'], 'markup.heading.and.aeon'));
+    assert(findPatternByName(repo['and-doc'], 'markup.list.and.aeon'));
+    assert(findPatternByName(repo['and-doc'], 'markup.quote.and.aeon'));
+    assert(findPatternByName(repo['and-doc'], 'markup.inline.raw.string.and.aeon'));
+    assert(!JSON.stringify(repo['comments']).includes('markdown'), 'doc comment grammar should not use markdown scopes');
   });
 
   test('inline hint /?...?/ matches', () => {

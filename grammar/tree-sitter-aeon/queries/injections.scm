@@ -1,8 +1,4 @@
-; Inject Markdown into AEON block doc comments.
-;
-; This is intentionally coarse for now: the entire `/# ... #/` body is treated
-; as markdown-oriented content so Neovim can apply markdown tree-sitter
-; highlighting inside documentation blocks.
-
-((block_doc_comment) @injection.content
-  (#set! injection.language "markdown"))
+; AEON document comments use &ND markup, not Markdown.
+; The starter grammar currently treats doc comments as leaf tokens, so
+; fine-grained &ND captures need grammar support before this query can inject
+; or capture document-comment structure.

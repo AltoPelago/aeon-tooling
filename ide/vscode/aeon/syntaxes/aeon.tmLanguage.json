@@ -28,7 +28,15 @@
     },
     "comments": {
       "patterns": [
-        { "name": "comment.line.doc.aeon", "match": "//#.*$" },
+        {
+          "name": "comment.line.doc.aeon",
+          "begin": "//#",
+          "end": "$",
+          "beginCaptures": { "0": { "name": "punctuation.definition.comment.begin.aeon" } },
+          "patterns": [
+            { "include": "#and-doc-line" }
+          ]
+        },
         { "name": "comment.line.annotation.aeon", "match": "//@.*$" },
         { "name": "comment.line.hint.aeon", "match": "//\\?.*$" },
         { "name": "comment.line.host.aeon", "match": "//!.*$" },
@@ -43,42 +51,7 @@
           "beginCaptures": { "0": { "name": "punctuation.definition.comment.begin.aeon" } },
           "endCaptures": { "0": { "name": "punctuation.definition.comment.end.aeon" } },
           "patterns": [
-            { "name": "markup.heading.markdown", "match": "^\\s{0,3}#{1,6}\\s+.*$" },
-            { "name": "markup.list.markdown", "match": "^\\s*(?:[-*+]\\s+|\\d+\\.\\s+).*$" },
-            {
-              "name": "markup.bold.markdown",
-              "match": "(\\*\\*|__)(?=\\S)(.+?[*_]*)(?<=\\S)\\1",
-              "captures": {
-                "1": { "name": "punctuation.definition.bold.markdown" },
-                "2": { "name": "markup.bold.markdown" }
-              }
-            },
-            {
-              "name": "markup.italic.markdown",
-              "match": "(\\*|_)(?=\\S)(.+?)(?<=\\S)\\1",
-              "captures": {
-                "1": { "name": "punctuation.definition.italic.markdown" },
-                "2": { "name": "markup.italic.markdown" }
-              }
-            },
-            {
-              "name": "markup.inline.raw.string.markdown",
-              "match": "(``+)(.+?)(\\1)",
-              "captures": {
-                "1": { "name": "punctuation.definition.raw.markdown" },
-                "2": { "name": "markup.inline.raw.string.markdown" },
-                "3": { "name": "punctuation.definition.raw.markdown" }
-              }
-            },
-            {
-              "name": "markup.inline.raw.string.markdown",
-              "match": "(`)([^`]+)(`)",
-              "captures": {
-                "1": { "name": "punctuation.definition.raw.markdown" },
-                "2": { "name": "markup.inline.raw.string.markdown" },
-                "3": { "name": "punctuation.definition.raw.markdown" }
-              }
-            }
+            { "include": "#and-doc" }
           ]
         },
         {
@@ -123,6 +96,194 @@
           "beginCaptures": { "0": { "name": "punctuation.definition.comment.begin.aeon" } },
           "endCaptures": { "0": { "name": "punctuation.definition.comment.end.aeon" } }
         }
+      ]
+    },
+    "and-doc": {
+      "patterns": [
+        {
+          "name": "meta.header.and.aeon",
+          "match": "^(\\s*)(&ND)(\\s+v[0-9]+)?",
+          "captures": {
+            "2": { "name": "keyword.control.header.and.aeon" },
+            "3": { "name": "constant.language.version.and.aeon" }
+          }
+        },
+        {
+          "name": "markup.heading.and.aeon",
+          "match": "^(\\s{0,3})(#{1,6})(\\s+.*)$",
+          "captures": {
+            "2": { "name": "punctuation.definition.heading.and.aeon" },
+            "3": { "name": "markup.heading.and.aeon" }
+          }
+        },
+        {
+          "name": "markup.list.and.aeon",
+          "match": "^(\\s*)(-\\s+|\\d+\\.\\s+)(.*)$",
+          "captures": {
+            "2": { "name": "punctuation.definition.list.and.aeon" },
+            "3": { "name": "markup.list.text.and.aeon" }
+          }
+        },
+        {
+          "name": "markup.quote.and.aeon",
+          "match": "^(\\s*(?:>\\s*)+)(.*)$",
+          "captures": {
+            "1": { "name": "punctuation.definition.quote.and.aeon" },
+            "2": { "name": "markup.quote.text.and.aeon" }
+          }
+        },
+        {
+          "name": "markup.fence.extension.and.aeon",
+          "match": "^(\\s*)(\\+{3})([A-Za-z0-9_./+-]+|fallback)?",
+          "captures": {
+            "2": { "name": "punctuation.definition.fence.extension.and.aeon" },
+            "3": { "name": "entity.name.fence.extension.and.aeon" }
+          }
+        },
+        {
+          "name": "markup.fence.code.and.aeon",
+          "match": "^(\\s*)(`{3,})([A-Za-z0-9_+.-]+)?",
+          "captures": {
+            "2": { "name": "punctuation.definition.fence.and.aeon" },
+            "3": { "name": "entity.name.fence.and.aeon" }
+          }
+        },
+        { "name": "punctuation.separator.rule.and.aeon", "match": "^\\s*---\\s*$" },
+        { "name": "constant.character.escape.and.aeon", "match": "\\\\[\\[\\]|\\\\]" },
+        {
+          "name": "markup.bold.and.aeon",
+          "match": "(\\[\\*)([^\\]]*)(\\])",
+          "captures": {
+            "1": { "name": "punctuation.definition.bold.and.aeon" },
+            "2": { "name": "markup.bold.and.aeon" },
+            "3": { "name": "punctuation.definition.bold.and.aeon" }
+          }
+        },
+        {
+          "name": "markup.italic.and.aeon",
+          "match": "(\\[/)([^\\]]*)(\\])",
+          "captures": {
+            "1": { "name": "punctuation.definition.italic.and.aeon" },
+            "2": { "name": "markup.italic.and.aeon" },
+            "3": { "name": "punctuation.definition.italic.and.aeon" }
+          }
+        },
+        {
+          "name": "markup.inline.raw.string.and.aeon",
+          "match": "(\\[\\$)([^\\]]*)(\\])",
+          "captures": {
+            "1": { "name": "punctuation.definition.raw.and.aeon" },
+            "2": { "name": "markup.inline.raw.string.and.aeon" },
+            "3": { "name": "punctuation.definition.raw.and.aeon" }
+          }
+        },
+        {
+          "name": "markup.underline.link.and.aeon",
+          "match": "(\\[@)(.*?)(\\|)(.*?)(\\])",
+          "captures": {
+            "1": { "name": "punctuation.definition.link.and.aeon" },
+            "2": { "name": "markup.underline.link.and.aeon" },
+            "3": { "name": "punctuation.separator.link.and.aeon" },
+            "4": { "name": "string.other.link.target.and.aeon" },
+            "5": { "name": "punctuation.definition.link.and.aeon" }
+          }
+        },
+        { "name": "invalid.illegal.checkbox.and.aeon", "match": "\\[(?: |x|=|\\.|_|<)[^\\]]*\\]" },
+        { "name": "punctuation.separator.table.and.aeon", "match": "\\|" }
+      ]
+    },
+    "and-doc-line": {
+      "patterns": [
+        {
+          "name": "meta.header.and.aeon",
+          "match": "\\s*(&ND)(\\s+v[0-9]+)?",
+          "captures": {
+            "1": { "name": "keyword.control.header.and.aeon" },
+            "2": { "name": "constant.language.version.and.aeon" }
+          }
+        },
+        {
+          "name": "markup.heading.and.aeon",
+          "match": "\\s*(#{1,6})(\\s+.*)$",
+          "captures": {
+            "1": { "name": "punctuation.definition.heading.and.aeon" },
+            "2": { "name": "markup.heading.and.aeon" }
+          }
+        },
+        {
+          "name": "markup.list.and.aeon",
+          "match": "\\s*(-\\s+|\\d+\\.\\s+)(.*)$",
+          "captures": {
+            "1": { "name": "punctuation.definition.list.and.aeon" },
+            "2": { "name": "markup.list.text.and.aeon" }
+          }
+        },
+        {
+          "name": "markup.quote.and.aeon",
+          "match": "\\s*((?:>\\s*)+)(.*)$",
+          "captures": {
+            "1": { "name": "punctuation.definition.quote.and.aeon" },
+            "2": { "name": "markup.quote.text.and.aeon" }
+          }
+        },
+        {
+          "name": "markup.fence.extension.and.aeon",
+          "match": "\\s*(\\+{3})([A-Za-z0-9_./+-]+|fallback)?",
+          "captures": {
+            "1": { "name": "punctuation.definition.fence.extension.and.aeon" },
+            "2": { "name": "entity.name.fence.extension.and.aeon" }
+          }
+        },
+        {
+          "name": "markup.fence.code.and.aeon",
+          "match": "\\s*(`{3,})([A-Za-z0-9_+.-]+)?",
+          "captures": {
+            "1": { "name": "punctuation.definition.fence.and.aeon" },
+            "2": { "name": "entity.name.fence.and.aeon" }
+          }
+        },
+        { "name": "punctuation.separator.rule.and.aeon", "match": "\\s*---\\s*$" },
+        { "name": "constant.character.escape.and.aeon", "match": "\\\\[\\[\\]|\\\\]" },
+        {
+          "name": "markup.bold.and.aeon",
+          "match": "(\\[\\*)([^\\]]*)(\\])",
+          "captures": {
+            "1": { "name": "punctuation.definition.bold.and.aeon" },
+            "2": { "name": "markup.bold.and.aeon" },
+            "3": { "name": "punctuation.definition.bold.and.aeon" }
+          }
+        },
+        {
+          "name": "markup.italic.and.aeon",
+          "match": "(\\[/)([^\\]]*)(\\])",
+          "captures": {
+            "1": { "name": "punctuation.definition.italic.and.aeon" },
+            "2": { "name": "markup.italic.and.aeon" },
+            "3": { "name": "punctuation.definition.italic.and.aeon" }
+          }
+        },
+        {
+          "name": "markup.inline.raw.string.and.aeon",
+          "match": "(\\[\\$)([^\\]]*)(\\])",
+          "captures": {
+            "1": { "name": "punctuation.definition.raw.and.aeon" },
+            "2": { "name": "markup.inline.raw.string.and.aeon" },
+            "3": { "name": "punctuation.definition.raw.and.aeon" }
+          }
+        },
+        {
+          "name": "markup.underline.link.and.aeon",
+          "match": "(\\[@)(.*?)(\\|)(.*?)(\\])",
+          "captures": {
+            "1": { "name": "punctuation.definition.link.and.aeon" },
+            "2": { "name": "markup.underline.link.and.aeon" },
+            "3": { "name": "punctuation.separator.link.and.aeon" },
+            "4": { "name": "string.other.link.target.and.aeon" },
+            "5": { "name": "punctuation.definition.link.and.aeon" }
+          }
+        },
+        { "name": "invalid.illegal.checkbox.and.aeon", "match": "\\[(?: |x|=|\\.|_|<)[^\\]]*\\]" },
+        { "name": "punctuation.separator.table.and.aeon", "match": "\\|" }
       ]
     },
     "directives": {
@@ -223,7 +384,7 @@
       "patterns": [
         {
           "name": "meta.binding.alias.aeon",
-          "match": "(~>)(\\s*)(\\$?(?:\\.?[A-Za-z_][A-Za-z0-9_]*|\\[\\d+\\]|\\[@?\"(?:\\\\.|[^\"])*\"\\]|@\\[[^\\]]+\\]|@[A-Za-z_][A-Za-z0-9_]*)+)",
+          "match": "(~>)(\\s*)(\\$?(?:(?:[A-Za-z_][A-Za-z0-9_]*|\"(?:\\\\.|[^\"])*\"|'(?:\\\\.|[^'])*'|\\[\\d+\\]|\\[\"(?:\\\\.|[^\"])*\"\\]|\\.[A-Za-z_][A-Za-z0-9_]*|\\.\\[\"(?:\\\\.|[^\"])*\"\\]|@[A-Za-z_][A-Za-z0-9_]*|@\\[\"(?:\\\\.|[^\"])*\"\\]))+)",
           "captures": {
             "1": { "name": "keyword.other.binding.alias.aeon" },
             "2": { "name": "meta.whitespace.binding.aeon" },
@@ -232,7 +393,7 @@
         },
         {
           "name": "meta.binding.ref.aeon",
-          "match": "(~)(?!>)(\\$?(?:\\.?[A-Za-z_][A-Za-z0-9_]*|\\[\\d+\\]|\\[\"(?:\\\\.|[^\"])*\"\\]|@\\[[^\\]]+\\]|@[A-Za-z_][A-Za-z0-9_]*)+)",
+          "match": "(~)(?!>)(\\$?(?:(?:[A-Za-z_][A-Za-z0-9_]*|\"(?:\\\\.|[^\"])*\"|'(?:\\\\.|[^'])*'|\\[\\d+\\]|\\[\"(?:\\\\.|[^\"])*\"\\]|\\.[A-Za-z_][A-Za-z0-9_]*|\\.\\[\"(?:\\\\.|[^\"])*\"\\]|@[A-Za-z_][A-Za-z0-9_]*|@\\[\"(?:\\\\.|[^\"])*\"\\]))+)",
           "captures": {
             "1": { "name": "keyword.other.binding.sigil.aeon" },
             "2": { "name": "variable.other.readwrite.aeon" }

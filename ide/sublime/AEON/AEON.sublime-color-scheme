@@ -43,8 +43,7 @@
     },
     {
       "scope": "comment.line.doc.aeon, comment.block.doc.aeon",
-      "foreground": "var(doc_comment)",
-      "font_style": "italic"
+      "foreground": "var(doc_comment)"
     },
     {
       "scope": "comment.line.annotation.aeon, comment.block.annotation.aeon",
@@ -77,31 +76,48 @@
       "font_style": "italic"
     },
     {
-      "scope": "markup.heading.markdown",
-      "foreground": "#d7def5",
+      "scope": "keyword.control.header.and.aeon, markup.heading.and.aeon",
+      "foreground": "#ebf1f7",
       "font_style": "bold"
     },
     {
-      "scope": "markup.list.markdown",
-      "foreground": "#bec8dd"
+      "scope": "constant.language.version.and.aeon, punctuation.definition.heading.and.aeon, punctuation.separator.rule.and.aeon, punctuation.separator.table.and.aeon, punctuation.separator.link.and.aeon",
+      "foreground": "var(doc_comment)"
     },
     {
-      "scope": "markup.bold.markdown",
-      "foreground": "#edf1f7",
-      "font_style": "bold"
-    },
-    {
-      "scope": "markup.italic.markdown",
-      "foreground": "#d4d1e8",
+      "scope": "punctuation.definition.list.and.aeon, markup.list.text.and.aeon, punctuation.definition.quote.and.aeon, markup.quote.text.and.aeon, markup.italic.and.aeon",
+      "foreground": "#b5c1d8",
       "font_style": "italic"
     },
     {
-      "scope": "markup.inline.raw.string.markdown",
-      "foreground": "#bfb7a1"
+      "scope": "markup.bold.and.aeon",
+      "foreground": "#ebf1f7",
+      "font_style": "bold"
     },
     {
-      "scope": "punctuation.definition.raw.markdown",
-      "foreground": "#bfb7a1"
+      "scope": "markup.inline.raw.string.and.aeon",
+      "foreground": "#ead898"
+    },
+    {
+      "scope": "markup.underline.link.and.aeon",
+      "foreground": "#8ec7d9"
+    },
+    {
+      "scope": "string.other.link.target.and.aeon",
+      "foreground": "#d9c58b"
+    },
+    {
+      "scope": "punctuation.definition.fence.and.aeon, punctuation.definition.fence.extension.and.aeon",
+      "foreground": "#e5c37f"
+    },
+    {
+      "scope": "entity.name.fence.and.aeon, entity.name.fence.extension.and.aeon, constant.character.escape.and.aeon",
+      "foreground": "var(type)"
+    },
+    {
+      "scope": "invalid.illegal.checkbox.and.aeon",
+      "foreground": "#ff9b9b",
+      "font_style": "underline"
     },
     {
       "scope": "keyword.control.directive.aeon, entity.name.directive.aeon",

@@ -9,7 +9,7 @@ Current coverage:
 - node literals and annotated node tags
 - attribute maps
 - strings, numbers, booleans, date/time/datetime/zrut literals
-- line comments and `/# ... #/` doc comments with lightweight markdown styling
+- line comments and `//#` / `/# ... #/` doc comments with `&ND` styling
 - matching `AEON Dark` color scheme using the same hex palette as the VS Code theme
 
 Status:

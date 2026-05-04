@@ -111,13 +111,15 @@ After that, install the parser inside Neovim with:
 :TSInstall aeon
 ```
 
-## Markdown Doc Comments
+## Document Comments
 
-`queries/injections.scm` injects Markdown into `/# ... #/` block doc comments.
-That lets Neovim reuse its Markdown highlighting inside AEON doc blocks.
+AEON document comments use `&ND` markup. The starter grammar currently exposes
+doc comments as single tokens, so `queries/injections.scm` does not inject
+Markdown. Fine-grained `&ND` captures need grammar support for doc-comment
+content before they can be represented in tree-sitter queries.
 
 Next steps:
 
 1. add stronger list/tuple/object item recovery and separator handling
-2. add doc-comment markup captures or markdown injections
+2. add doc-comment content nodes and `&ND` markup captures
 3. generate the parser and test against `language-spec/examples/highlight-cases.aeon`

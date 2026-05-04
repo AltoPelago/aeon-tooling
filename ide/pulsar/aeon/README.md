@@ -10,11 +10,12 @@ Planned contents:
 
 Status:
 
-- package skeleton only
-- grammar should stay aligned with `ide/vscode/aeon/syntaxes/aeon.tmLanguage.json`
+- TextMate-compatible grammar is copied from `ide/vscode/aeon/syntaxes/aeon.tmLanguage.json`
+- grammar includes `.aeon` file association metadata for Pulsar
+- grammar should stay aligned with the VS Code source grammar when syntax changes
 
 Next steps:
 
-1. copy or generate the grammar into `grammars/aeon.json`
-2. add package activation metadata if editor-specific behavior is needed
+1. add package activation metadata if editor-specific behavior is needed
+2. add optional package-local styling for AEON `&ND` doc-comment scopes
 3. test against `language-spec/examples/highlight-cases.aeon`

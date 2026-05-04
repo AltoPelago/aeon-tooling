@@ -25,17 +25,18 @@ contexts:
   comments:
     - match: '^//!(?!/).*$'
       scope: comment.line.host.aeon
-    - match: '^//#.*$'
-      scope: comment.line.doc.aeon
-    - match: '^//@.*$'
+    - match: '//#'
+      scope: punctuation.definition.comment.begin.aeon
+      push: line-doc-comment
+    - match: '//@.*$'
       scope: comment.line.annotation.aeon
-    - match: '^//\?.*$'
+    - match: '//\?.*$'
       scope: comment.line.hint.aeon
-    - match: '^//\{.*$'
+    - match: '//\{.*$'
       scope: comment.line.reserved.structure.aeon
-    - match: '^//\[.*$'
+    - match: '//\[.*$'
       scope: comment.line.reserved.profile.aeon
-    - match: '^//\(.*$'
+    - match: '//\(.*$'
       scope: comment.line.reserved.future.aeon
     - match: '//.*$'
       scope: comment.line.double-slash.aeon
@@ -62,32 +63,98 @@ contexts:
     - match: '#/'
       scope: punctuation.definition.comment.end.aeon
       pop: true
+    - include: and-doc
+
+  line-doc-comment:
+    - meta_scope: comment.line.doc.aeon
+    - match: '$'
+      pop: true
+    - include: and-doc-line
+
+  and-doc:
+    - match: '^(\s*)(&ND)(\s+v[0-9]+)?'
+      captures:
+        2: keyword.control.header.and.aeon
+        3: constant.language.version.and.aeon
     - match: '^\s{0,3}(#{1,6})(\s+.*)$'
       captures:
-        1: punctuation.definition.heading.markdown
-        2: markup.heading.markdown
-    - match: '^\s*((?:[-*+])|\d+\.)(\s+.*)$'
+        1: punctuation.definition.heading.and.aeon
+        2: markup.heading.and.aeon
+    - match: '^\s*(-\s+|\d+\.\s+)(.*)$'
       captures:
-        1: markup.list.markdown
-        2: markup.list.markdown
-    - match: '(\*\*|__)(?=\S)(.+?)(?<=\S)\1'
+        1: punctuation.definition.list.and.aeon
+        2: markup.list.text.and.aeon
+    - match: '^(\s*(?:>\s*)+)(.*)$'
       captures:
-        1: punctuation.definition.bold.markdown
-        2: markup.bold.markdown
-    - match: '(\*|_)(?=\S)(.+?)(?<=\S)\1'
+        1: punctuation.definition.quote.and.aeon
+        2: markup.quote.text.and.aeon
+    - match: '^\s*(\+{3})([A-Za-z0-9_./+-]+|fallback)?'
       captures:
-        1: punctuation.definition.italic.markdown
-        2: markup.italic.markdown
-    - match: '(``+)(.+?)(\1)'
+        1: punctuation.definition.fence.extension.and.aeon
+        2: entity.name.fence.extension.and.aeon
+    - match: '^\s*(`{3,})([A-Za-z0-9_+.-]+)?'
       captures:
-        1: punctuation.definition.raw.markdown
-        2: markup.inline.raw.string.markdown
-        3: punctuation.definition.raw.markdown
-    - match: '(`)([^`]+)(`)'
+        1: punctuation.definition.fence.and.aeon
+        2: entity.name.fence.and.aeon
+    - match: '^\s*---\s*$'
+      scope: punctuation.separator.rule.and.aeon
+    - match: '\\[\[\]|\\]'
+      scope: constant.character.escape.and.aeon
+    - match: '(\[\*)([^\]]*)(\])'
       captures:
-        1: punctuation.definition.raw.markdown
-        2: markup.inline.raw.string.markdown
-        3: punctuation.definition.raw.markdown
+        1: punctuation.definition.bold.and.aeon
+        2: markup.bold.and.aeon
+        3: punctuation.definition.bold.and.aeon
+    - match: '(\[/)([^\]]*)(\])'
+      captures:
+        1: punctuation.definition.italic.and.aeon
+        2: markup.italic.and.aeon
+        3: punctuation.definition.italic.and.aeon
+    - match: '(\[\$)([^\]]*)(\])'
+      captures:
+        1: punctuation.definition.raw.and.aeon
+        2: markup.inline.raw.string.and.aeon
+        3: punctuation.definition.raw.and.aeon
+    - match: '(\[@)(.*?)(\|)(.*?)(\])'
+      captures:
+        1: punctuation.definition.link.and.aeon
+        2: markup.underline.link.and.aeon
+        3: punctuation.separator.link.and.aeon
+        4: string.other.link.target.and.aeon
+        5: punctuation.definition.link.and.aeon
+    - match: '\[(?: |x|=|\.|_|<)[^\]]*\]'
+      scope: invalid.illegal.checkbox.and.aeon
+    - match: '\|'
+      scope: punctuation.separator.table.and.aeon
+
+  and-doc-line:
+    - match: '\s*(&ND)(\s+v[0-9]+)?'
+      captures:
+        1: keyword.control.header.and.aeon
+        2: constant.language.version.and.aeon
+    - match: '\s*(#{1,6})(\s+.*)$'
+      captures:
+        1: punctuation.definition.heading.and.aeon
+        2: markup.heading.and.aeon
+    - match: '\s*(-\s+|\d+\.\s+)(.*)$'
+      captures:
+        1: punctuation.definition.list.and.aeon
+        2: markup.list.text.and.aeon
+    - match: '\s*((?:>\s*)+)(.*)$'
+      captures:
+        1: punctuation.definition.quote.and.aeon
+        2: markup.quote.text.and.aeon
+    - match: '\s*(\+{3})([A-Za-z0-9_./+-]+|fallback)?'
+      captures:
+        1: punctuation.definition.fence.extension.and.aeon
+        2: entity.name.fence.extension.and.aeon
+    - match: '\s*(`{3,})([A-Za-z0-9_+.-]+)?'
+      captures:
+        1: punctuation.definition.fence.and.aeon
+        2: entity.name.fence.and.aeon
+    - match: '\s*---\s*$'
+      scope: punctuation.separator.rule.and.aeon
+    - include: and-doc
 
   directives:
     - match: '\b(aeon)(:)([A-Za-z][A-Za-z0-9_.:-]*)\b'
@@ -156,12 +223,12 @@ contexts:
         4: storage.type.parameters.aeon
 
   bindings:
-    - match: '(~>)(\s*)(\$?(?:\.?[A-Za-z_][A-Za-z0-9_]*|\[\d+\]|\["(?:\\.|[^"])*"\]|@\[[^\]]+\]|@[A-Za-z_][A-Za-z0-9_]*)+)'
+    - match: '(~>)(\s*)(\$?(?:(?:[A-Za-z_][A-Za-z0-9_]*|"(?:\\.|[^"])*"|''(?:\\.|[^''])*''|\[\d+\]|\["(?:\\.|[^"])*"\]|\.[A-Za-z_][A-Za-z0-9_]*|\.\["(?:\\.|[^"])*"\]|@[A-Za-z_][A-Za-z0-9_]*|@\["(?:\\.|[^"])*"\]))+)'
       captures:
         1: keyword.other.binding.alias.aeon
         2: meta.whitespace.binding.aeon
         3: variable.other.readwrite.aeon
-    - match: '(~)(?!>)(\$?(?:\.?[A-Za-z_][A-Za-z0-9_]*|\[\d+\]|\["(?:\\.|[^"])*"\]|@\[[^\]]+\]|@[A-Za-z_][A-Za-z0-9_]*)+)'
+    - match: '(~)(?!>)(\$?(?:(?:[A-Za-z_][A-Za-z0-9_]*|"(?:\\.|[^"])*"|''(?:\\.|[^''])*''|\[\d+\]|\["(?:\\.|[^"])*"\]|\.[A-Za-z_][A-Za-z0-9_]*|\.\["(?:\\.|[^"])*"\]|@[A-Za-z_][A-Za-z0-9_]*|@\["(?:\\.|[^"])*"\]))+)'
       captures:
         1: keyword.other.binding.sigil.aeon
         2: variable.other.readwrite.aeon
