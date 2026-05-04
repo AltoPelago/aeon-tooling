@@ -11,7 +11,7 @@ Planned contents:
 Status:
 
 - package skeleton only
-- grammar should stay aligned with `vscode/aeon/syntaxes/aeon.tmLanguage.json`
+- grammar should stay aligned with `ide/vscode/aeon/syntaxes/aeon.tmLanguage.json`
 
 Next steps:
 

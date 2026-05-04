@@ -2,17 +2,14 @@
 
 This repository is the maintained tooling workspace for AEON.
 
-It currently groups tooling by product and integration surface:
+It groups tooling by product and integration surface:
 
-- `vscode/`
-- `tree-sitter-aeon/`
-- `web/`
-- `nvim/`
-- `pulsar/`
-- `sublime/`
+- `ide/`: editor integrations for VS Code, Neovim, Pulsar, and Sublime Text.
+- `grammar/`: shared grammar/parser assets, including `tree-sitter-aeon`.
+- `converters/`: document and format translation tools.
+- `web/highlighter/`: browser/web syntax highlighting components.
 - `language-spec/`
 - `scripts/`
-- `packages/`
 
 Tooling in this tree should not silently depend on AEON implementation code being housed in the same repository unless that local-development workflow is documented explicitly.
 
@@ -23,11 +20,11 @@ npm run test
 ```
 
 The root test command covers the dependency-light browser code block tests and the `md-to-and`
-package tests. Editor and grammar integrations keep their own focused commands:
+converter tests. Editor and grammar integrations keep their own focused commands:
 
 - `npm run test:vscode:grammar`
 - `npm run test:tree-sitter`
 
-## Packages
+## Converters
 
-- `packages/md-to-and/`: Markdown to canonical standalone `&ND` converter (CLI + library).
+- `converters/md-to-and/`: Markdown to canonical standalone `&ND` converter (CLI + library).

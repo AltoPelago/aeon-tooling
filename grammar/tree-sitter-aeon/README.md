@@ -46,7 +46,7 @@ local parser_config = require("nvim-treesitter.parsers").get_parser_configs()
 
 parser_config.aeon = {
   install_info = {
-    url = "/path/to/aeon/tooling/tree-sitter-aeon",
+    url = "/path/to/aeon/tooling/grammar/tree-sitter-aeon",
     files = { "src/parser.c" },
     branch = "main",
     generate_requires_npm = true,
@@ -75,7 +75,7 @@ return {
     build = ":TSUpdate",
     config = function()
       local parser_config = require("nvim-treesitter.parsers").get_parser_configs()
-      local aeon_parser_path = "/path/to/aeon/tooling/tree-sitter-aeon"
+      local aeon_parser_path = "/path/to/aeon/tooling/grammar/tree-sitter-aeon"
 
       parser_config.aeon = {
         install_info = {

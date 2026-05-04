@@ -10,6 +10,28 @@ const BLOCK_COMMENT_TYPES = [
   { begin: '/*', end: '*/', type: 'comment' }
 ];
 
+const LINE_COMMENT_TYPES = [
+  { begin: '//#', type: 'comment-doc' },
+  { begin: '//@', type: 'comment-annotation' },
+  { begin: '//?', type: 'comment-hint' },
+  { begin: '//!', type: 'comment-host' },
+  { begin: '//{', type: 'comment-structure' },
+  { begin: '//[', type: 'comment-profile' },
+  { begin: '//(', type: 'comment-future' },
+  { begin: '//', type: 'comment' }
+];
+
+const IDENTIFIER = '[A-Za-z_][A-Za-z0-9_]*';
+const QUOTED = '"(?:\\\\.|[^"])*"|\'(?:\\\\.|[^\'])*\'';
+const KEY = `(?:${IDENTIFIER}|${QUOTED})`;
+const TYPE_ANNOTATION = `:${IDENTIFIER}(?:<[^>\\n]+>)?(?:\\[\\s*[A-Za-z0-9!#$%&*+\\-.:;=?@^_|~<>]\\s*\\])*`;
+const REFERENCE_PATH =
+  '\\$?(?:' +
+  `${IDENTIFIER}|${QUOTED}|\\[\\d+\\]|\\["(?:\\\\.|[^"])*"\\]` +
+  `|\\.${IDENTIFIER}|\\.\\["(?:\\\\.|[^"])*"\\]` +
+  `|@${IDENTIFIER}|@\\["(?:\\\\.|[^"])*"\\]` +
+  ')+';
+
 function escapeHtml(value) {
   return value
     .replace(/&/g, '&amp;')
@@ -25,9 +47,9 @@ function wrapRaw(type, html) {
   return `<span class="tok-${type}">${html}</span>`;
 }
 
-function renderDocMarkdownInline(value) {
+function renderAndInline(value) {
   const parts = [];
-  const pattern = /(`[^`]+`|\*\*[^*\n]+\*\*|__[^_\n]+__|\*[^*\n]+\*|_[^_\n]+_)/g;
+  const pattern = /(\\[\[\]|\\]|\[\*[\s\S]*?\]|\[\/[\s\S]*?\]|\[\$[\s\S]*?\]|\[@[\s\S]*?\]|\[(?: |x|=|\.|_|<)[^\]]*\]|\|)/g;
   let index = 0;
 
   for (const match of value.matchAll(pattern)) {
@@ -37,12 +59,30 @@ function renderDocMarkdownInline(value) {
       parts.push(escapeHtml(value.slice(index, start)));
     }
 
-    if (token.startsWith('`')) {
-      parts.push(wrap('md-code', token));
-    } else if (token.startsWith('**') || token.startsWith('__')) {
-      parts.push(wrap('md-bold', token));
-    } else {
-      parts.push(wrap('md-italic', token));
+    if (token.startsWith('\\')) {
+      parts.push(wrap('and-escape', token));
+    } else if (token === '|') {
+      parts.push(wrap('and-table-pipe', token));
+    } else if (/^\[(?: |x|=|\.|_|<)/.test(token)) {
+      parts.push(wrap('and-invalid', token));
+    } else if (token.startsWith('[*')) {
+      parts.push(wrap('and-strong', token));
+    } else if (token.startsWith('[/')) {
+      parts.push(wrap('and-emphasis', token));
+    } else if (token.startsWith('[$')) {
+      parts.push(wrap('and-code', token));
+    } else if (token.startsWith('[@')) {
+      const link = /^(\[@)(.*?)(\|)(.*)(\])$/.exec(token);
+      if (link) {
+        parts.push(
+          wrap('and-link', link[1] + link[2]) +
+          wrap('and-link-separator', link[3]) +
+          wrap('and-link-target', link[4]) +
+          wrap('and-link', link[5])
+        );
+      } else {
+        parts.push(wrap('and-link', token));
+      }
     }
     index = start + token.length;
   }
@@ -57,32 +97,88 @@ function renderDocMarkdownInline(value) {
 function renderDocComment(value) {
   const lines = value.split('\n');
   const rendered = lines.map((line) => {
-    const heading = /^(\s{0,3}#{1,6}\s+)(.*)$/.exec(line);
+    if (/^\s*(?:\/#|#\/)\s*$/.test(line)) {
+      return wrap('comment-doc', line);
+    }
+
+    const header = /^(\s*)(&ND)(\s+v[0-9]+)?(.*)$/.exec(line);
+    if (header) {
+      return `${escapeHtml(header[1])}${wrap('and-header', header[2])}${header[3] ? wrap('and-version', header[3]) : ''}${wrapRaw('comment-doc', renderAndInline(header[4]))}`;
+    }
+
+    const codeFence = /^(\s*)(`{3,})([A-Za-z0-9_+.-]+)?(.*)$/.exec(line);
+    if (codeFence) {
+      return `${escapeHtml(codeFence[1])}${wrap('and-fence', codeFence[2])}${codeFence[3] ? wrap('and-fence-label', codeFence[3]) : ''}${wrapRaw('comment-doc', renderAndInline(codeFence[4]))}`;
+    }
+
+    const extensionFence = /^(\s*)(\+{3})([A-Za-z0-9_./+-]+|fallback)?(.*)$/.exec(line);
+    if (extensionFence) {
+      return `${escapeHtml(extensionFence[1])}${wrap('and-extension-fence', extensionFence[2])}${extensionFence[3] ? wrap('and-extension-name', extensionFence[3]) : ''}${wrapRaw('comment-doc', renderAndInline(extensionFence[4]))}`;
+    }
+
+    const rule = /^(\s*)(---)(\s*)$/.exec(line);
+    if (rule) {
+      return `${escapeHtml(rule[1])}${wrap('and-rule', rule[2])}${escapeHtml(rule[3])}`;
+    }
+
+    const quote = /^(\s*(?:>\s*)+)(.*)$/.exec(line);
+    if (quote) {
+      return `${wrap('and-quote', quote[1])}${wrapRaw('comment-doc', renderAndInline(quote[2]))}`;
+    }
+
+    const heading = /^(\s{0,3})(#{1,6})(\s+.*)$/.exec(line);
     if (heading) {
-      return `${wrap('comment-doc', heading[1])}${wrap('md-heading', heading[2])}`;
+      return `${escapeHtml(heading[1])}${wrap('and-heading-marker', heading[2])}${wrapRaw('and-heading', renderAndInline(heading[3]))}`;
     }
 
-    const list = /^(\s*(?:[-*+]\s+|\d+\.\s+))(.*)$/.exec(line);
+    const list = /^(\s*)(-\s+|\d+\.\s+)(.*)$/.exec(line);
     if (list) {
-      return `${wrap('md-list-marker', list[1])}${wrapRaw('comment-doc', renderDocMarkdownInline(list[2]))}`;
+      return `${escapeHtml(list[1])}${wrap('and-list-marker', list[2])}${wrapRaw('comment-doc', renderAndInline(list[3]))}`;
     }
 
-    return wrapRaw('comment-doc', renderDocMarkdownInline(line));
+    return wrapRaw('comment-doc', renderAndInline(line));
   });
 
   return rendered.join('\n');
 }
 
-function findBlockCommentStart(line) {
-  let match = null;
-  for (const candidate of BLOCK_COMMENT_TYPES) {
-    const index = line.indexOf(candidate.begin);
-    if (index === -1) continue;
-    if (!match || index < match.index) {
-      match = { index, ...candidate };
+function findCommentStart(line) {
+  let quote = null;
+  let escaped = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+
+    if (quote) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === '\\') {
+        escaped = true;
+      } else if (char === quote) {
+        quote = null;
+      }
+      continue;
+    }
+
+    if (char === '"' || char === "'" || char === '`') {
+      quote = char;
+      continue;
+    }
+
+    for (const candidate of LINE_COMMENT_TYPES) {
+      if (line.startsWith(candidate.begin, index)) {
+        return { index, line: true, ...candidate };
+      }
+    }
+
+    for (const candidate of BLOCK_COMMENT_TYPES) {
+      if (line.startsWith(candidate.begin, index)) {
+        return { index, line: false, ...candidate };
+      }
     }
   }
-  return match;
+
+  return null;
 }
 
 function tokenizeLine(line, state) {
@@ -107,25 +203,24 @@ function tokenizeLine(line, state) {
     };
   }
 
-  if (/^\s*\/\/#/.test(line)) return { html: renderDocComment(line), state };
-  if (/^\s*\/\/@/.test(line)) return { html: wrap('comment-annotation', line), state };
-  if (/^\s*\/\/\?/.test(line)) return { html: wrap('comment-hint', line), state };
-  if (/^\s*\/\/!/.test(line)) return { html: wrap('comment-host', line), state };
-  if (/^\s*\/\/\{/.test(line)) return { html: wrap('comment-structure', line), state };
-  if (/^\s*\/\/\[/.test(line)) return { html: wrap('comment-profile', line), state };
-  if (/^\s*\/\/\(/.test(line)) return { html: wrap('comment-future', line), state };
-  if (/^\s*\/\//.test(line)) return { html: wrap('comment', line), state };
+  const comment = findCommentStart(line);
+  if (comment) {
+    const before = tokenizeLine(line.slice(0, comment.index), state).html;
+    const after = line.slice(comment.index);
 
-  const blockComment = findBlockCommentStart(line);
-  if (blockComment) {
-    const before = tokenizeLine(line.slice(0, blockComment.index), state).html;
-    const after = line.slice(blockComment.index);
-    const endIndex = after.indexOf(blockComment.end);
+    if (comment.line) {
+      return {
+        html: before + (comment.type === 'comment-doc' ? renderDocComment(after) : wrap(comment.type, after)),
+        state
+      };
+    }
+
+    const endIndex = after.indexOf(comment.end);
 
     if (endIndex === -1) {
-      state.blockComment = blockComment;
+      state.blockComment = comment;
       return {
-        html: before + (blockComment.type === 'comment-doc' ? renderDocComment(after) : wrap(blockComment.type, after)),
+        html: before + (comment.type === 'comment-doc' ? renderDocComment(after) : wrap(comment.type, after)),
         state
       };
     }
@@ -133,10 +228,10 @@ function tokenizeLine(line, state) {
     return {
       html:
         before +
-        (blockComment.type === 'comment-doc'
-          ? renderDocComment(after.slice(0, endIndex + blockComment.end.length))
-          : wrap(blockComment.type, after.slice(0, endIndex + blockComment.end.length))) +
-        tokenizeLine(after.slice(endIndex + blockComment.end.length), state).html,
+        (comment.type === 'comment-doc'
+          ? renderDocComment(after.slice(0, endIndex + comment.end.length))
+          : wrap(comment.type, after.slice(0, endIndex + comment.end.length))) +
+        tokenizeLine(after.slice(endIndex + comment.end.length), state).html,
       state
     };
   }
@@ -144,11 +239,13 @@ function tokenizeLine(line, state) {
   const patterns = [
     ['space', /\s+/y],
     ['directive', /\baeon:[A-Za-z][A-Za-z0-9_.:-]*\b/y],
-    ['node-open', /<[A-Za-z_][A-Za-z0-9_:-]*/y],
+    ['node-open', new RegExp(`<${IDENTIFIER}`, 'y')],
     ['attr-open', /@\{/y],
     ['attr-close', /\}/y],
-    ['typed-key', /(?:[A-Za-z_][A-Za-z0-9_:-]*|"(?:\\.|[^"])*"|'(?:\\.|[^'])*')(?=\s*:)/y],
-    ['key', /(?:[A-Za-z_][A-Za-z0-9_:-]*|"(?:\\.|[^"])*"|'(?:\\.|[^'])*')(?=\s*(?:@\{|=))/y],
+    ['typed-key', new RegExp(`${KEY}(?=\\s*${TYPE_ANNOTATION}\\s*=)`, 'y')],
+    ['typed-value', new RegExp(`${TYPE_ANNOTATION}(?=\\s*=)`, 'y')],
+    ['key', new RegExp(`${KEY}(?=\\s*(?:@\\{|=))`, 'y')],
+    ['trimtick-string', />{1,4}`(?:\\.|[^`])*`/y],
     ['string-template', /`(?:\\.|[^`])*`/y],
     ['string', /"(?:\\.|[^"])*"|'(?:\\.|[^'])*'/y],
     ['datetime', /\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z)?&[A-Za-z0-9_./+-]+\b/y],
@@ -157,18 +254,20 @@ function tokenizeLine(line, state) {
     ['time', /\b\d{2}:\d{2}:\d{2}(?:Z)?\b/y],
     ['date', /\b\d{4}-\d{2}-\d{2}\b/y],
     ['zrut', /\b(?:Z&|&)(?:[A-Za-z0-9_./+-]+)\b/y],
+    ['literal-word', /-?(?:Infinity|NaN)\b/y],
+    ['literal-word', /![A-Za-z_][A-Za-z0-9_]*\b/y],
     ['bool', /\b(?:true|false)\b/y],
     ['switch', /\b(?:yes|no|on|off)\b/y],
     ['number-sigil', /[#%$^][^\s,\])}]+/y],
     ['float', /(?<![A-Za-z0-9_])[+-]?\d[\d_]*\.\d[\d_]*(?:[eE][+-]?\d[\d_]*)?(?![A-Za-z0-9_])/y],
     ['number', /(?<![A-Za-z0-9_])[+-]?\d[\d_]*(?:[eE][+-]?\d[\d_]*)?(?![A-Za-z0-9_])/y],
-    ['binding', /~>\s*\$?(?:\.?[A-Za-z_][A-Za-z0-9_]*|\[\d+\]|\[@?"(?:\\.|[^"])*"\]|@\[[^\]]+\]|@[A-Za-z_][A-Za-z0-9_]*)+/y],
-    ['binding', /~\$?(?:\.?[A-Za-z_][A-Za-z0-9_]*|\[\d+\]|\["(?:\\.|[^"])*"\]|@\[[^\]]+\]|@[A-Za-z_][A-Za-z0-9_]*)+/y],
+    ['binding', new RegExp(`~>\\s*${REFERENCE_PATH}`, 'y')],
+    ['binding', new RegExp(`~(?!>)${REFERENCE_PATH}`, 'y')],
     ['operator', /=/y],
-    ['punct', /[,()[\]{}]/y],
-    ['type', /:[A-Za-z_][A-Za-z0-9_]*(?:<[^>\n]+>|\[[^\]\n]+\])?/y],
-    ['attribute-key', /[A-Za-z_][A-Za-z0-9_:-]*(?=\s*=)/y],
-    ['identifier', /[A-Za-z_][A-Za-z0-9_:-]*/y]
+    ['punct', /[,()[\]{}<>.]/y],
+    ['type', new RegExp(TYPE_ANNOTATION, 'y')],
+    ['attribute-key', new RegExp(`${IDENTIFIER}(?=\\s*=)`, 'y')],
+    ['identifier', new RegExp(IDENTIFIER, 'y')]
   ];
 
   let html = '';
@@ -200,6 +299,7 @@ function tokenizeLine(line, state) {
         case 'key':
           html += wrap('key', match[0]);
           break;
+        case 'typed-value':
         case 'type':
           html += wrap('punct', ':') + wrap('type', match[0].slice(1));
           break;
@@ -211,12 +311,14 @@ function tokenizeLine(line, state) {
           break;
         case 'string':
         case 'string-template':
+        case 'trimtick-string':
           html += wrap('string', match[0]);
           break;
         case 'datetime':
         case 'time':
         case 'date':
         case 'zrut':
+        case 'literal-word':
         case 'bool':
         case 'switch':
         case 'number-sigil':
@@ -346,17 +448,32 @@ const templateHtml = `
     .tok-comment-structure,
     .tok-comment-profile,
     .tok-comment-future { color: var(--aeon-comment); font-style: italic; }
-    .tok-md-heading { color: var(--aeon-fg); font-weight: 700; font-style: normal; }
-    .tok-md-list-marker { color: var(--aeon-comment-doc); font-style: normal; }
-    .tok-md-bold { color: var(--aeon-fg); font-weight: 700; font-style: normal; }
-    .tok-md-italic { color: var(--aeon-comment-doc); font-style: italic; }
-    .tok-md-code {
+    .tok-and-header,
+    .tok-and-heading { color: var(--aeon-fg); font-weight: 700; font-style: normal; }
+    .tok-and-version,
+    .tok-and-heading-marker,
+    .tok-and-list-marker,
+    .tok-and-quote,
+    .tok-and-rule,
+    .tok-and-table-pipe,
+    .tok-and-link-separator { color: var(--aeon-comment-doc); font-style: normal; }
+    .tok-and-strong { color: var(--aeon-fg); font-weight: 700; font-style: normal; }
+    .tok-and-emphasis { color: var(--aeon-comment-doc); font-style: italic; }
+    .tok-and-code {
       color: var(--aeon-fg);
       font-style: normal;
       background: rgba(255, 255, 255, 0.06);
       border-radius: 6px;
       padding: 0 0.2em;
     }
+    .tok-and-link { color: var(--aeon-directive); font-style: normal; }
+    .tok-and-link-target { color: var(--aeon-string); font-style: normal; }
+    .tok-and-fence,
+    .tok-and-extension-fence { color: var(--aeon-attribute-punct); font-style: normal; }
+    .tok-and-fence-label,
+    .tok-and-extension-name,
+    .tok-and-escape { color: var(--aeon-type); font-style: normal; }
+    .tok-and-invalid { color: #ff9b9b; text-decoration: underline wavy rgba(255, 155, 155, 0.75); font-style: normal; }
     .tok-directive { color: var(--aeon-directive); }
     .tok-key { color: var(--aeon-key); }
     .tok-type { color: var(--aeon-type); }

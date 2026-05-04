@@ -5,7 +5,7 @@ local function plugin_root()
 end
 
 local function default_parser_path()
-  return vim.fn.fnamemodify(plugin_root() .. "/../../tree-sitter-aeon", ":p")
+  return vim.fn.fnamemodify(plugin_root() .. "/../../../grammar/tree-sitter-aeon", ":p")
 end
 
 local function register_parser(parser_path)

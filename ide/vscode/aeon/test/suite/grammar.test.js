@@ -36,7 +36,7 @@ function makeRegExp(source) {
 
 suite('AEON grammar regex tests', () => {
   const grammarPath = path.resolve(__dirname, '..', '..', 'syntaxes', 'aeon.tmLanguage.json');
-  const toolingRepoRoot = path.resolve(__dirname, '..', '..', '..', '..');
+  const toolingRepoRoot = path.resolve(__dirname, '..', '..', '..', '..', '..');
   const samplePath = path.resolve(
     toolingRepoRoot,
     '..',

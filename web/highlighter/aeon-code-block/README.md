@@ -38,6 +38,6 @@ launch:zrut = 2026-06-01T12:00:00Z&Asia/Tokyo
 ## Test
 
 ```bash
-cd tooling/web/aeon-code-block
+cd tooling/web/highlighter/aeon-code-block
 node --test highlight.test.mjs
 ```

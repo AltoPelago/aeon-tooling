@@ -13,7 +13,7 @@ This folder contains a VS Code extension providing:
 Install & test locally
 
 ```bash
-cd vscode/aeon
+cd ide/vscode/aeon
 # open in Extension Development Host
 code --extensionDevelopmentPath=$(pwd)
 ```
@@ -30,7 +30,7 @@ pnpm --filter @aeon/aeon-lsp build
 Useful local checks:
 
 ```bash
-cd vscode/aeon
+cd ide/vscode/aeon
 pnpm test:grammar
 pnpm test:extension
 ```

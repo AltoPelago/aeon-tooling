@@ -13,7 +13,7 @@ This plugin provides:
 
 - usable local plugin
 - intended to work alongside `nvim-treesitter`
-- assumes this repo layout, with `tooling/nvim/aeon-nvim/` and `tooling/tree-sitter-aeon/` kept together
+- assumes this repo layout, with `tooling/ide/nvim/aeon-nvim/` and `tooling/grammar/tree-sitter-aeon/` kept together
 
 ## Install With lazy.nvim
 
@@ -21,7 +21,7 @@ Supported path today: install from this repo checkout.
 
 ```lua
 {
-  dir = "/path/to/aeon/tooling/nvim/aeon-nvim",
+  dir = "/path/to/aeon/tooling/ide/nvim/aeon-nvim",
   dependencies = {
     "nvim-treesitter/nvim-treesitter",
   },
@@ -42,7 +42,7 @@ require("lazy").setup({
     build = ":TSUpdate",
   },
   {
-    dir = "/path/to/aeon/tooling/nvim/aeon-nvim",
+    dir = "/path/to/aeon/tooling/ide/nvim/aeon-nvim",
     dependencies = {
       "nvim-treesitter/nvim-treesitter",
     },
@@ -80,6 +80,6 @@ require("aeon").setup({
 ## Notes
 
 - users still need `nvim-treesitter`
-- parser generation comes from `tooling/tree-sitter-aeon/src/parser.c`
+- parser generation comes from `tooling/grammar/tree-sitter-aeon/src/parser.c`
 - after first setup, install the parser with `:TSInstall aeon`
 - if `:TSInstall aeon` says unsupported, the plugin has not been loaded yet; restart Neovim and check your `lazy.nvim` config
