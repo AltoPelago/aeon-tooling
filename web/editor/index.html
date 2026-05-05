@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>&amp;ND Editor</title>
+    <meta name="description" content="Distraction-free versioned block editor for &amp;ND documents" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <nav class="toolbar" id="toolbar" aria-label="Editor toolbar">
+      <button type="button" id="btn-open" title="Open .aeon file (Ctrl+O)">open</button>
+      <button type="button" id="btn-save" title="Save .aeon file (Ctrl+S)">save</button>
+      <span class="sep"></span>
+      <button type="button" id="btn-export" title="Export .and file (Ctrl+E)">export</button>
+      <span class="sep"></span>
+      <button type="button" id="btn-version" title="New version (Ctrl+Shift+N)">+ver</button>
+      <span class="sep"></span>
+      <button type="button" id="btn-theme" title="Toggle theme (Ctrl+Shift+L)">◑</button>
+      <button type="button" id="btn-help" title="Keyboard shortcuts (?)">?</button>
+    </nav>
+
+    <main class="article" id="article">
+      <!-- blocks rendered by editor.js -->
+    </main>
+
+    <div class="help-overlay" id="help-overlay">
+      <div class="help-panel">
+        <h2>Shortcuts</h2>
+        <dl>
+          <dt>Ctrl+S</dt><dd>Save .aeon</dd>
+          <dt>Ctrl+O</dt><dd>Open .aeon</dd>
+          <dt>Ctrl+E</dt><dd>Export .and</dd>
+          <dt>Ctrl+Shift+N</dt><dd>New version (copy)</dd>
+          <dt>Ctrl+Shift+D</dt><dd>Delete version</dd>
+          <dt>Alt+←/→</dt><dd>Switch version</dd>
+          <dt>Ctrl+Enter</dt><dd>New block below</dd>
+          <dt>Backspace</dt><dd>Join with above (at start)</dd>
+          <dt>↑/↓</dt><dd>Navigate between blocks</dd>
+          <dt>Ctrl+Shift+L</dt><dd>Toggle theme</dd>
+          <dt>?</dt><dd>This help</dd>
+          <dt>Esc</dt><dd>Close</dd>
+        </dl>
+      </div>
+    </div>
+
+    <input type="file" id="file-input" accept=".aeon" hidden />
+    <script type="module" src="./editor.js"></script>
+  </body>
+</html>

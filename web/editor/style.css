@@ -1,0 +1,379 @@
+/* ───────────────────────────────────────────
+   &ND Block Editor — Style
+   Distraction-free writing surface
+   ─────────────────────────────────────────── */
+
+/* --- Tokens --- */
+:root {
+  --bg:           #fafafa;
+  --bg-hover:     #f0f0f0;
+  --text:         #1a1a1a;
+  --text-muted:   #888;
+  --separator:    #e0e0e0;
+  --accent:       #4a90d9;
+  --accent-dim:   rgba(74, 144, 217, 0.25);
+  --dot:          #ccc;
+  --dot-active:   #4a90d9;
+  --caret:        #1a1a1a;
+  --toolbar-bg:   rgba(250, 250, 250, 0.92);
+  --join-color:   #4a90d9;
+  --split-color:  #4a90d9;
+  --version-bg:   rgba(0,0,0,0.03);
+  --font-mono:    "SF Mono", "JetBrains Mono", "Cascadia Code", "Fira Code", ui-monospace, monospace;
+  --font-ui:      "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --line-height:  1.65;
+  --font-size:    15px;
+}
+
+[data-theme="dark"] {
+  --bg:           #111;
+  --bg-hover:     #1a1a1a;
+  --text:         #d4d4d4;
+  --text-muted:   #666;
+  --separator:    #222;
+  --accent:       #6aadff;
+  --accent-dim:   rgba(106, 173, 255, 0.18);
+  --dot:          #444;
+  --dot-active:   #6aadff;
+  --caret:        #d4d4d4;
+  --toolbar-bg:   rgba(17, 17, 17, 0.92);
+  --join-color:   #6aadff;
+  --split-color:  #6aadff;
+  --version-bg:   rgba(255,255,255,0.03);
+}
+
+/* --- Reset --- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  height: 100%;
+  font-size: var(--font-size);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  line-height: var(--line-height);
+  transition: background 0.3s ease, color 0.3s ease;
+  overflow-x: hidden;
+}
+
+/* --- Toolbar --- */
+.toolbar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 12px;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+
+.toolbar.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.toolbar button {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: color 0.15s, background 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolbar button:hover {
+  color: var(--text);
+  background: var(--bg-hover);
+}
+
+.toolbar .sep {
+  width: 1px;
+  height: 16px;
+  background: var(--separator);
+  margin: 0 4px;
+}
+
+/* --- Article surface --- */
+.article {
+  max-width: 80ch;
+  margin: 0 auto;
+  padding: 20vh 2rem 50vh 2rem;
+  position: relative;
+}
+
+/* --- Block --- */
+.block {
+  position: relative;
+}
+
+.block + .block {
+  border-top: 1px solid var(--separator);
+}
+
+/* --- Join zones --- */
+.join-zone {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.join-zone:hover { opacity: 1; }
+
+.join-zone-top {
+  top: -10px;
+}
+
+.join-zone-bottom {
+  bottom: -10px;
+}
+
+.join-zone::after {
+  content: '';
+  width: 24px;
+  height: 2px;
+  background: var(--join-color);
+  border-radius: 1px;
+  transition: width 0.2s ease;
+}
+
+.join-zone:hover::after {
+  width: 48px;
+}
+
+/* Only show join zones between adjacent blocks */
+.block:first-child .join-zone-top { display: none; }
+.block:last-child .join-zone-bottom { display: none; }
+
+/* --- Block body --- */
+.block-body {
+  position: relative;
+  padding: 1rem 0;
+}
+
+/* --- Version viewport & track --- */
+.version-viewport {
+  overflow: hidden;
+}
+
+.version-track {
+  display: flex;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.version-pane {
+  flex: 0 0 100%;
+  min-width: 0;
+}
+
+/* --- Textarea (active version) --- */
+.block textarea {
+  display: block;
+  width: 100%;
+  min-height: 1.65em;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  border: none;
+  outline: none;
+  resize: none;
+  overflow: hidden;
+  padding: 0;
+  caret-color: var(--caret);
+}
+
+.block textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+/* --- Version preview (non-focused versions) --- */
+.version-preview {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  color: var(--text-muted);
+  opacity: 0.5;
+  padding: 0;
+  user-select: none;
+  min-height: 1.65em;
+}
+
+/* --- Split zone (right edge hover area) --- */
+.split-zone {
+  position: absolute;
+  right: -40px;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  cursor: col-resize;
+  z-index: 5;
+}
+
+/* --- Split indicator line --- */
+.split-line {
+  position: absolute;
+  left: 0;
+  right: -40px;
+  height: 2px;
+  background: var(--split-color);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  z-index: 6;
+  transform: translateY(-1px);
+}
+
+.split-line.visible {
+  opacity: 0.6;
+}
+
+.split-line::after {
+  content: '✂';
+  position: absolute;
+  right: 4px;
+  top: -9px;
+  font-size: 13px;
+  color: var(--split-color);
+  opacity: 0.8;
+}
+
+/* --- Version rail (dots) --- */
+.version-rail {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 0 0;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+  height: 16px;
+}
+
+.block.focused .version-rail,
+.block:hover .version-rail {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Hide rail when only 1 version */
+.version-rail.single { opacity: 0 !important; pointer-events: none !important; }
+
+.version-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--dot);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.version-dot:hover {
+  transform: scale(1.4);
+}
+
+.version-dot.active {
+  background: var(--dot-active);
+}
+
+/* --- Keyboard shortcut help overlay --- */
+.help-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.5);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s;
+}
+
+.help-overlay.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.help-panel {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  padding: 2rem;
+  max-width: 420px;
+  width: 90%;
+  line-height: 1.8;
+}
+
+.help-panel h2 {
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+  font-weight: 500;
+}
+
+.help-panel dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 1.5rem;
+}
+
+.help-panel dt {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--accent);
+  text-align: right;
+}
+
+.help-panel dd {
+  color: var(--text);
+}
+
+/* --- Scrollbar --- */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--separator); border-radius: 2px; }
+
+/* --- Selection --- */
+::selection {
+  background: var(--accent-dim);
+}
+
+/* --- Focus ring suppression --- */
+*:focus { outline: none; }
+
+/* --- Print --- */
+@media print {
+  .toolbar, .version-rail, .split-zone, .split-line, .join-zone, .help-overlay { display: none !important; }
+  .article { padding: 0; }
+  body { background: white; color: black; }
+}
