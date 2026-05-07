@@ -30,7 +30,7 @@ An article is a vertical stack of **blocks**. Each block can have multiple **ver
 | `Ctrl+Shift+N` | New version (copy of current) |
 | `Ctrl+Shift+D` | Delete current version |
 | `Alt+←/→` | Switch version |
-| `Ctrl+Enter` | New block below |
+| `Ctrl+Enter` | Split block at cursor |
 | `Backspace` | Join with block above (at start) |
 | `↑/↓` | Navigate between blocks |
 | `Ctrl+Shift+L` | Toggle dark/light theme |

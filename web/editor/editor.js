@@ -243,11 +243,35 @@ function handleFileOpen(file) {
 
 const article = document.getElementById('article');
 
+const STORAGE_KEY = 'nd-editor-state';
+
+function autosave() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.blocks.map(b => ({
+      id: b.id, versions: b.versions, focusedIndex: b.focusedIndex
+    }))));
+  } catch (_) { /* quota exceeded — silent */ }
+}
+
+function autorestore() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const blocks = JSON.parse(raw);
+    if (Array.isArray(blocks) && blocks.length > 0) {
+      state.blocks = blocks;
+      return true;
+    }
+  } catch (_) { /* corrupt — ignore */ }
+  return false;
+}
+
 function render() {
   article.innerHTML = '';
   state.blocks.forEach((block) => {
     article.appendChild(createBlockElement(block));
   });
+  autosave();
 }
 
 function createBlockElement(block) {
@@ -295,6 +319,7 @@ function createBlockElement(block) {
       ta.addEventListener('input', () => {
         block.versions[block.focusedIndex] = ta.value;
         autoResize(ta);
+        autosave();
       });
 
       ta.addEventListener('focus', () => {
@@ -439,19 +464,14 @@ function handleTextareaKeydown(e) {
     }
   }
 
-  // Enter at end → new block below
-  if (e.key === 'Enter' && !e.shiftKey && ta.selectionStart === ta.value.length) {
-    // Let normal enter work — it just adds a newline in the same block
-    // Only create a new block on Ctrl+Enter at end
-    if (e.ctrlKey || e.metaKey) {
-      e.preventDefault();
-      const idx = blockIndex(blockId);
-      const newBlock = { id: uid(), versions: [''], focusedIndex: 0 };
-      state.blocks.splice(idx + 1, 0, newBlock);
-      render();
-      focusBlock(newBlock.id, 0);
-      return;
-    }
+  // Ctrl+Enter → split block at cursor line
+  if (e.key === 'Enter' && !e.shiftKey && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+    const pos = ta.selectionStart;
+    const textBefore = ta.value.substring(0, pos);
+    const lineIndex = textBefore.split('\n').length;
+    splitBlock(blockId, lineIndex);
+    return;
   }
 
   // Alt+Left/Right → switch version (works anywhere in text)
@@ -629,5 +649,6 @@ document.getElementById('file-input').addEventListener('change', (e) => {
 
 // ── Init ─────────────────────────────────────
 
+autorestore();
 render();
 focusBlock(state.blocks[0].id, 0);
