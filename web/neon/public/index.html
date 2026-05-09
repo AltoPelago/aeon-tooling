@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Neon Workbench</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="hero">
+        <p class="eyebrow">AEON TOOLING</p>
+        <h1>Neon Workbench</h1>
+        <p>Create and open Neon files with AEON source, attachments, manifest previews, and compaction/compression metrics.</p>
+      </header>
+
+      <div class="tab-strip">
+        <button class="tab-button active" data-tab="create">Create Neon</button>
+        <button class="tab-button" data-tab="open">Open Neon</button>
+        <button class="tab-button" data-tab="hexviewer">Block Inspector</button>
+      </div>
+
+      <div class="tab-panels">
+        <section class="panel workspace-panel tab-panel active" data-tab="create">
+          <h2>Create Neon File</h2>
+          <div class="grid two">
+            <label>
+              Preset profile
+              <select id="presetProfile">
+                <option value="balanced" selected>Balanced</option>
+                <option value="fast">Fast</option>
+                <option value="compact">Compact</option>
+              </select>
+            </label>
+          </div>
+
+          <div id="dropAeon" class="dropzone">
+            <strong>Drop AEON file here</strong>
+            <span>or use the AEON picker below</span>
+          </div>
+
+          <div class="grid two">
+            <label>
+              AEON source file
+              <input id="aeonFile" type="file" accept=".aeon,.txt" />
+            </label>
+            <label>
+              AEON entry path in container
+              <input id="aeonPath" type="text" value="docs/document.aeon" />
+            </label>
+          </div>
+
+          <div class="grid two">
+            <label>
+              Attachments (files)
+              <input id="attachments" type="file" multiple />
+            </label>
+            <label>
+              Attachments (folder)
+              <input id="attachmentFolder" type="file" webkitdirectory directory multiple />
+            </label>
+          </div>
+
+          <div id="dropAttachments" class="dropzone">
+            <strong>Drop attachment files here</strong>
+            <span>Files dropped here are added to the attachment list</span>
+          </div>
+
+          <h3>Attachment Overrides</h3>
+          <div class="manifest-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Path</th>
+                  <th>Type Guess</th>
+                  <th>Encoding Mode</th>
+                  <th>Compression Override</th>
+                </tr>
+              </thead>
+              <tbody id="attachmentOverridesBody"></tbody>
+            </table>
+          </div>
+
+          <label>
+            Empty folders (one relative path per line)
+            <textarea id="emptyFolders" rows="4" placeholder="docs/\nassets/images/"></textarea>
+          </label>
+
+          <div class="settings">
+            <label><input id="useMinimizer" type="checkbox" checked /> Minimize AEON before save</label>
+            <label><input id="trailingNewline" type="checkbox" /> Keep trailing newline after minimization</label>
+            <label><input id="checksum" type="checkbox" /> Add CRC-32 checksum</label>
+            <label><input id="embedBase64" type="checkbox" /> Default attachments to :base64</label>
+          </div>
+
+          <div class="grid three">
+            <label>
+              Magic
+              <select id="magic">
+                <option value="present">present</option>
+                <option value="omitted">omitted</option>
+              </select>
+            </label>
+            <label>
+              Container compression
+              <select id="containerCompression">
+                <option value="none">none</option>
+                <option value="deflate">deflate</option>
+                <option value="brotli">brotli</option>
+              </select>
+            </label>
+            <label>
+              AEON entry compression
+              <select id="aeonEntryCompression">
+                <option value="none">none</option>
+                <option value="deflate">deflate</option>
+                <option value="brotli">brotli</option>
+              </select>
+            </label>
+          </div>
+
+          <label>
+            Attachment entry compression
+            <select id="attachmentCompression">
+              <option value="none">none</option>
+              <option value="deflate">deflate</option>
+              <option value="brotli">brotli</option>
+            </select>
+          </label>
+
+          <div class="actions">
+            <button id="createBtn" class="btn brand">Create Neon</button>
+            <button id="downloadBtn" class="btn" disabled>Download .neon</button>
+            <button id="createResetBtn" class="btn" type="button">Reset Create</button>
+          </div>
+
+          <div class="subpanel">
+            <h3>Create Compression Rates</h3>
+            <div id="createRates" class="rates"></div>
+          </div>
+
+          <div class="subpanel">
+            <h3>Encoding Modes</h3>
+            <div id="createEncodingModes" class="encoding-modes"></div>
+          </div>
+
+          <div class="subpanel">
+            <h3>Create Directory</h3>
+            <div class="manifest-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Kind</th>
+                    <th>Name</th>
+                    <th>Stored Compression</th>
+                    <th>Stored</th>
+                    <th>Original</th>
+                    <th>Standalone Text Race</th>
+                  </tr>
+                </thead>
+                <tbody id="createManifestBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="subpanel">
+            <h3>Create Directory Tree</h3>
+            <div class="tree-controls">
+              <label><input id="createTreeShowText" type="checkbox" checked /> Show text</label>
+              <label><input id="createTreeShowBinary" type="checkbox" checked /> Show binary</label>
+              <label><input id="createTreeShowFolders" type="checkbox" checked /> Show folder entries</label>
+              <button id="createTreeExpandAll" class="btn" type="button">Expand all</button>
+              <button id="createTreeCollapseAll" class="btn" type="button">Collapse all</button>
+            </div>
+            <div id="createTreeView" class="tree"></div>
+          </div>
+
+          <div class="subpanel">
+            <h3>Create Primary Preview</h3>
+            <textarea id="createPrimaryPreview" rows="8" readonly></textarea>
+          </div>
+
+          <div class="subpanel status-panel">
+            <h3>Create Status</h3>
+            <pre id="createStatus">Ready.</pre>
+          </div>
+        </section>
+
+        <section class="panel workspace-panel tab-panel" data-tab="open">
+          <h2>Open Existing Neon File</h2>
+          <div class="grid two">
+            <label>
+              Neon file
+              <input id="neonFile" type="file" accept=".neon,.bin" />
+            </label>
+            <div class="actions single">
+              <button id="openBtn" class="btn brand">Open Neon</button>
+              <button id="openResetBtn" class="btn" type="button">Reset Open</button>
+            </div>
+          </div>
+
+          <div class="subpanel">
+            <h3>Open Compression Rates</h3>
+            <div id="openRates" class="rates"></div>
+          </div>
+
+          <div class="subpanel">
+            <h3>Encoding Modes & Round-Trip</h3>
+            <div id="openEncodingModes" class="encoding-modes"></div>
+          </div>
+
+          <div class="subpanel">
+            <h3>Open Directory</h3>
+            <div class="manifest-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Kind</th>
+                    <th>Name</th>
+                    <th>Stored Compression</th>
+                    <th>Stored</th>
+                    <th>Original</th>
+                    <th>Standalone Text Race</th>
+                  </tr>
+                </thead>
+                <tbody id="openManifestBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="subpanel">
+            <h3>Open Directory Tree</h3>
+            <div class="tree-controls">
+              <label><input id="openTreeShowText" type="checkbox" checked /> Show text</label>
+              <label><input id="openTreeShowBinary" type="checkbox" checked /> Show binary</label>
+              <label><input id="openTreeShowFolders" type="checkbox" checked /> Show folder entries</label>
+              <button id="openTreeExpandAll" class="btn" type="button">Expand all</button>
+              <button id="openTreeCollapseAll" class="btn" type="button">Collapse all</button>
+            </div>
+            <div id="openTreeView" class="tree"></div>
+          </div>
+
+          <div class="subpanel">
+            <h3>Open Primary Preview</h3>
+            <textarea id="openPrimaryPreview" rows="8" readonly></textarea>
+          </div>
+
+          <div class="subpanel status-panel">
+            <h3>Open Status</h3>
+            <pre id="openStatus">Ready.</pre>
+          </div>
+        </section>
+
+        <section class="panel workspace-panel tab-panel" data-tab="hexviewer">
+          <h2>Neon Block Inspector</h2>
+          
+          <div class="subpanel">
+            <div class="hex-controls">
+              <label>
+                Bits per row:
+                <input id="hexBytesPerRow" type="number" min="24" max="384" value="96" />
+              </label>
+              <span id="bitSchemeLabel" class="bit-scheme-label">Scheme: byte blocks (8b)</span>
+            </div>
+          </div>
+
+          <div class="inspector-layout">
+            <div class="subpanel">
+              <h3>Block Info</h3>
+              <div id="hexSectionInfo" class="hex-section-info">
+                <p style="color: var(--muted);">Hover over bit blocks to inspect ranges and section mapping.</p>
+              </div>
+            </div>
+
+            <div class="subpanel">
+              <h3>Bit Blocks</h3>
+              <div id="hexViewerContainer" class="hex-viewer"></div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
