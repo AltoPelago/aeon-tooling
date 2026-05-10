@@ -1,29 +1,54 @@
 import express from 'express';
 import multer from 'multer';
+import { brotliCompressSync, deflateSync } from 'node:zlib';
 import { compile } from '../../../../aeon/implementations/typescript/packages/core/src/index.ts';
 import { minimize } from '../../../../aeon-tonics/packages/export/minizer/src/index.ts';
 import { prettifyAeon } from '../../../../aeon-tonics/packages/export/prettifier/src/index.ts';
 import {
+  encodeAeonSource,
+  planAeonSource,
+  reconstructAeonSource,
+  type EncodedAeonSourceContainer
+} from '../../../../neon-private/packages/aeon/src/index.ts';
+import {
   benchmarkTextEncodings,
   createDirectoryContainer,
+  decodeContainer,
   decodeDirectoryContainer,
+  decodePlanContainer,
+  decodeTextContainer,
   selectSmallestSuccessfulAttempt,
+  SUPPORTED_ENCODINGS,
   type CompressionMethod,
+  type ContainerPayload,
   type DirectoryEntry,
   type DirectoryEntryInput,
+  type DecodedDirectoryContainer,
+  type DecodedPlanContainer,
+  type DecodedTextContainer,
   type ContainerDecodeOptions,
-  type MagicMode
+  type MagicMode,
+  type NeonEncoding
 } from '../../../../neon-private/packages/core/src/index.ts';
+
+type ContainerCompressionOption = CompressionMethod | 'race';
+type NeonEncodingOption = NeonEncoding | 'race';
+type CompressionScope = 'none' | 'text' | 'container';
+type AeonSourceTransform = 'preserve' | 'compact' | 'minimize';
 
 interface CreateRequestOptions {
   readonly aeonPath?: string;
   readonly attachmentPaths?: string[];
   readonly emptyFolders?: string[];
+  readonly aeonSourceTransform?: AeonSourceTransform;
   readonly useMinimizer?: boolean;
   readonly trailingNewline?: boolean;
   readonly magic?: MagicMode;
   readonly checksum?: boolean;
-  readonly containerCompression?: CompressionMethod;
+  readonly neonEncoding?: NeonEncodingOption;
+  readonly compressionScope?: CompressionScope;
+  readonly compressionMethod?: ContainerCompressionOption;
+  readonly containerCompression?: ContainerCompressionOption;
   readonly aeonEntryCompression?: CompressionMethod;
   readonly attachmentCompression?: CompressionMethod;
   readonly attachmentCompressionByPath?: Record<string, CompressionMethod>;
@@ -41,12 +66,45 @@ interface EntrySummary {
   readonly id: number;
   readonly kind: 'text' | 'binary' | 'folder';
   readonly name: string;
+  readonly encoding?: string;
   readonly compression: CompressionMethod;
   readonly storedLength: number;
   readonly originalLength: number;
+  readonly decodedBitLength?: number;
   readonly decodedOffset: number;
   readonly metadata: readonly { key: string; value: string }[];
   readonly textRace?: TextRaceSummary;
+}
+
+interface DirectoryBuildOptions {
+  readonly primaryEntryId?: number | null;
+  readonly magic: MagicMode;
+  readonly checksum: boolean;
+  readonly encoding: NeonEncodingOption;
+  readonly compression: ContainerCompressionOption;
+}
+
+interface DirectoryBuildResult {
+  readonly container: DecodedDirectoryContainer;
+  readonly requestedEncoding: NeonEncodingOption;
+  readonly selectedEncoding: NeonEncoding;
+  readonly requestedCompression: ContainerCompressionOption;
+  readonly selectedCompression: CompressionMethod;
+}
+
+interface TextBuildResult {
+  readonly container: EncodedAeonSourceContainer;
+  readonly requestedEncoding: NeonEncodingOption;
+  readonly selectedEncoding: NeonEncoding;
+  readonly requestedCompression: ContainerCompressionOption;
+  readonly selectedCompression: CompressionMethod;
+}
+
+interface CompressionPlan {
+  readonly scope: CompressionScope;
+  readonly method: ContainerCompressionOption;
+  readonly containerCompression: ContainerCompressionOption;
+  readonly textEntryCompression: ContainerCompressionOption;
 }
 
 const app = express();
@@ -71,13 +129,13 @@ app.post('/api/create-neon', upload.fields([
 
     const attachmentFiles = getFiles(req.files, 'attachments');
     const options = parseCreateOptions(req.body.options);
+    const compressionPlan = resolveCompressionPlan(options);
 
     const originalAeonText = aeonFile.buffer.toString('utf8');
     const originalAeonBytes = byteLengthOf(originalAeonText);
 
-    const compactedAeonText = options.useMinimizer
-      ? minimizeAeon(originalAeonText, Boolean(options.trailingNewline))
-      : originalAeonText;
+    const aeonSourceTransform = resolveAeonSourceTransform(options);
+    const compactedAeonText = transformAeonSource(originalAeonText, aeonSourceTransform, Boolean(options.trailingNewline));
 
     const compactedAeonBytes = byteLengthOf(compactedAeonText);
 
@@ -127,10 +185,6 @@ app.post('/api/create-neon', upload.fields([
         ? attachmentPaths[index]!
         : file.originalname;
       const normalizedName = normalizeRelativeName(incomingName);
-      const selectedCompression = coerceCompressionMethod(
-        options.attachmentCompressionByPath?.[normalizedName] ?? options.attachmentCompression,
-        'none'
-      );
       const selectedEncoding = options.attachmentEncodingByPath?.[normalizedName]
         ?? (options.embedAttachmentsAsBase64 ? 'base64' : 'embed');
       const bytes = new Uint8Array(file.buffer);
@@ -150,7 +204,7 @@ app.post('/api/create-neon', upload.fields([
           kind: 'binary',
           bytes,
           name: normalizedName,
-          compression: selectedCompression,
+          compression: 'none',
           metadata: [
             { key: 'filename', value: file.originalname },
             { key: 'mime', value: file.mimetype || 'application/octet-stream' },
@@ -166,6 +220,7 @@ app.post('/api/create-neon', upload.fields([
       const text = tryDecodeTextAttachment(file);
       if (text !== null) {
         const race = computeTextRaceWinner(text);
+        const selectedCompression = selectTextEntryCompression(text, compressionPlan.textEntryCompression);
         entries.push({
           id: nextId,
           kind: 'text',
@@ -191,7 +246,7 @@ app.post('/api/create-neon', upload.fields([
           kind: 'binary',
           bytes,
           name: normalizedName,
-          compression: selectedCompression,
+          compression: 'none',
           metadata: [
             { key: 'filename', value: file.originalname },
             { key: 'mime', value: file.mimetype || 'application/octet-stream' },
@@ -202,16 +257,63 @@ app.post('/api/create-neon', upload.fields([
       nextId += 1;
     }
 
+    if (entries.length === 0) {
+      const build = createBestAeonSourceContainer(modifiedAeonText, {
+        magic: options.magic ?? 'present',
+        checksum: Boolean(options.checksum),
+        compression: compressionPlan.scope === 'none' ? 'none' : compressionPlan.method,
+        encoding: coerceNeonEncodingOption(options.neonEncoding, 'utf-8'),
+        sourceName: normalizedAeonName
+      });
+      const container = build.container;
+      const neonSizeBytes = container.buffer.byteLength;
+      const encodingModes = detectEncodingModes(modifiedAeonText);
+      const reconstructed = reconstructAeonSource(container);
+
+      res.json({
+        neonBase64: Buffer.from(container.buffer).toString('base64'),
+        suggestedFileName: `${stripExtension(normalizedAeonName)}.neon`,
+        settings: {
+          magic: options.magic ?? 'present',
+          checksum: Boolean(options.checksum),
+          neonEncoding: build.requestedEncoding,
+          selectedNeonEncoding: build.selectedEncoding,
+          containerCompression: build.requestedCompression,
+          selectedContainerCompression: build.selectedCompression,
+          compressionScope: compressionPlan.scope,
+          compressionMethod: compressionPlan.method,
+          aeonEntryCompression: compressionPlan.textEntryCompression,
+          attachmentCompression: compressionPlan.textEntryCompression,
+          aeonSourceTransform,
+          useMinimizer: aeonSourceTransform === 'minimize'
+        },
+        encodingModes,
+        manifest: summarizeAeonSourceManifest(container, normalizedAeonName, reconstructed.source),
+        rates: {
+          aeonOriginalBytes: originalAeonBytes,
+          aeonCompactedBytes: compactedAeonBytes,
+          aeonCompactionRatio: safeRatio(compactedAeonBytes, originalAeonBytes),
+          attachmentsBytes: totalAttachmentBytes,
+          inputBytes: compactedAeonBytes,
+          neonBytes: neonSizeBytes,
+          neonVsInputRatio: safeRatio(neonSizeBytes, compactedAeonBytes),
+          savingsFraction: compactedAeonBytes > 0 ? 1 - (neonSizeBytes / compactedAeonBytes) : 0
+        }
+      });
+      return;
+    }
+
     const aeonRace = computeTextRaceWinner(modifiedAeonText);
     entries.push({
       id: aeonEntryId,
       kind: 'text',
       text: modifiedAeonText,
       name: normalizedAeonName,
-      compression: coerceCompressionMethod(options.aeonEntryCompression, 'none'),
+      compression: selectTextEntryCompression(modifiedAeonText, compressionPlan.textEntryCompression),
       metadata: [
         { key: 'kind', value: 'aeon-source' },
-        { key: 'minimized', value: options.useMinimizer ? 'true' : 'false' },
+        { key: 'source-transform', value: aeonSourceTransform },
+        { key: 'minimized', value: aeonSourceTransform === 'minimize' ? 'true' : 'false' },
         ...(aeonRace
           ? [
               { key: 'neon-race-encoding', value: aeonRace.encoding },
@@ -222,13 +324,14 @@ app.post('/api/create-neon', upload.fields([
       ]
     });
 
-    const container = createDirectoryContainer(entries, {
+    const build = createBestDirectoryContainer(entries, {
       primaryEntryId: aeonEntryId,
       magic: options.magic ?? 'present',
       checksum: Boolean(options.checksum),
-      compression: coerceCompressionMethod(options.containerCompression, 'none'),
-      encoding: 'utf-8'
+      compression: compressionPlan.containerCompression,
+      encoding: coerceNeonEncodingOption(options.neonEncoding, 'utf-8')
     });
+    const container = build.container;
 
     const entrySummaries = summarizeEntries(container.directory.entries, false);
     const totalInputBytes = compactedAeonBytes + totalAttachmentBytes;
@@ -241,10 +344,16 @@ app.post('/api/create-neon', upload.fields([
       settings: {
         magic: options.magic ?? 'present',
         checksum: Boolean(options.checksum),
-        containerCompression: coerceCompressionMethod(options.containerCompression, 'none'),
-        aeonEntryCompression: coerceCompressionMethod(options.aeonEntryCompression, 'none'),
-        attachmentCompression: coerceCompressionMethod(options.attachmentCompression, 'none'),
-        useMinimizer: Boolean(options.useMinimizer)
+        neonEncoding: build.requestedEncoding,
+        selectedNeonEncoding: build.selectedEncoding,
+        containerCompression: build.requestedCompression,
+        selectedContainerCompression: build.selectedCompression,
+        compressionScope: compressionPlan.scope,
+        compressionMethod: compressionPlan.method,
+        aeonEntryCompression: compressionPlan.textEntryCompression,
+        attachmentCompression: compressionPlan.textEntryCompression,
+        aeonSourceTransform,
+        useMinimizer: aeonSourceTransform === 'minimize'
       },
       encodingModes,
       manifest: {
@@ -287,10 +396,56 @@ app.post('/api/open-neon', upload.single('neonFile'), (req, res) => {
       modeHint: 'extended'
     };
 
-    const decoded = decodeDirectoryContainer(new Uint8Array(req.file.buffer), decodeOptions);
+    const bytes = new Uint8Array(req.file.buffer);
+    const parsed = decodeContainer(bytes, decodeOptions);
+    if (!parsed.header.extension?.hasDirectory) {
+      const decoded = decodeStandaloneAeonContainer(bytes, parsed.header.encoding, decodeOptions);
+      const reconstructed = reconstructAeonSource(decoded);
+      let primaryText = reconstructed.source;
+      if (primaryText.length > 0) {
+        try {
+          const prettified = prettifyAeon(primaryText, { trailingNewline: true });
+          primaryText = prettified.text;
+        } catch (_err) {
+          // If prettification fails, keep the original text.
+        }
+      }
+
+      const entry = summarizeStandaloneTextEntry(decoded, req.file.originalname || 'document.aeon', reconstructed.source);
+      const encodingModes = detectEncodingModes(primaryText);
+      const textRoundTripSafe = isTextRoundTripSafe(primaryText, false);
+
+      res.json({
+        header: {
+          mode: decoded.header.mode,
+          magic: decoded.header.magic,
+          encoding: decoded.header.encoding,
+          checksum: Boolean(decoded.header.extension?.checksum),
+          compression: decoded.header.extension?.compression ?? 'none'
+        },
+        encodingModes,
+        textRoundTrip: textRoundTripSafe ? 'lossless-text' : 'binary-only-inline',
+        manifest: {
+          primaryEntryId: 0,
+          entries: [entry]
+        },
+        primaryText,
+        rates: {
+          neonBytes: decoded.buffer.byteLength,
+          totalOriginalBytes: entry.originalLength,
+          neonVsOriginalRatio: safeRatio(decoded.buffer.byteLength, entry.originalLength),
+          savingsFraction: entry.originalLength > 0 ? 1 - (decoded.buffer.byteLength / entry.originalLength) : 0
+        }
+      });
+      return;
+    }
+
+    const decoded = decodeDirectoryContainer(bytes, decodeOptions);
     const entries = summarizeEntries(decoded.directory.entries, true);
 
-    const primaryEntry = decoded.directory.entries.find((entry) => entry.id === decoded.directory.primaryEntryId);
+    const primaryEntry = decoded.directory.primaryEntryId === null
+      ? null
+      : decoded.directory.entries.find((entry) => entry.id === decoded.directory.primaryEntryId);
     let primaryText = primaryEntry && primaryEntry.kind === 'text' ? primaryEntry.text : '';
     
     // Prettify minimized AEON text if it's readable as AEON
@@ -381,6 +536,42 @@ function parseCreateOptions(raw: unknown): CreateRequestOptions {
       ? parsed.attachmentCompressionByPath
       : {}
   };
+}
+
+function resolveAeonSourceTransform(options: CreateRequestOptions): AeonSourceTransform {
+  if (
+    options.aeonSourceTransform === 'preserve'
+    || options.aeonSourceTransform === 'compact'
+    || options.aeonSourceTransform === 'minimize'
+  ) {
+    return options.aeonSourceTransform;
+  }
+  return options.useMinimizer ? 'minimize' : 'preserve';
+}
+
+function transformAeonSource(source: string, transform: AeonSourceTransform, trailingNewline: boolean): string {
+  switch (transform) {
+    case 'preserve':
+      return source;
+    case 'compact': {
+      const compacted = planAeonSource(source, {
+        strategy: 'parser',
+        commentPolicy: 'preserve',
+        whitespacePolicy: 'minimize'
+      }).normalizedSource;
+      return trailingNewline ? ensureTrailingNewline(compacted) : compacted.replace(/\n+$/u, '');
+    }
+    case 'minimize':
+      return minimizeAeon(source, trailingNewline);
+    default: {
+      const neverTransform: never = transform;
+      throw new Error(`Unsupported AEON source transform: ${String(neverTransform)}`);
+    }
+  }
+}
+
+function ensureTrailingNewline(source: string): string {
+  return source.endsWith('\n') ? source : `${source}\n`;
 }
 
 function minimizeAeon(source: string, trailingNewline: boolean): string {
@@ -488,9 +679,11 @@ function summarizeEntries(entries: readonly DirectoryEntry[], includeComputedRac
     id: entry.id,
     kind: entry.kind,
     name: entry.name,
+    encoding: entry.encoding,
     compression: entry.compression,
     storedLength: entry.storedLength,
     originalLength: entry.originalLength,
+    decodedBitLength: entry.decodedBitLength,
     decodedOffset: entry.dataOffset,
     metadata: entry.metadata,
     textRace: entry.kind === 'text'
@@ -530,6 +723,159 @@ function computeTextRaceWinner(text: string): TextRaceSummary | undefined {
   };
 }
 
+function createBestAeonSourceContainer(
+  text: string,
+  options: Omit<DirectoryBuildOptions, 'primaryEntryId'> & { readonly sourceName?: string }
+): TextBuildResult {
+  const requestedEncoding = options.encoding;
+  const requestedCompression = options.compression;
+  const encodings: readonly NeonEncoding[] = requestedEncoding === 'race'
+    ? SUPPORTED_ENCODINGS
+    : [requestedEncoding];
+
+  let best: TextBuildResult | null = null;
+  for (const encoding of encodings) {
+    const container = encodeAeonSource(text, {
+      magic: options.magic,
+      checksum: options.checksum,
+      encoding,
+      compression: requestedCompression,
+      sourceName: options.sourceName,
+      strategy: 'parser',
+      targetEncoding: encoding === 'utf-8' ? '2p6b-aeon' : encoding
+    });
+    if (!best || container.buffer.byteLength < best.container.buffer.byteLength) {
+      best = {
+        container,
+        requestedEncoding,
+        selectedEncoding: container.header.encoding,
+        requestedCompression,
+        selectedCompression: container.header.extension?.compression ?? 'none'
+      };
+    }
+  }
+
+  if (!best) {
+    throw new Error('No Neon text container candidates were produced');
+  }
+  return best;
+}
+
+function createBestDirectoryContainer(
+  entries: readonly DirectoryEntryInput[],
+  options: DirectoryBuildOptions
+): DirectoryBuildResult {
+  const requestedEncoding = options.encoding;
+  const requestedCompression = options.compression;
+  const encodings: readonly NeonEncoding[] = requestedEncoding === 'race'
+    ? SUPPORTED_ENCODINGS
+    : [requestedEncoding];
+  const compressions: readonly CompressionMethod[] = requestedCompression === 'race'
+    ? ['none', 'deflate', 'brotli']
+    : [requestedCompression];
+
+  let best: DirectoryBuildResult | null = null;
+  for (const encoding of encodings) {
+    for (const compression of compressions) {
+      const encodedEntries = withTextEntryEncoding(entries, encoding);
+      const container = createDirectoryContainer(encodedEntries, {
+        primaryEntryId: options.primaryEntryId,
+        magic: options.magic,
+        checksum: options.checksum,
+        encoding,
+        compression
+      });
+      if (!best || container.buffer.byteLength < best.container.buffer.byteLength) {
+        best = {
+          container,
+          requestedEncoding,
+          selectedEncoding: encoding,
+          requestedCompression,
+          selectedCompression: compression
+        };
+      }
+    }
+  }
+
+  if (!best) {
+    throw new Error('No Neon directory container candidates were produced');
+  }
+  return best;
+}
+
+function withTextEntryEncoding(
+  entries: readonly DirectoryEntryInput[],
+  encoding: NeonEncoding
+): readonly DirectoryEntryInput[] {
+  return entries.map((entry) => {
+    if (entry.kind !== 'text') {
+      return entry;
+    }
+    return {
+      ...entry,
+      encoding
+    };
+  });
+}
+
+function summarizeStandaloneTextEntry(
+  container: ContainerPayload,
+  name: string,
+  text: string
+): EntrySummary {
+  const trailerLength = container.header.trailerLength;
+  const payloadEnd = container.buffer.byteLength - trailerLength;
+  const storedLength = Math.max(0, payloadEnd - container.header.payloadOffset);
+  return {
+    id: 0,
+    kind: 'text',
+    name,
+    encoding: container.header.encoding,
+    compression: container.header.extension?.compression ?? 'none',
+    storedLength,
+    originalLength: byteLengthOf(text),
+    decodedBitLength: container.payload.length * 8 - container.header.padBits,
+    decodedOffset: 0,
+    metadata: [{ key: 'container-kind', value: 'standalone-text' }]
+  };
+}
+
+function summarizeAeonSourceManifest(
+  container: EncodedAeonSourceContainer,
+  name: string,
+  source: string
+): { primaryEntryId: number | null; entries: readonly EntrySummary[]; byteLayout?: unknown } {
+  if ('directory' in container) {
+    return {
+      primaryEntryId: container.directory.primaryEntryId,
+      entries: summarizeEntries(container.directory.entries, false),
+      byteLayout: {
+        payloadByteStart: container.header.payloadOffset,
+        payloadByteEnd: container.buffer.byteLength - container.header.trailerLength - 1,
+        directoryDecodedBytes: container.directory.directoryBytes.length,
+        totalDecodedBytes: container.directory.directoryBytes.length + container.directory.payloadRegion.length,
+        trailerByteLength: container.header.trailerLength
+      }
+    };
+  }
+
+  return {
+    primaryEntryId: 0,
+    entries: [summarizeStandaloneTextEntry(container, name, source)]
+  };
+}
+
+function decodeStandaloneAeonContainer(
+  bytes: Uint8Array,
+  encoding: NeonEncoding,
+  options: ContainerDecodeOptions
+): DecodedTextContainer | DecodedPlanContainer {
+  if (encoding === 'utf-8') {
+    return decodeTextContainer(bytes, options);
+  }
+  return decodePlanContainer(bytes, options);
+}
+
 function tryDecodeTextAttachment(file: Express.Multer.File): string | null {
   const name = file.originalname.toLowerCase();
   const mime = file.mimetype.toLowerCase();
@@ -554,6 +900,67 @@ function tryDecodeTextAttachment(file: Express.Multer.File): string | null {
 
 function coerceCompressionMethod(value: unknown, fallback: CompressionMethod): CompressionMethod {
   if (value === 'none' || value === 'deflate' || value === 'brotli') {
+    return value;
+  }
+  return fallback;
+}
+
+function coerceContainerCompressionOption(value: unknown, fallback: ContainerCompressionOption): ContainerCompressionOption {
+  if (value === 'race') {
+    return value;
+  }
+  return coerceCompressionMethod(value, fallback === 'race' ? 'none' : fallback);
+}
+
+function resolveCompressionPlan(options: CreateRequestOptions): CompressionPlan {
+  const scope = options.compressionScope === 'text' || options.compressionScope === 'container' || options.compressionScope === 'none'
+    ? options.compressionScope
+    : undefined;
+  const method = coerceContainerCompressionOption(options.compressionMethod, 'race');
+
+  if (scope) {
+    return {
+      scope,
+      method: scope === 'none' ? 'none' : method,
+      containerCompression: scope === 'container' ? method : 'none',
+      textEntryCompression: scope === 'text' ? method : 'none'
+    };
+  }
+
+  const containerCompression = coerceContainerCompressionOption(options.containerCompression, 'none');
+  const textEntryCompression = coerceContainerCompressionOption(options.aeonEntryCompression ?? options.attachmentCompression, 'none');
+  return {
+    scope: containerCompression !== 'none' ? 'container' : textEntryCompression !== 'none' ? 'text' : 'none',
+    method: containerCompression !== 'none' ? containerCompression : textEntryCompression,
+    containerCompression,
+    textEntryCompression
+  };
+}
+
+function selectTextEntryCompression(text: string, requested: ContainerCompressionOption): CompressionMethod {
+  if (requested !== 'race') {
+    return coerceCompressionMethod(requested, 'none');
+  }
+
+  const bytes = Buffer.from(text, 'utf8');
+  const candidates: { method: CompressionMethod; length: number }[] = [
+    { method: 'none', length: bytes.byteLength },
+    { method: 'deflate', length: deflateSync(bytes).byteLength },
+    { method: 'brotli', length: brotliCompressSync(bytes).byteLength }
+  ];
+  candidates.sort((left, right) => left.length - right.length);
+  return candidates[0]?.method ?? 'none';
+}
+
+function coerceNeonEncodingOption(value: unknown, fallback: NeonEncodingOption): NeonEncodingOption {
+  if (value === 'race') {
+    return value;
+  }
+  return coerceNeonEncoding(value, fallback === 'race' ? 'utf-8' : fallback);
+}
+
+function coerceNeonEncoding(value: unknown, fallback: NeonEncoding): NeonEncoding {
+  if (value === '2p6b-gp' || value === '2p6b-aeon' || value === '3p6b' || value === 'utf-8') {
     return value;
   }
   return fallback;

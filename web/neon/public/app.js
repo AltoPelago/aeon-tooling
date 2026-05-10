@@ -165,18 +165,17 @@ async function onCreate() {
       formData.append('attachments', item.file, item.path);
     }
 
+    const compressionSettings = readCompressionSettings();
     const options = {
       aeonPath: document.getElementById('aeonPath').value.trim(),
       attachmentPaths: selectedAttachments.map((item) => item.path),
       emptyFolders: parseFolderLines(document.getElementById('emptyFolders').value),
-      useMinimizer: document.getElementById('useMinimizer').checked,
+      aeonSourceTransform: document.getElementById('aeonSourceTransform').value,
       trailingNewline: document.getElementById('trailingNewline').checked,
       checksum: document.getElementById('checksum').checked,
       magic: document.getElementById('magic').value,
-      containerCompression: document.getElementById('containerCompression').value,
-      aeonEntryCompression: document.getElementById('aeonEntryCompression').value,
-      attachmentCompression: document.getElementById('attachmentCompression').value,
-      attachmentCompressionByPath: readAttachmentCompressionMap(),
+      neonEncoding: document.getElementById('neonEncoding').value,
+      ...compressionSettings,
       attachmentEncodingByPath: readAttachmentEncodingMap(),
       embedAttachmentsAsBase64: embedBase64.checked
     };
@@ -195,7 +194,7 @@ async function onCreate() {
 
     lastNeonBase64 = payload.neonBase64;
     lastNeonBytes = base64ToBytes(payload.neonBase64);
-    lastInspectorEncoding = resolveInspectorEncoding(payload.manifest, 'unknown');
+    lastInspectorEncoding = payload.settings?.selectedNeonEncoding || payload.settings?.neonEncoding || 'unknown';
     lastManifest = payload.manifest;
     expandedInspectorEntries.clear();
     renderHexViewer(lastNeonBytes);
@@ -211,14 +210,19 @@ async function onCreate() {
         detail: `${formatBytes(payload.rates.aeonOriginalBytes)} -> ${formatBytes(payload.rates.aeonCompactedBytes)}`
       },
       {
-        label: 'Neon vs Input',
+        label: 'Container Size',
         value: formatPercent(1 - payload.rates.neonVsInputRatio),
         detail: `${formatBytes(payload.rates.inputBytes)} -> ${formatBytes(payload.rates.neonBytes)}`
       },
       {
-        label: 'Attachment Bytes',
-        value: formatBytes(payload.rates.attachmentsBytes),
-        detail: 'sum of uploaded attachment data'
+        label: 'Text Encoding',
+        value: payload.settings?.selectedNeonEncoding || payload.settings?.neonEncoding || 'utf-8',
+        detail: `requested=${payload.settings?.neonEncoding || 'utf-8'}`
+      },
+      {
+        label: 'Compression',
+        value: payload.settings?.compressionScope || 'none',
+        detail: `method=${payload.settings?.compressionMethod || 'none'}, container=${payload.settings?.selectedContainerCompression || payload.settings?.containerCompression || 'none'}`
       }
     ], createRatesEl);
 
@@ -258,7 +262,7 @@ async function onOpen() {
       throw new Error(payload.error || 'Failed to open Neon file');
     }
 
-    lastInspectorEncoding = resolveInspectorEncoding(payload.manifest, payload.header?.encoding || 'unknown');
+    lastInspectorEncoding = payload.header?.encoding || 'unknown';
     lastManifest = payload.manifest;
     expandedInspectorEntries.clear();
     renderHexViewer(lastNeonBytes);
@@ -272,12 +276,12 @@ async function onOpen() {
         detail: `${formatBytes(payload.rates.totalOriginalBytes)} -> ${formatBytes(payload.rates.neonBytes)}`
       },
       {
-        label: 'Container Compression',
+        label: 'Container Payload Compression',
         value: payload.header.compression,
         detail: `magic=${payload.header.magic}, checksum=${payload.header.checksum}`
       },
       {
-        label: 'Encoding',
+        label: 'Text Encoding',
         value: payload.header.encoding,
         detail: `mode=${payload.header.mode}`
       }
@@ -405,13 +409,12 @@ function addAttachments(files, allowWebkitPath) {
 }
 
 function refreshAttachmentOverridesTable() {
-  const previousCompression = readAttachmentCompressionMap();
   const previousEncoding = readAttachmentEncodingMap();
   overrideBody.innerHTML = '';
 
   if (selectedAttachments.length === 0) {
     const row = document.createElement('tr');
-    row.innerHTML = '<td colspan="4">No attachments selected.</td>';
+    row.innerHTML = '<td colspan="3">No attachments selected.</td>';
     overrideBody.appendChild(row);
     return;
   }
@@ -419,7 +422,6 @@ function refreshAttachmentOverridesTable() {
   for (const item of selectedAttachments) {
     const row = document.createElement('tr');
     const typeGuess = guessTextKind(item.file, item.path) ? 'text' : 'binary';
-    const chosenCompression = previousCompression[item.path] || '';
     const chosenEncoding = previousEncoding[item.path] ?? item.encodingMode ?? '';
 
     row.innerHTML = `
@@ -433,25 +435,13 @@ function refreshAttachmentOverridesTable() {
           <option value="embed">:embed (binary)</option>
         </select>
       </td>
-      <td>
-        <select>
-          <option value="">(default)</option>
-          <option value="none">none</option>
-          <option value="deflate">deflate</option>
-          <option value="brotli">brotli</option>
-        </select>
-      </td>
     `;
     overrideBody.appendChild(row);
 
-    const encodingSelect = row.querySelectorAll('select')[0];
-    const compressionSelect = row.querySelectorAll('select')[1];
+    const encodingSelect = row.querySelector('select');
     encodingSelect.setAttribute('data-attachment-path', item.path);
     encodingSelect.setAttribute('data-type', 'encoding');
-    compressionSelect.setAttribute('data-attachment-path', item.path);
-    compressionSelect.setAttribute('data-type', 'compression');
     encodingSelect.value = chosenEncoding;
-    compressionSelect.value = chosenCompression;
 
     // Update item.encodingMode when select changes
     encodingSelect.addEventListener('change', () => {
@@ -461,18 +451,6 @@ function refreshAttachmentOverridesTable() {
       }
     });
   }
-}
-
-function readAttachmentCompressionMap() {
-  const map = {};
-  for (const select of overrideBody.querySelectorAll('select[data-type="compression"][data-attachment-path]')) {
-    const value = select.value;
-    const path = select.getAttribute('data-attachment-path');
-    if (path && value) {
-      map[path] = value;
-    }
-  }
-  return map;
 }
 
 function readAttachmentEncodingMap() {
@@ -490,41 +468,41 @@ function readAttachmentEncodingMap() {
 function applyProfile(name) {
   const config = name === 'compact'
     ? {
-        useMinimizer: true,
+        aeonSourceTransform: 'compact',
         trailingNewline: false,
         checksum: true,
         magic: 'present',
-        containerCompression: 'brotli',
-        aeonEntryCompression: 'brotli',
-        attachmentCompression: 'brotli'
+        neonEncoding: 'race',
+        compressionScope: 'container',
+        compressionMethod: 'race'
       }
     : name === 'fast'
       ? {
-          useMinimizer: false,
+          aeonSourceTransform: 'preserve',
           trailingNewline: false,
           checksum: false,
           magic: 'present',
-          containerCompression: 'none',
-          aeonEntryCompression: 'none',
-          attachmentCompression: 'none'
+          neonEncoding: 'race',
+          compressionScope: 'none',
+          compressionMethod: 'none'
         }
       : {
-          useMinimizer: true,
+          aeonSourceTransform: 'compact',
           trailingNewline: false,
           checksum: true,
           magic: 'present',
-          containerCompression: 'none',
-          aeonEntryCompression: 'deflate',
-          attachmentCompression: 'none'
+          neonEncoding: 'race',
+          compressionScope: 'text',
+          compressionMethod: 'none'
         };
 
-  document.getElementById('useMinimizer').checked = config.useMinimizer;
+  document.getElementById('aeonSourceTransform').value = config.aeonSourceTransform;
   document.getElementById('trailingNewline').checked = config.trailingNewline;
   document.getElementById('checksum').checked = config.checksum;
   document.getElementById('magic').value = config.magic;
-  document.getElementById('containerCompression').value = config.containerCompression;
-  document.getElementById('aeonEntryCompression').value = config.aeonEntryCompression;
-  document.getElementById('attachmentCompression').value = config.attachmentCompression;
+  document.getElementById('neonEncoding').value = config.neonEncoding;
+  document.getElementById('compressionScope').value = config.compressionScope;
+  document.getElementById('compressionMethod').value = config.compressionMethod;
   setCreateStatus(`Preset applied: ${name}`);
 }
 
@@ -553,50 +531,16 @@ function renderManifest(entries, primaryEntryId, bodyEl) {
       row.style.background = 'rgba(255,184,74,0.14)';
     }
 
-    const race = entry.textRace
-      ? `${entry.textRace.encoding}/${entry.textRace.compression} (${formatBytes(entry.textRace.containerBytes)})`
-      : '-';
-
     row.innerHTML = `
       <td>${entry.id}${entry.id === primaryEntryId ? ' (primary)' : ''}</td>
       <td>${entry.kind}</td>
       <td>${escapeHtml(entry.name || '(unnamed)')}</td>
-      <td>${entry.compression}</td>
+      <td>${escapeHtml(entry.encoding || 'raw')}/${entry.compression}</td>
       <td>${formatBytes(entry.storedLength)}</td>
       <td>${formatBytes(entry.originalLength)}</td>
-      <td title="Advisory size race if this text entry were encoded as its own Neon text container. Directory entries are stored as byte payloads.">${escapeHtml(race)}</td>
     `;
     bodyEl.appendChild(row);
   }
-}
-
-function resolveInspectorEncoding(manifest, fallbackEncoding = 'unknown') {
-  if (!manifest || !Array.isArray(manifest.entries)) {
-    return fallbackEncoding;
-  }
-
-  const entries = manifest.entries;
-  const primary = entries.find((entry) => entry.id === manifest.primaryEntryId && entry.kind === 'text')
-    || entries.find((entry) => entry.kind === 'text' && /\.aeon$/i.test(entry.name || ''))
-    || entries.find((entry) => entry.kind === 'text');
-
-  if (!primary) {
-    return fallbackEncoding;
-  }
-
-  const raceEncoding = primary.textRace?.encoding;
-  if (typeof raceEncoding === 'string' && raceEncoding.trim().length > 0) {
-    return raceEncoding;
-  }
-
-  if (Array.isArray(primary.metadata)) {
-    const metadataEncoding = primary.metadata.find((item) => item.key === 'neon-race-encoding')?.value;
-    if (typeof metadataEncoding === 'string' && metadataEncoding.trim().length > 0) {
-      return metadataEncoding;
-    }
-  }
-
-  return fallbackEncoding;
 }
 
 function setTreeEntries(scopeName, entries) {
@@ -816,6 +760,18 @@ function formatBytes(bytes) {
   return `${(n / (1024 * 1024)).toFixed(2)} MB`;
 }
 
+function readCompressionSettings() {
+  const scope = document.getElementById('compressionScope').value;
+  const method = document.getElementById('compressionMethod').value;
+  return {
+    compressionScope: scope,
+    compressionMethod: method,
+    containerCompression: scope === 'container' && method !== 'none' ? method : 'none',
+    aeonEntryCompression: scope === 'text' && method !== 'none' ? method : 'none',
+    attachmentCompression: scope === 'text' && method !== 'none' ? method : 'none'
+  };
+}
+
 function base64ToBytes(base64) {
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
@@ -841,10 +797,10 @@ function renderInspectorInfoDefault() {
 function getBitSchemeForEncoding(encoding) {
   const normalized = String(encoding || '').trim().toLowerCase();
   if (normalized.includes('2p6b-aeon')) {
-    return { key: '2p6b-aeon', label: '2p6b-aeon (Shift + 6-bit chars)', decoder: decode2p6bBitStream, charMaps: get2p6bAeonMaps() };
+    return { key: '2p6b-aeon', label: '2p6b-aeon (prefix switches + 6-bit symbols)', decoder: decode2p6bBitStream, charMaps: get2p6bAeonMaps() };
   }
   if (normalized.includes('2p6b')) {
-    return { key: '2p6b', label: '2p6b (Shift + 6-bit chars)', decoder: decode2p6bBitStream, charMaps: get2p6bGpMaps() };
+    return { key: '2p6b', label: '2p6b (prefix switches + 6-bit symbols)', decoder: decode2p6bBitStream, charMaps: get2p6bGpMaps() };
   }
   if (normalized.includes('3p6b')) {
     return { key: '3p6b', label: '3p6b (3-page 6-bit)', decoder: decode3p6bBitStream, charMaps: get3p6bMaps() };
@@ -876,7 +832,8 @@ function get3p6bMaps() {
 }
 
 function decodeCharFromBits(bits, role, page, charMaps) {
-  if (!charMaps || role !== 'char') return null;
+  const symbolRoles = new Set(['char', 'smart-latch', 'smart-shift', 'utf-marker', 'binary-marker', 'reserved']);
+  if (!charMaps || !symbolRoles.has(role)) return null;
   const code = parseInt(bits, 2);
   const pageMap = charMaps[page];
   return pageMap && pageMap[code] ? pageMap[code] : null;
@@ -912,47 +869,85 @@ function readBitRange(bytes, bitOffset, bitLength) {
   return value;
 }
 
-function* decode2p6bBitStream(bytes) {
+function* decode2p6bBitStream(bytes, scheme = { key: '2p6b', charMaps: get2p6bGpMaps() }) {
   let bitOffset = 0;
   const totalBits = bytes.length * 8;
   let page = 0; // 0=page0, 1=page1
-  
-  while (bitOffset < totalBits) {
-    // Try to read 6-bit code
+
+  const isAeon = scheme.key === '2p6b-aeon';
+
+  function readSymbolRole(code, symbolPage, allowBinary = true) {
+    if (code === 47) {
+      return 'utf-marker';
+    }
+    if (symbolPage === 1 && code === 0) {
+      return allowBinary ? 'binary-marker' : 'reserved';
+    }
+    if (isAeon && (code === 34 || code === 35)) {
+      return code === 34 ? 'smart-latch' : 'smart-shift';
+    }
+    return 'char';
+  }
+
+  function* readSixBitSymbol(symbolPage, allowBinary = true) {
     if (bitOffset + 6 > totalBits) {
-      // Partial bits at end
       const remaining = totalBits - bitOffset;
-      yield { bitOffset, bitLength: remaining, role: 'partial', page };
-      break;
-    }
-    
-    const code = readBits(bytes, bitOffset, 6);
-    if (code === null) break;
-    
-    // Check for shift (110 = 6 on page 0, 6 on page 1)
-    if (code === 6) {
-      yield { bitOffset, bitLength: 6, role: 'shift', page };
-      bitOffset += 6;
-      // Next 6 bits are on other page
-      if (bitOffset + 6 <= totalBits) {
-        const shifted = readBits(bytes, bitOffset, 6);
-        if (shifted !== null) {
-          yield { bitOffset, bitLength: 6, role: 'char', page: 1 - page };
-          bitOffset += 6;
-        }
+      if (remaining > 0) {
+        yield { bitOffset, bitLength: remaining, role: 'partial', page: symbolPage };
+        bitOffset += remaining;
       }
+      return;
     }
-    // Check for latch (14 = 0b1110)
-    else if (code === 14) {
-      yield { bitOffset, bitLength: 6, role: 'latch', page };
+
+    const code = readBits(bytes, bitOffset, 6);
+    const role = readSymbolRole(code, symbolPage, allowBinary);
+    yield { bitOffset, bitLength: 6, role, page: symbolPage };
+    bitOffset += 6;
+
+    if (isAeon && code === 34) {
       page = 1 - page;
-      bitOffset += 6;
+    } else if (isAeon && code === 35) {
+      yield* readSixBitSymbol(1 - symbolPage, false);
     }
-    // Regular character
-    else {
-      yield { bitOffset, bitLength: 6, role: 'char', page };
-      bitOffset += 6;
+  }
+
+  while (bitOffset < totalBits) {
+    if (page === 0) {
+      if (bitOffset + 4 <= totalBits && readBits(bytes, bitOffset, 4) === 0b1110) {
+        yield { bitOffset, bitLength: 4, role: 'latch', page };
+        bitOffset += 4;
+        page = 1;
+        continue;
+      }
+      if (bitOffset + 3 <= totalBits && readBits(bytes, bitOffset, 3) === 0b110) {
+        yield { bitOffset, bitLength: 3, role: 'shift', page };
+        bitOffset += 3;
+        yield* readSixBitSymbol(1, false);
+        continue;
+      }
+      if (bitOffset + 4 <= totalBits && readBits(bytes, bitOffset, 4) === 0b1111) {
+        yield { bitOffset, bitLength: 4, role: 'case-shift', page };
+        bitOffset += 4;
+        yield* readSixBitSymbol(0, false);
+        continue;
+      }
+      yield* readSixBitSymbol(0);
+      continue;
     }
+
+    if (bitOffset + 3 <= totalBits && readBits(bytes, bitOffset, 3) === 0b111) {
+      yield { bitOffset, bitLength: 3, role: 'latch', page };
+      bitOffset += 3;
+      page = 0;
+      continue;
+    }
+    if (bitOffset + 3 <= totalBits && readBits(bytes, bitOffset, 3) === 0b110) {
+      yield { bitOffset, bitLength: 3, role: 'shift', page };
+      bitOffset += 3;
+      yield* readSixBitSymbol(0, false);
+      continue;
+    }
+    yield* readSixBitSymbol(1);
   }
 }
 
@@ -1122,7 +1117,6 @@ function getBlockSizeClass(bitLength) {
 }
 
 function buildBitBlocks(bytes, sections, scheme) {
-  void scheme;
   const blocks = [];
   const totalBits = bytes.length * 8;
   const sorted = [...sections].sort((a, b) => {
@@ -1174,6 +1168,31 @@ function buildBitBlocks(bytes, sections, scheme) {
 
     const startBit = section.startBit ?? (section.start * 8);
     const endBit = section.endBit ?? (section.end * 8 + 7);
+
+    const sectionScheme = section.entryEncoding ? getBitSchemeForEncoding(section.entryEncoding) : scheme;
+    if ((section.role === 'payload-byte' || section.role === 'entry-text-payload') && sectionScheme && typeof sectionScheme.decoder === 'function') {
+      const payloadBytes = bytes.slice(section.start, section.end + 1);
+      const payloadBitLength = Math.max(0, endBit - startBit + 1);
+      for (const token of sectionScheme.decoder(payloadBytes, sectionScheme)) {
+        if (token.bitOffset >= payloadBitLength) {
+          break;
+        }
+        const bitLength = Math.min(token.bitLength, payloadBitLength - token.bitOffset);
+        if (bitLength <= 0) {
+          continue;
+        }
+        blocks.push({
+          bitOffset: startBit + token.bitOffset,
+          bitLength,
+          bits: readBitRange(bytes, startBit + token.bitOffset, bitLength),
+          role: token.role || section.role || 'payload',
+          page: token.page ?? null,
+          section
+        });
+      }
+      continue;
+    }
+
     for (let bitOffset = startBit; bitOffset <= endBit && bitOffset < totalBits; bitOffset += 8) {
       const bitLength = Math.min(8, endBit - bitOffset + 1, totalBits - bitOffset);
       blocks.push({
@@ -1439,8 +1458,34 @@ function identifyNeonSections(bytes) {
   }
 
   if (!manifest?.byteLayout) {
-    if (offset < bytes.length) {
-      sections.push({ type: 'payload', name: 'Payload bytes', start: offset, end: bytes.length - 1, role: 'payload-byte' });
+    const trailerByteLength = flagsInfo?.extensionFlags?.hasCrc32 ? 4 : 0;
+    const payloadEnd = bytes.length - trailerByteLength - 1;
+    if (offset <= payloadEnd) {
+      if (flagsInfo?.extensionFlags?.hasCompression) {
+        sections.push({
+          type: 'payload',
+          name: 'Compressed stored payload',
+          start: offset,
+          end: payloadEnd,
+          role: 'compressed-byte',
+          detail: 'Decoder decompresses these stored bytes before reading the text bitstream.'
+        });
+      } else {
+        const endBit = Math.max(offset * 8 - 1, payloadEnd * 8 + 7 - (flagsInfo?.padBits || 0));
+        sections.push({
+          type: 'payload',
+          name: 'Text payload bitstream',
+          start: offset,
+          end: payloadEnd,
+          endBit,
+          role: 'payload-byte',
+          detail: 'Decoder reads this payload using the selected Neon text encoding.'
+        });
+      }
+    }
+    if (trailerByteLength > 0 && bytes.length >= trailerByteLength) {
+      const trailerStart = bytes.length - trailerByteLength;
+      sections.push({ type: 'trailer', name: 'CRC-32 checksum', start: trailerStart, end: bytes.length - 1, role: 'crc-byte', detail: 'Big-endian CRC-32 of the stored payload bytes.' });
     }
     return sections;
   }
@@ -1491,22 +1536,21 @@ function identifyNeonSections(bytes) {
         const entryRawStart = entryPayloadStart + entry.decodedOffset;
         const entryRawEnd = Math.min(entryRawStart + entry.storedLength - 1, payloadByteEnd);
         if (entryRawStart <= entryRawEnd) {
-          const raceEncoding = entry.textRace?.encoding
-            || (Array.isArray(entry.metadata) ? entry.metadata.find((item) => item.key === 'neon-race-encoding')?.value : null);
-          const raceDetail = raceEncoding
-            ? ` Best standalone text-container race: ${raceEncoding}; this directory entry is still stored here as ${formatBytes(entry.storedLength)} raw directory payload bytes.`
-            : '';
+          const isPackedTextEntry = entry.kind === 'text' && entry.compression === 'none' && entry.encoding && entry.encoding !== 'raw';
+          const entryDecodedBits = Number.isFinite(entry.decodedBitLength) ? entry.decodedBitLength : entry.storedLength * 8;
           sections.push({
             type: `content-${entry.kind}`,
             name: entry.name || `Entry ${entry.id}`,
             entryName: entry.name || `Entry ${entry.id}`,
             entryKind: entry.kind,
+            entryEncoding: entry.encoding,
             groupKey: `entry:${entry.id}:${entryRawStart}:${entryRawEnd}`,
             collapsible: true,
             start: entryRawStart,
             end: entryRawEnd,
-            role: 'entry-payload-byte',
-            detail: `Stored entry data: ${formatBytes(entry.storedLength)} at payload-region offset ${entry.decodedOffset}.${raceDetail}`
+            endBit: isPackedTextEntry ? entryRawStart * 8 + entryDecodedBits - 1 : undefined,
+            role: isPackedTextEntry ? 'entry-text-payload' : 'entry-payload-byte',
+            detail: `Stored entry data: ${formatBytes(entry.storedLength)} at payload-region offset ${entry.decodedOffset}.${entry.encoding ? ` Encoding: ${entry.encoding}.` : ''}`
           });
         }
       }
@@ -1527,8 +1571,21 @@ function inferNeonHeader(bytes, manifest = lastManifest) {
     && bytes[0] === 0xd7 && bytes[1] === 0xff
     && (bytes[2] === 0x9b || bytes[2] === 0xbb);
   const flagsByteOffset = hasMagic ? 3 : 0;
-  const payloadByteStart = manifest?.byteLayout?.payloadByteStart ?? (hasMagic ? (bytes[2] === 0xbb ? 5 : 4) : 1);
-  const isExtended = hasMagic ? bytes[2] === 0xbb : payloadByteStart > flagsByteOffset + 1;
+  const isExtended = hasMagic ? bytes[2] === 0xbb : Boolean(bytes[flagsByteOffset + 1] & 0xe0);
+  let payloadByteStart = manifest?.byteLayout?.payloadByteStart;
+  if (payloadByteStart === undefined) {
+    payloadByteStart = flagsByteOffset + 1;
+    if (isExtended) {
+      const extByte = bytes[payloadByteStart] ?? 0;
+      payloadByteStart += 1;
+      if (extByte & 0x40) {
+        payloadByteStart += 1;
+      }
+      if (extByte & 0x08) {
+        payloadByteStart += 1;
+      }
+    }
+  }
   return {
     hasMagic,
     magicMode: hasMagic && bytes[2] === 0xbb ? 'extended' : 'simple',
@@ -1612,7 +1669,7 @@ function identifyDirectoryIndexFields(bytes, start, end, manifest) {
     cursor = fieldEnd + 1;
   };
 
-  pushByte('Directory index version', 'Currently 0x01 for Neon v1 directory indexes.');
+  pushByte('Directory index version', '0x01 for the current Neon v1 directory index.');
   const entryCount = pushUvarint('Directory entry count', 'Number of entries in the index.');
   pushUvarint('Primary entry id', 'Entry id to treat as the primary AEON/text payload.');
 
@@ -1623,18 +1680,20 @@ function identifyDirectoryIndexFields(bytes, start, end, manifest) {
     const entry = expectedEntries[index] || {};
     const label = entry.name ? `Entry ${entry.id} (${entry.name})` : `Entry ${entry.id ?? index + 1}`;
     pushUvarint(`${label}: id`, 'Directory entry id.');
-    pushByte(`${label}: kind`, '0x00=text, 0x01=binary, 0x02=folder.');
-    if (entry.kind === 'text' || entry.kind === 'binary') {
-      pushByte(`${label}: compression`, '0x00=deflate, 0x01=brotli, 0xFF=none.');
-    }
+    pushByte(
+      `${label}: flags`,
+      'Bits 7-6 kind (0=file, 1=folder), bits 5-3 encoding (0=raw, 1=utf-8, 2=2p6b-gp, 3=2p6b-aeon, 4=3p6b), bits 2-1 compression (0=none, 1=deflate, 2=brotli), bit 0 metadata.'
+    );
     const nameLength = pushUvarint(`${label}: name length`, 'UTF-8 byte length of the stored entry name.');
     pushUtf8(`${label}: name`, nameLength || 0, 'Entry name bytes.');
     if (entry.kind === 'text' || entry.kind === 'binary') {
-      pushUvarint(`${label}: stored length`, 'Stored byte length for this entry payload.');
-      pushUvarint(`${label}: original length`, 'Original byte length before per-entry compression.');
       pushUvarint(`${label}: data offset`, 'Byte offset into the directory payload region.');
+      pushUvarint(`${label}: stored length`, 'Stored byte length for this entry payload.');
+      pushUvarint(`${label}: decoded bit length`, 'Decoded payload bit length after per-entry decompression.');
     }
-    const metadataCount = pushUvarint(`${label}: metadata count`, 'Number of metadata key/value pairs.');
+    const metadataCount = entry.metadata && entry.metadata.length > 0
+      ? pushUvarint(`${label}: metadata count`, 'Number of metadata key/value pairs.')
+      : 0;
     const metadataLoopCount = Number.isInteger(metadataCount) ? metadataCount : 0;
     for (let metadataIndex = 0; metadataIndex < metadataLoopCount && cursor < limit; metadataIndex += 1) {
       const keyLength = pushUvarint(`${label}: metadata key length`, 'UTF-8 byte length of the metadata key.');

@@ -74,7 +74,6 @@
                   <th>Path</th>
                   <th>Type Guess</th>
                   <th>Encoding Mode</th>
-                  <th>Compression Override</th>
                 </tr>
               </thead>
               <tbody id="attachmentOverridesBody"></tbody>
@@ -87,8 +86,15 @@
           </label>
 
           <div class="settings">
-            <label><input id="useMinimizer" type="checkbox" checked /> Minimize AEON before save</label>
-            <label><input id="trailingNewline" type="checkbox" /> Keep trailing newline after minimization</label>
+            <label>
+              AEON source mode
+              <select id="aeonSourceTransform">
+                <option value="preserve">preserve</option>
+                <option value="compact" selected>compact</option>
+                <option value="minimize">minimize</option>
+              </select>
+            </label>
+            <label><input id="trailingNewline" type="checkbox" /> Keep trailing newline after transform</label>
             <label><input id="checksum" type="checkbox" /> Add CRC-32 checksum</label>
             <label><input id="embedBase64" type="checkbox" /> Default attachments to :base64</label>
           </div>
@@ -102,31 +108,36 @@
               </select>
             </label>
             <label>
-              Container compression
-              <select id="containerCompression">
-                <option value="none">none</option>
-                <option value="deflate">deflate</option>
-                <option value="brotli">brotli</option>
+              Text file encoding
+              <select id="neonEncoding">
+                <option value="race">race (smallest)</option>
+                <option value="2p6b-aeon">2p6b-aeon</option>
+                <option value="2p6b-gp">2p6b-gp</option>
+                <option value="3p6b">3p6b</option>
+                <option value="utf-8">utf-8</option>
               </select>
             </label>
             <label>
-              AEON entry compression
-              <select id="aeonEntryCompression">
+              Compression target
+              <select id="compressionScope">
                 <option value="none">none</option>
+                <option value="text">text files only</option>
+                <option value="container">whole container</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="grid two">
+            <label>
+              Compression method
+              <select id="compressionMethod">
+                <option value="none">none</option>
+                <option value="race">race (smallest)</option>
                 <option value="deflate">deflate</option>
                 <option value="brotli">brotli</option>
               </select>
             </label>
           </div>
-
-          <label>
-            Attachment entry compression
-            <select id="attachmentCompression">
-              <option value="none">none</option>
-              <option value="deflate">deflate</option>
-              <option value="brotli">brotli</option>
-            </select>
-          </label>
 
           <div class="actions">
             <button id="createBtn" class="btn brand">Create Neon</button>
@@ -135,12 +146,12 @@
           </div>
 
           <div class="subpanel">
-            <h3>Create Compression Rates</h3>
+            <h3>Create Container Summary</h3>
             <div id="createRates" class="rates"></div>
           </div>
 
           <div class="subpanel">
-            <h3>Encoding Modes</h3>
+            <h3>AEON Encoding Literals</h3>
             <div id="createEncodingModes" class="encoding-modes"></div>
           </div>
 
@@ -153,10 +164,9 @@
                     <th>ID</th>
                     <th>Kind</th>
                     <th>Name</th>
-                    <th>Stored Compression</th>
+                    <th>Encoding / Compression</th>
                     <th>Stored</th>
                     <th>Original</th>
-                    <th>Standalone Text Race</th>
                   </tr>
                 </thead>
                 <tbody id="createManifestBody"></tbody>
@@ -201,12 +211,12 @@
           </div>
 
           <div class="subpanel">
-            <h3>Open Compression Rates</h3>
+            <h3>Open Container Summary</h3>
             <div id="openRates" class="rates"></div>
           </div>
 
           <div class="subpanel">
-            <h3>Encoding Modes & Round-Trip</h3>
+            <h3>AEON Encoding Literals & Round-Trip</h3>
             <div id="openEncodingModes" class="encoding-modes"></div>
           </div>
 
@@ -219,10 +229,9 @@
                     <th>ID</th>
                     <th>Kind</th>
                     <th>Name</th>
-                    <th>Stored Compression</th>
+                    <th>Encoding / Compression</th>
                     <th>Stored</th>
                     <th>Original</th>
-                    <th>Standalone Text Race</th>
                   </tr>
                 </thead>
                 <tbody id="openManifestBody"></tbody>
