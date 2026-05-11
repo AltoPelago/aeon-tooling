@@ -1,12 +1,12 @@
 :root {
-  --bg: #0c111b;
-  --bg-soft: #121a28;
-  --card: #182238;
-  --line: #2a3a58;
-  --text: #eef4ff;
-  --muted: #acc2e8;
-  --brand: #ffb84a;
-  --brand-ink: #2f2200;
+  --bg: #111315;
+  --bg-soft: #181c1f;
+  --card: #20262a;
+  --line: #3b444a;
+  --text: #f3f1ea;
+  --muted: #b9c0be;
+  --brand: #f6b24d;
+  --brand-ink: #221606;
   --ok: #44d8a8;
   --warn: #ff8f6b;
 }
@@ -19,10 +19,7 @@ body {
   margin: 0;
   font-family: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
   color: var(--text);
-  background:
-    radial-gradient(1200px 600px at 110% -20%, #2a2f5a 0%, transparent 60%),
-    radial-gradient(1000px 500px at -20% 0%, #214266 0%, transparent 55%),
-    linear-gradient(160deg, #090d16 0%, #101a2c 50%, #081423 100%);
+  background: linear-gradient(160deg, #0e1112 0%, #151817 48%, #101417 100%);
   min-height: 100vh;
 }
 
@@ -83,9 +80,9 @@ body {
 
 .subpanel {
   border: 1px solid rgba(42, 58, 88, 0.85);
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 12px;
-  background: rgba(12, 20, 34, 0.6);
+  background: rgba(24, 28, 31, 0.7);
 }
 
 .subpanel h3 {
@@ -93,9 +90,9 @@ body {
 }
 
 .hero {
-  background: linear-gradient(120deg, rgba(255, 184, 74, 0.18), rgba(56, 145, 255, 0.18));
+  background: rgba(25, 29, 31, 0.92);
   border: 1px solid var(--line);
-  border-radius: 20px;
+  border-radius: 8px;
   padding: 24px;
 }
 
@@ -111,16 +108,16 @@ h1, h2 {
 }
 
 .panel {
-  background: rgba(16, 25, 41, 0.86);
+  background: rgba(19, 23, 25, 0.9);
   border: 1px solid var(--line);
-  border-radius: 18px;
+  border-radius: 8px;
   padding: 18px;
   backdrop-filter: blur(10px);
 }
 
 .dropzone {
   border: 1px dashed #4f6996;
-  border-radius: 14px;
+  border-radius: 8px;
   padding: 14px;
   margin-bottom: 12px;
   background: rgba(31, 52, 88, 0.35);
@@ -172,7 +169,7 @@ input, select, textarea, button {
 }
 
 input, select, textarea {
-  border-radius: 10px;
+  border-radius: 8px;
   border: 1px solid var(--line);
   background: var(--bg-soft);
   color: var(--text);
@@ -196,6 +193,32 @@ textarea {
   gap: 8px;
 }
 
+.settings .hidden-control {
+  display: none;
+}
+
+.advanced {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(17, 19, 21, 0.52);
+  margin: 8px 0;
+}
+
+.advanced summary {
+  cursor: pointer;
+  padding: 12px;
+  color: var(--brand);
+  font-weight: 700;
+  user-select: none;
+}
+
+.advanced-body {
+  border-top: 1px solid var(--line);
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+}
+
 .actions {
   display: flex;
   gap: 10px;
@@ -209,7 +232,7 @@ textarea {
 
 .btn {
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 8px;
   background: #22324f;
   color: var(--text);
   padding: 10px 14px;
@@ -252,7 +275,7 @@ th, td {
 
 .rate-card {
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 12px;
   background: var(--card);
 }

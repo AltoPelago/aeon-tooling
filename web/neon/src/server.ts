@@ -143,6 +143,7 @@ app.post('/api/create-neon', upload.fields([
 
     const entries: DirectoryEntryInput[] = [];
     let nextId = 1;
+    const aeonEntryId = 0;
 
     const folderNames = new Set<string>();
     for (const folder of options.emptyFolders ?? []) {
@@ -152,32 +153,9 @@ app.post('/api/create-neon', upload.fields([
       }
     }
 
-    const attachmentPaths = Array.isArray(options.attachmentPaths) ? options.attachmentPaths : [];
-    for (let index = 0; index < attachmentFiles.length; index += 1) {
-      const file = attachmentFiles[index]!;
-      const incomingName = typeof attachmentPaths[index] === 'string' && attachmentPaths[index]!.trim().length > 0
-        ? attachmentPaths[index]!
-        : file.originalname;
-      const normalizedName = normalizeRelativeName(incomingName);
-      collectParentFolders(normalizedName).forEach((folder) => folderNames.add(folder));
-    }
-    collectParentFolders(normalizedAeonName).forEach((folder) => folderNames.add(folder));
-
-    const sortedFolders = Array.from(folderNames).sort();
-    for (const folderName of sortedFolders) {
-      entries.push({
-        id: nextId,
-        kind: 'folder',
-        name: folderName
-      });
-      nextId += 1;
-    }
-
-    const aeonEntryId = nextId;
-    nextId += 1;
-
     let totalAttachmentBytes = 0;
     let modifiedAeonText = compactedAeonText;
+    const attachmentPaths = Array.isArray(options.attachmentPaths) ? options.attachmentPaths : [];
 
     for (let index = 0; index < attachmentFiles.length; index += 1) {
       const file = attachmentFiles[index]!;
@@ -196,6 +174,8 @@ app.post('/api/create-neon', upload.fields([
         modifiedAeonText += `${modifiedAeonText.length > 0 && !modifiedAeonText.endsWith('\n') ? '\n' : ''}${base64Snippet}`;
         continue;
       }
+
+      collectParentFolders(normalizedName).forEach((folder) => folderNames.add(folder));
 
       // :inline - store as binary entry with metadata marking it as inline
       if (selectedEncoding === 'inline') {
@@ -257,7 +237,7 @@ app.post('/api/create-neon', upload.fields([
       nextId += 1;
     }
 
-    if (entries.length === 0) {
+    if (entries.length === 0 && folderNames.size === 0) {
       const build = createBestAeonSourceContainer(modifiedAeonText, {
         magic: options.magic ?? 'present',
         checksum: Boolean(options.checksum),
@@ -301,6 +281,17 @@ app.post('/api/create-neon', upload.fields([
         }
       });
       return;
+    }
+
+    collectParentFolders(normalizedAeonName).forEach((folder) => folderNames.add(folder));
+    const sortedFolders = Array.from(folderNames).sort();
+    for (const folderName of sortedFolders) {
+      entries.push({
+        id: nextId,
+        kind: 'folder',
+        name: folderName
+      });
+      nextId += 1;
     }
 
     const aeonRace = computeTextRaceWinner(modifiedAeonText);
@@ -554,8 +545,7 @@ function transformAeonSource(source: string, transform: AeonSourceTransform, tra
     case 'preserve':
       return source;
     case 'compact': {
-      const compacted = planAeonSource(source, {
-        strategy: 'parser',
+      const compacted = planAeonSourceWithFallback(source, {
         commentPolicy: 'preserve',
         whitespacePolicy: 'minimize'
       }).normalizedSource;
@@ -567,6 +557,27 @@ function transformAeonSource(source: string, transform: AeonSourceTransform, tra
       const neverTransform: never = transform;
       throw new Error(`Unsupported AEON source transform: ${String(neverTransform)}`);
     }
+  }
+}
+
+function planAeonSourceWithFallback(
+  source: string,
+  options: Omit<Parameters<typeof planAeonSource>[1], 'strategy'>
+): ReturnType<typeof planAeonSource> {
+  try {
+    return planAeonSource(source, {
+      ...options,
+      strategy: 'parser'
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!/Unexpected token|parser|parse/i.test(message)) {
+      throw error;
+    }
+    return planAeonSource(source, {
+      ...options,
+      strategy: 'scanner'
+    });
   }
 }
 
@@ -735,7 +746,7 @@ function createBestAeonSourceContainer(
 
   let best: TextBuildResult | null = null;
   for (const encoding of encodings) {
-    const container = encodeAeonSource(text, {
+    const container = encodeAeonSourceWithFallback(text, {
       magic: options.magic,
       checksum: options.checksum,
       encoding,
@@ -759,6 +770,24 @@ function createBestAeonSourceContainer(
     throw new Error('No Neon text container candidates were produced');
   }
   return best;
+}
+
+function encodeAeonSourceWithFallback(
+  text: string,
+  options: Parameters<typeof encodeAeonSource>[1] & { readonly strategy: 'parser' }
+): EncodedAeonSourceContainer {
+  try {
+    return encodeAeonSource(text, options);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!/Unexpected token|parser|parse/i.test(message)) {
+      throw error;
+    }
+    return encodeAeonSource(text, {
+      ...options,
+      strategy: 'scanner'
+    });
+  }
 }
 
 function createBestDirectoryContainer(

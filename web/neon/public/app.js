@@ -31,6 +31,8 @@ const neonFileInput = document.getElementById('neonFile');
 
 const presetProfile = document.getElementById('presetProfile');
 const embedBase64 = document.getElementById('embedBase64');
+const compressionIntent = document.getElementById('compressionIntent');
+const attachmentDefaultMode = document.getElementById('attachmentDefaultMode');
 
 const hexViewerContainer = document.getElementById('hexViewerContainer');
 const hexSectionInfo = document.getElementById('hexSectionInfo');
@@ -95,6 +97,13 @@ function initialize() {
   presetProfile.addEventListener('change', () => {
     applyProfile(presetProfile.value);
   });
+  compressionIntent.addEventListener('change', () => {
+    applyCompressionIntent(compressionIntent.value);
+  });
+  attachmentDefaultMode.addEventListener('change', () => {
+    embedBase64.checked = attachmentDefaultMode.value === 'base64';
+  });
+  document.getElementById('compressionScope').addEventListener('change', syncCompressionIntentFromAdvanced);
 
   bindTreeScope('create');
   bindTreeScope('open');
@@ -177,7 +186,7 @@ async function onCreate() {
       neonEncoding: document.getElementById('neonEncoding').value,
       ...compressionSettings,
       attachmentEncodingByPath: readAttachmentEncodingMap(),
-      embedAttachmentsAsBase64: embedBase64.checked
+      embedAttachmentsAsBase64: attachmentDefaultMode.value === 'base64'
     };
 
     formData.append('options', JSON.stringify(options));
@@ -228,7 +237,7 @@ async function onCreate() {
 
     renderEncodingModes(payload.encodingModes, createEncodingModesEl);
 
-    createPrimaryPreview.value = '(Created from uploaded AEON source. Open the generated file to inspect decoded primary text.)';
+    createPrimaryPreview.value = 'Open the generated file to inspect decoded primary text.';
     setCreateStatus('Neon file created successfully.');
   } catch (error) {
     setCreateStatus(error instanceof Error ? error.message : 'Unexpected error', true);
@@ -323,9 +332,11 @@ function resetCreateWorkspace() {
 
   document.getElementById('aeonPath').value = 'docs/document.aeon';
   document.getElementById('emptyFolders').value = '';
+  attachmentDefaultMode.value = 'embed';
+  embedBase64.checked = false;
 
-  applyProfile('balanced');
   presetProfile.value = 'balanced';
+  applyProfile('balanced');
   refreshAttachmentOverridesTable();
 
   createManifestBody.innerHTML = '';
@@ -473,6 +484,7 @@ function applyProfile(name) {
         checksum: true,
         magic: 'present',
         neonEncoding: 'race',
+        compressionIntent: 'container',
         compressionScope: 'container',
         compressionMethod: 'race'
       }
@@ -483,16 +495,29 @@ function applyProfile(name) {
           checksum: false,
           magic: 'present',
           neonEncoding: 'race',
+          compressionIntent: 'none',
           compressionScope: 'none',
           compressionMethod: 'none'
         }
+      : name === 'debug'
+        ? {
+            aeonSourceTransform: 'preserve',
+            trailingNewline: true,
+            checksum: false,
+            magic: 'present',
+            neonEncoding: 'utf-8',
+            compressionIntent: 'none',
+            compressionScope: 'none',
+            compressionMethod: 'none'
+          }
       : {
           aeonSourceTransform: 'compact',
           trailingNewline: false,
           checksum: true,
           magic: 'present',
           neonEncoding: 'race',
-          compressionScope: 'text',
+          compressionIntent: 'none',
+          compressionScope: 'none',
           compressionMethod: 'none'
         };
 
@@ -501,9 +526,31 @@ function applyProfile(name) {
   document.getElementById('checksum').checked = config.checksum;
   document.getElementById('magic').value = config.magic;
   document.getElementById('neonEncoding').value = config.neonEncoding;
+  compressionIntent.value = config.compressionIntent;
   document.getElementById('compressionScope').value = config.compressionScope;
   document.getElementById('compressionMethod').value = config.compressionMethod;
-  setCreateStatus(`Preset applied: ${name}`);
+  syncCompressionIntentFromAdvanced();
+  setCreateStatus(`Optimize for: ${presetProfile.options[presetProfile.selectedIndex]?.text || name}`);
+}
+
+function applyCompressionIntent(intent) {
+  const scopeEl = document.getElementById('compressionScope');
+  const methodEl = document.getElementById('compressionMethod');
+  if (intent === 'none') {
+    scopeEl.value = 'none';
+    methodEl.value = 'none';
+  } else if (intent === 'container') {
+    scopeEl.value = 'container';
+    methodEl.value = 'race';
+  } else {
+    scopeEl.value = 'text';
+    methodEl.value = 'race';
+  }
+}
+
+function syncCompressionIntentFromAdvanced() {
+  const scope = document.getElementById('compressionScope').value;
+  compressionIntent.value = scope === 'container' ? 'container' : scope === 'text' ? 'text' : 'none';
 }
 
 function parseFolderLines(input) {

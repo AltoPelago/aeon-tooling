@@ -11,7 +11,6 @@
       <header class="hero">
         <p class="eyebrow">AEON TOOLING</p>
         <h1>Neon Workbench</h1>
-        <p>Create and open Neon files with AEON source, attachments, manifest previews, and compaction/compression metrics.</p>
       </header>
 
       <div class="tab-strip">
@@ -23,121 +22,140 @@
       <div class="tab-panels">
         <section class="panel workspace-panel tab-panel active" data-tab="create">
           <h2>Create Neon File</h2>
-          <div class="grid two">
+          <div class="grid three">
             <label>
-              Preset profile
+              Optimize for
               <select id="presetProfile">
                 <option value="balanced" selected>Balanced</option>
-                <option value="fast">Fast</option>
-                <option value="compact">Compact</option>
+                <option value="compact">Smallest file</option>
+                <option value="fast">Fastest</option>
+                <option value="debug">Readable</option>
               </select>
             </label>
-          </div>
-
-          <div id="dropAeon" class="dropzone">
-            <strong>Drop AEON file here</strong>
-            <span>or use the AEON picker below</span>
-          </div>
-
-          <div class="grid two">
             <label>
-              AEON source file
-              <input id="aeonFile" type="file" accept=".aeon,.txt" />
-            </label>
-            <label>
-              AEON entry path in container
-              <input id="aeonPath" type="text" value="docs/document.aeon" />
-            </label>
-          </div>
-
-          <div class="grid two">
-            <label>
-              Attachments (files)
-              <input id="attachments" type="file" multiple />
-            </label>
-            <label>
-              Attachments (folder)
-              <input id="attachmentFolder" type="file" webkitdirectory directory multiple />
-            </label>
-          </div>
-
-          <div id="dropAttachments" class="dropzone">
-            <strong>Drop attachment files here</strong>
-            <span>Files dropped here are added to the attachment list</span>
-          </div>
-
-          <h3>Attachment Overrides</h3>
-          <div class="manifest-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Path</th>
-                  <th>Type Guess</th>
-                  <th>Encoding Mode</th>
-                </tr>
-              </thead>
-              <tbody id="attachmentOverridesBody"></tbody>
-            </table>
-          </div>
-
-          <label>
-            Empty folders (one relative path per line)
-            <textarea id="emptyFolders" rows="4" placeholder="docs/\nassets/images/"></textarea>
-          </label>
-
-          <div class="settings">
-            <label>
-              AEON source mode
+              AEON source
               <select id="aeonSourceTransform">
                 <option value="preserve">preserve</option>
                 <option value="compact" selected>compact</option>
                 <option value="minimize">minimize</option>
               </select>
             </label>
-            <label><input id="trailingNewline" type="checkbox" /> Keep trailing newline after transform</label>
-            <label><input id="checksum" type="checkbox" /> Add CRC-32 checksum</label>
-            <label><input id="embedBase64" type="checkbox" /> Default attachments to :base64</label>
-          </div>
-
-          <div class="grid three">
             <label>
-              Magic
-              <select id="magic">
-                <option value="present">present</option>
-                <option value="omitted">omitted</option>
-              </select>
-            </label>
-            <label>
-              Text file encoding
+              Text encoding
               <select id="neonEncoding">
-                <option value="race">race (smallest)</option>
-                <option value="2p6b-aeon">2p6b-aeon</option>
-                <option value="2p6b-gp">2p6b-gp</option>
+                <option value="race">auto</option>
+                <option value="2p6b-aeon">2p6b AEON</option>
+                <option value="2p6b-gp">2p6b general</option>
                 <option value="3p6b">3p6b</option>
-                <option value="utf-8">utf-8</option>
-              </select>
-            </label>
-            <label>
-              Compression target
-              <select id="compressionScope">
-                <option value="none">none</option>
-                <option value="text">text files only</option>
-                <option value="container">whole container</option>
+                <option value="utf-8">UTF-8</option>
               </select>
             </label>
           </div>
 
           <div class="grid two">
             <label>
-              Compression method
-              <select id="compressionMethod">
-                <option value="none">none</option>
-                <option value="race">race (smallest)</option>
-                <option value="deflate">deflate</option>
-                <option value="brotli">brotli</option>
+              AEON file
+              <input id="aeonFile" type="file" accept=".aeon,.txt" />
+            </label>
+            <label>
+              Name in Neon file
+              <input id="aeonPath" type="text" value="docs/document.aeon" />
+            </label>
+          </div>
+
+          <div id="dropAeon" class="dropzone">
+            <strong>Drop AEON file here</strong>
+          </div>
+
+          <div class="grid two">
+            <label>
+              Add files
+              <input id="attachments" type="file" multiple />
+            </label>
+            <label>
+              Add folder
+              <input id="attachmentFolder" type="file" webkitdirectory directory multiple />
+            </label>
+          </div>
+
+          <div id="dropAttachments" class="dropzone">
+            <strong>Drop attachment files here</strong>
+          </div>
+
+          <div class="grid two">
+            <label>
+              Compression
+              <select id="compressionIntent">
+                <option value="none">off</option>
+                <option value="text">text only</option>
+                <option value="container">whole file</option>
+              </select>
+            </label>
+            <label>
+              Uploaded attachments
+              <select id="attachmentDefaultMode">
+                <option value="embed">store as files</option>
+                <option value="base64">write as AEON base64 text</option>
               </select>
             </label>
           </div>
+
+          <details class="advanced">
+            <summary>Advanced</summary>
+            <div class="advanced-body">
+              <label>
+                Empty folders
+                <textarea id="emptyFolders" rows="4" placeholder="docs/\nassets/images/"></textarea>
+              </label>
+
+              <div class="grid three">
+                <label>
+                  Magic
+                  <select id="magic">
+                    <option value="present">present</option>
+                    <option value="omitted">omitted</option>
+                  </select>
+                </label>
+                <label>
+                  Compression target
+                  <select id="compressionScope">
+                    <option value="none">none</option>
+                    <option value="text">text files only</option>
+                    <option value="container">whole container</option>
+                  </select>
+                </label>
+                <label>
+                  Compression method
+                  <select id="compressionMethod">
+                    <option value="none">none</option>
+                    <option value="race">auto</option>
+                    <option value="deflate">deflate</option>
+                    <option value="brotli">brotli</option>
+                  </select>
+                </label>
+              </div>
+
+              <div class="settings">
+                <label><input id="trailingNewline" type="checkbox" /> Keep trailing newline</label>
+                <label><input id="checksum" type="checkbox" /> Add CRC-32 checksum</label>
+                <label class="hidden-control"><input id="embedBase64" type="checkbox" /> Base64 attachments</label>
+              </div>
+
+              <h3>Attachment Overrides</h3>
+              <div class="manifest-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Path</th>
+                      <th>Type</th>
+                      <th>Store as</th>
+                    </tr>
+                  </thead>
+                  <tbody id="attachmentOverridesBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </details>
 
           <div class="actions">
             <button id="createBtn" class="btn brand">Create Neon</button>
@@ -146,17 +164,17 @@
           </div>
 
           <div class="subpanel">
-            <h3>Create Container Summary</h3>
+            <h3>Summary</h3>
             <div id="createRates" class="rates"></div>
           </div>
 
           <div class="subpanel">
-            <h3>AEON Encoding Literals</h3>
+            <h3>AEON Literals</h3>
             <div id="createEncodingModes" class="encoding-modes"></div>
           </div>
 
           <div class="subpanel">
-            <h3>Create Directory</h3>
+            <h3>Files</h3>
             <div class="manifest-wrap">
               <table>
                 <thead>
@@ -175,7 +193,7 @@
           </div>
 
           <div class="subpanel">
-            <h3>Create Directory Tree</h3>
+            <h3>File Tree</h3>
             <div class="tree-controls">
               <label><input id="createTreeShowText" type="checkbox" checked /> Show text</label>
               <label><input id="createTreeShowBinary" type="checkbox" checked /> Show binary</label>
@@ -187,7 +205,7 @@
           </div>
 
           <div class="subpanel">
-            <h3>Create Primary Preview</h3>
+            <h3>Primary Preview</h3>
             <textarea id="createPrimaryPreview" rows="8" readonly></textarea>
           </div>
 
@@ -211,17 +229,17 @@
           </div>
 
           <div class="subpanel">
-            <h3>Open Container Summary</h3>
+            <h3>Summary</h3>
             <div id="openRates" class="rates"></div>
           </div>
 
           <div class="subpanel">
-            <h3>AEON Encoding Literals & Round-Trip</h3>
+            <h3>AEON Literals</h3>
             <div id="openEncodingModes" class="encoding-modes"></div>
           </div>
 
           <div class="subpanel">
-            <h3>Open Directory</h3>
+            <h3>Files</h3>
             <div class="manifest-wrap">
               <table>
                 <thead>
@@ -240,7 +258,7 @@
           </div>
 
           <div class="subpanel">
-            <h3>Open Directory Tree</h3>
+            <h3>File Tree</h3>
             <div class="tree-controls">
               <label><input id="openTreeShowText" type="checkbox" checked /> Show text</label>
               <label><input id="openTreeShowBinary" type="checkbox" checked /> Show binary</label>
@@ -252,7 +270,7 @@
           </div>
 
           <div class="subpanel">
-            <h3>Open Primary Preview</h3>
+            <h3>Primary Preview</h3>
             <textarea id="openPrimaryPreview" rows="8" readonly></textarea>
           </div>
 
