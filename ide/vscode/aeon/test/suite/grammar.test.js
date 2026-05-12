@@ -139,7 +139,7 @@ suite('AEON grammar regex tests', () => {
     assert(!re.test('no'));
   });
 
-  test('switch literals match', () => {
+  test('toggle literals match', () => {
     const pat = findMatchByName(repo, 'constant.language.switch.aeon');
     assert(pat, 'switch pattern not found');
     const re = makeRegExp(pat);

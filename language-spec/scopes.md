@@ -28,7 +28,7 @@ This document is the cross-editor reference for AEON token categories.
 | radix/base64 | `constant.numeric.binary.aeon`, `constant.numeric.base64.aeon` |
 | separator literal payload | `constant.numeric.dimension.aeon` |
 | booleans | `constant.language.boolean.aeon` |
-| switch literals | `constant.language.switch.aeon` |
+| toggle literals | `constant.language.switch.aeon` |
 | date/time/datetime | `constant.language.date.aeon`, `constant.language.time.aeon`, `constant.language.datetime.utc.aeon`, `constant.language.datetime.local.aeon`, `constant.language.datetime.zoned.aeon` |
 
 ## Comment Channels

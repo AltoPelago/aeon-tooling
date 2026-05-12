@@ -34,7 +34,7 @@ large:int32 = 1_000_000
 enabled = true
 visible:boolean = false
 state = on
-mode:switch = off
+mode:toggle = off
 
 //# Encoded and symbolic literals
 color = #ff00aa
