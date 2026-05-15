@@ -19,12 +19,40 @@ function getBlock(id) { return state.blocks.find(b => b.id === id); }
 function blockIndex(id) { return state.blocks.findIndex(b => b.id === id); }
 function activeText(block) { return block.versions[block.focusedIndex]; }
 
+// ── Scroll position helpers ──────────────────
+
+/**
+ * Capture scroll position relative to a specific element so we can restore
+ * the viewport to the same visual position after a DOM mutation.
+ */
+function captureScrollAnchor(el) {
+  if (!el) return null;
+  const rect = el.getBoundingClientRect();
+  return { el, top: rect.top, scrollY: window.scrollY };
+}
+
+/**
+ * Restore scroll so that the anchor element stays at the same visual position.
+ */
+function restoreScrollAnchor(anchor) {
+  if (!anchor || !anchor.el || !anchor.el.isConnected) return;
+  const newRect = anchor.el.getBoundingClientRect();
+  const drift = newRect.top - anchor.top;
+  if (Math.abs(drift) > 1) {
+    window.scrollTo({ top: window.scrollY + drift, behavior: 'instant' });
+  }
+}
+
 // ── Block Operations ─────────────────────────
 
 function splitBlock(blockId, lineIndex) {
   const b = getBlock(blockId);
   if (!b) return;
   const idx = blockIndex(blockId);
+
+  // Anchor scroll to the block being split
+  const blockEl = article.querySelector(`[data-block-id="${blockId}"]`);
+  const anchor = captureScrollAnchor(blockEl);
 
   const newVersionsAbove = [];
   const newVersionsBelow = [];
@@ -40,6 +68,7 @@ function splitBlock(blockId, lineIndex) {
 
   state.blocks.splice(idx, 1, above, below);
   render();
+  restoreScrollAnchor(anchor);
   focusBlock(below.id, 0);
 }
 
@@ -47,6 +76,10 @@ function joinBlocks(upperBlockId, lowerBlockId) {
   const a = getBlock(upperBlockId);
   const b = getBlock(lowerBlockId);
   if (!a || !b) return;
+
+  // Anchor scroll to the upper block
+  const blockEl = article.querySelector(`[data-block-id="${upperBlockId}"]`);
+  const anchor = captureScrollAnchor(blockEl);
 
   const maxVersions = Math.max(a.versions.length, b.versions.length);
   const merged = [];
@@ -67,6 +100,7 @@ function joinBlocks(upperBlockId, lowerBlockId) {
   state.blocks.splice(removeStart, 2, joined);
 
   render();
+  restoreScrollAnchor(anchor);
   focusBlock(joined.id, cursorOffset);
 }
 
@@ -76,7 +110,7 @@ function addVersion(blockId, copy = true) {
   const newText = copy ? activeText(b) : '';
   b.versions.splice(b.focusedIndex + 1, 0, newText);
   b.focusedIndex = b.focusedIndex + 1;
-  render();
+  renderBlock(b);
   focusBlock(b.id, 0);
 }
 
@@ -86,7 +120,7 @@ function switchVersion(blockId, delta) {
   const next = b.focusedIndex + delta;
   if (next < 0 || next >= b.versions.length) return;
   b.focusedIndex = next;
-  render();
+  renderBlock(b);
   focusBlock(b.id);
 }
 
@@ -95,7 +129,7 @@ function deleteVersion(blockId) {
   if (!b || b.versions.length <= 1) return;
   b.versions.splice(b.focusedIndex, 1);
   b.focusedIndex = Math.min(b.focusedIndex, b.versions.length - 1);
-  render();
+  renderBlock(b);
   focusBlock(b.id);
 }
 
@@ -266,11 +300,44 @@ function autorestore() {
   return false;
 }
 
+/**
+ * Full render — rebuilds all block DOM elements.
+ * Used for initial load, file open, and structural changes (split/join).
+ */
 function render() {
   article.innerHTML = '';
   state.blocks.forEach((block) => {
     article.appendChild(createBlockElement(block));
   });
+  autosave();
+}
+
+/**
+ * Partial render — update a single block's DOM in-place without touching
+ * other blocks or the scroll position.
+ */
+function renderBlock(block) {
+  const existing = article.querySelector(`[data-block-id="${block.id}"]`);
+  if (!existing) {
+    // Block not found in DOM (shouldn't happen), fall back to full render
+    render();
+    return;
+  }
+
+  const scrollY = window.scrollY;
+  const rect = existing.getBoundingClientRect();
+  const viewportOffset = rect.top; // distance from top of viewport
+
+  const replacement = createBlockElement(block);
+  existing.replaceWith(replacement);
+
+  // Restore scroll so the block stays at the same visual position
+  const newRect = replacement.getBoundingClientRect();
+  const drift = newRect.top - viewportOffset;
+  if (Math.abs(drift) > 1) {
+    window.scrollTo({ top: scrollY + drift, behavior: 'instant' });
+  }
+
   autosave();
 }
 
@@ -332,7 +399,7 @@ function createBlockElement(block) {
 
       pane.appendChild(ta);
 
-      // Schedule auto-resize after mount
+      // Schedule auto-resize after mount — use a height-preserving approach
       requestAnimationFrame(() => autoResize(ta));
     } else {
       const preview = document.createElement('div');
@@ -396,7 +463,7 @@ function createBlockElement(block) {
     dot.title = `Version ${vi + 1}`;
     dot.addEventListener('click', () => {
       block.focusedIndex = vi;
-      render();
+      renderBlock(block);
       focusBlock(block.id);
     });
     rail.appendChild(dot);
@@ -419,9 +486,48 @@ function createBlockElement(block) {
   return el;
 }
 
+// Offscreen clone used for measuring textarea content height
+// without collapsing or reflowing the live element.
+let _measureClone = null;
+
 function autoResize(ta) {
-  ta.style.height = 'auto';
-  ta.style.height = ta.scrollHeight + 'px';
+  if (!_measureClone) {
+    _measureClone = document.createElement('textarea');
+    _measureClone.setAttribute('aria-hidden', 'true');
+    _measureClone.setAttribute('tabindex', '-1');
+    _measureClone.style.cssText =
+      'position:fixed;left:-9999px;top:0;visibility:hidden;overflow:hidden;' +
+      'height:0;min-height:0;max-height:none;padding:0;border:0;';
+    document.body.appendChild(_measureClone);
+  }
+
+  // Copy styles that affect text measurement
+  const cs = getComputedStyle(ta);
+  _measureClone.style.width = cs.width;
+  _measureClone.style.fontFamily = cs.fontFamily;
+  _measureClone.style.fontSize = cs.fontSize;
+  _measureClone.style.lineHeight = cs.lineHeight;
+  _measureClone.style.letterSpacing = cs.letterSpacing;
+  _measureClone.style.wordSpacing = cs.wordSpacing;
+  _measureClone.style.whiteSpace = cs.whiteSpace;
+  _measureClone.style.wordWrap = cs.wordWrap;
+  _measureClone.style.overflowWrap = cs.overflowWrap;
+  _measureClone.style.paddingLeft = cs.paddingLeft;
+  _measureClone.style.paddingRight = cs.paddingRight;
+  _measureClone.style.paddingTop = cs.paddingTop;
+  _measureClone.style.paddingBottom = cs.paddingBottom;
+  _measureClone.style.boxSizing = cs.boxSizing;
+  _measureClone.value = ta.value;
+
+  // Measure
+  _measureClone.style.height = '0';
+  const needed = _measureClone.scrollHeight;
+
+  // Only update live element if height actually changed
+  const newH = needed + 'px';
+  if (ta.style.height !== newH) {
+    ta.style.height = newH;
+  }
 }
 
 function focusBlock(blockId, cursorPos) {
@@ -429,7 +535,8 @@ function focusBlock(blockId, cursorPos) {
   requestAnimationFrame(() => {
     const ta = article.querySelector(`textarea[data-block-id="${blockId}"]`);
     if (ta) {
-      ta.focus();
+      // Use preventScroll to avoid the browser auto-scrolling to the textarea
+      ta.focus({ preventScroll: true });
       if (typeof cursorPos === 'number') {
         const pos = Math.min(cursorPos, ta.value.length);
         ta.setSelectionRange(pos, pos);
