@@ -9,15 +9,90 @@ const uid = () => 'b' + (++_id) + '_' + Math.random().toString(36).slice(2, 7);
 
 // ── Data Model ───────────────────────────────
 
-/** @type {{ blocks: Array<{id:string, versions:string[], focusedIndex:number}>, activeBlockId:string|null }} */
+/** @type {{ blocks: Array<{id:string, versions:string[], focusedIndex:number}>, activeBlockId:string|null, snippets:string[] }} */
 const state = {
   blocks: [{ id: uid(), versions: [''], focusedIndex: 0 }],
   activeBlockId: null,
+  snippets: [],
 };
 
 function getBlock(id) { return state.blocks.find(b => b.id === id); }
 function blockIndex(id) { return state.blocks.findIndex(b => b.id === id); }
 function activeText(block) { return block.versions[block.focusedIndex]; }
+
+// ── Undo / Redo ──────────────────────────────
+
+const MAX_UNDO = 200;
+const undoStack = [];
+const redoStack = [];
+
+/** Deep-clone the mutable parts of state into a plain snapshot. */
+function snapshotState() {
+  return {
+    blocks: state.blocks.map(b => ({
+      id: b.id,
+      versions: b.versions.slice(),
+      focusedIndex: b.focusedIndex,
+    })),
+    snippets: state.snippets.slice(),
+    activeBlockId: state.activeBlockId,
+  };
+}
+
+/** Push current state onto the undo stack (call BEFORE mutating). */
+function pushUndo() {
+  flushTextSnapshot();           // commit any pending text debounce
+  undoStack.push(snapshotState());
+  if (undoStack.length > MAX_UNDO) undoStack.shift();
+  redoStack.length = 0;          // new action clears redo
+}
+
+/** Restore a snapshot into the live state and re-render. */
+function restoreSnapshot(snap) {
+  state.blocks = snap.blocks;
+  state.snippets = snap.snippets;
+  state.activeBlockId = snap.activeBlockId;
+  render();
+  if (state.activeBlockId) {
+    focusBlock(state.activeBlockId);
+  }
+}
+
+function undo() {
+  if (undoStack.length === 0) return;
+  flushTextSnapshot();
+  redoStack.push(snapshotState());
+  restoreSnapshot(undoStack.pop());
+}
+
+function redo() {
+  if (redoStack.length === 0) return;
+  undoStack.push(snapshotState());
+  restoreSnapshot(redoStack.pop());
+}
+
+// Debounced text-input snapshots so we don't push on every keystroke.
+let _textUndoTimer = null;
+let _textSnapshotPending = null;
+
+function scheduleTextSnapshot() {
+  // Capture state NOW (before further edits), but only push after a pause.
+  if (_textSnapshotPending === null) {
+    _textSnapshotPending = snapshotState();
+  }
+  clearTimeout(_textUndoTimer);
+  _textUndoTimer = setTimeout(flushTextSnapshot, 800);
+}
+
+function flushTextSnapshot() {
+  clearTimeout(_textUndoTimer);
+  if (_textSnapshotPending !== null) {
+    undoStack.push(_textSnapshotPending);
+    if (undoStack.length > MAX_UNDO) undoStack.shift();
+    redoStack.length = 0;
+    _textSnapshotPending = null;
+  }
+}
 
 // ── Scroll position helpers ──────────────────
 
@@ -48,6 +123,7 @@ function restoreScrollAnchor(anchor) {
 function splitBlock(blockId, lineIndex) {
   const b = getBlock(blockId);
   if (!b) return;
+  pushUndo();
   const idx = blockIndex(blockId);
 
   // Anchor scroll to the block being split
@@ -76,24 +152,28 @@ function joinBlocks(upperBlockId, lowerBlockId) {
   const a = getBlock(upperBlockId);
   const b = getBlock(lowerBlockId);
   if (!a || !b) return;
+  pushUndo();
 
   // Anchor scroll to the upper block
   const blockEl = article.querySelector(`[data-block-id="${upperBlockId}"]`);
   const anchor = captureScrollAnchor(blockEl);
 
-  const maxVersions = Math.max(a.versions.length, b.versions.length);
-  const merged = [];
+  // Collect non-active versions as snippets before merging
+  const collectSnippets = (block) => {
+    block.versions.forEach((text, i) => {
+      if (i !== block.focusedIndex && text.trim()) {
+        state.snippets.push(text);
+      }
+    });
+  };
+  collectSnippets(a);
+  collectSnippets(b);
 
-  for (let i = 0; i < maxVersions; i++) {
-    const aText = i < a.versions.length ? a.versions[i] : activeText(a);
-    const bText = i < b.versions.length ? b.versions[i] : activeText(b);
-    merged.push(aText + '\n' + bText);
-  }
-
-  const focusedIdx = Math.min(a.focusedIndex, merged.length - 1);
+  // Only merge the active (visible) text from each block
+  const mergedText = activeText(a) + '\n' + activeText(b);
   const cursorOffset = activeText(a).length + 1; // position after join point
 
-  const joined = { id: uid(), versions: merged, focusedIndex: focusedIdx };
+  const joined = { id: uid(), versions: [mergedText], focusedIndex: 0 };
   const idxA = blockIndex(upperBlockId);
   const idxB = blockIndex(lowerBlockId);
   const removeStart = Math.min(idxA, idxB);
@@ -107,6 +187,7 @@ function joinBlocks(upperBlockId, lowerBlockId) {
 function addVersion(blockId, copy = true) {
   const b = getBlock(blockId);
   if (!b) return;
+  pushUndo();
   const newText = copy ? activeText(b) : '';
   b.versions.splice(b.focusedIndex + 1, 0, newText);
   b.focusedIndex = b.focusedIndex + 1;
@@ -119,6 +200,7 @@ function switchVersion(blockId, delta) {
   if (!b) return;
   const next = b.focusedIndex + delta;
   if (next < 0 || next >= b.versions.length) return;
+  pushUndo();
   b.focusedIndex = next;
   renderBlock(b);
   focusBlock(b.id);
@@ -127,6 +209,7 @@ function switchVersion(blockId, delta) {
 function deleteVersion(blockId) {
   const b = getBlock(blockId);
   if (!b || b.versions.length <= 1) return;
+  pushUndo();
   b.versions.splice(b.focusedIndex, 1);
   b.focusedIndex = Math.min(b.focusedIndex, b.versions.length - 1);
   renderBlock(b);
@@ -154,6 +237,18 @@ function serializeAeon() {
     lines.push('}');
     lines.push('');
   });
+
+  // Serialize snippets
+  if (state.snippets.length > 0) {
+    lines.push('snippets = (');
+    state.snippets.forEach((s, i) => {
+      const comma = i < state.snippets.length - 1 ? ',' : '';
+      lines.push(`  ${escStr(s)}${comma}`);
+    });
+    lines.push(')');
+    lines.push('');
+  }
+
   return lines.join('\n');
 }
 
@@ -202,7 +297,19 @@ function parseAeon(text) {
     blocks.push({ id, versions, focusedIndex: Math.min(focused, versions.length - 1) });
   }
 
-  return blocks.length > 0 ? blocks : null;
+  // Parse snippets
+  const snippets = [];
+  const snippetsMatch = text.match(/snippets\s*=\s*\(([\s\S]*?)\)/);
+  if (snippetsMatch) {
+    const inner = snippetsMatch[1];
+    const strRegex = /"((?:[^"\\]|\\.)*)"/g;
+    let sm;
+    while ((sm = strRegex.exec(inner)) !== null) {
+      snippets.push(unescStr(sm[1]));
+    }
+  }
+
+  return blocks.length > 0 ? { blocks, snippets } : null;
 }
 
 // ── &ND Export ────────────────────────────────
@@ -263,9 +370,10 @@ function openFile() {
 function handleFileOpen(file) {
   const reader = new FileReader();
   reader.onload = () => {
-    const blocks = parseAeon(reader.result);
-    if (blocks) {
-      state.blocks = blocks;
+    const result = parseAeon(reader.result);
+    if (result) {
+      state.blocks = result.blocks;
+      state.snippets = result.snippets || [];
       state.activeBlockId = null;
       render();
     }
@@ -281,9 +389,12 @@ const STORAGE_KEY = 'nd-editor-state';
 
 function autosave() {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.blocks.map(b => ({
-      id: b.id, versions: b.versions, focusedIndex: b.focusedIndex
-    }))));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      blocks: state.blocks.map(b => ({
+        id: b.id, versions: b.versions, focusedIndex: b.focusedIndex
+      })),
+      snippets: state.snippets,
+    }));
   } catch (_) { /* quota exceeded — silent */ }
 }
 
@@ -291,9 +402,15 @@ function autorestore() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return false;
-    const blocks = JSON.parse(raw);
-    if (Array.isArray(blocks) && blocks.length > 0) {
-      state.blocks = blocks;
+    const parsed = JSON.parse(raw);
+    // Support both old format (plain array) and new format (object)
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      state.blocks = parsed;
+      return true;
+    }
+    if (parsed && Array.isArray(parsed.blocks) && parsed.blocks.length > 0) {
+      state.blocks = parsed.blocks;
+      state.snippets = Array.isArray(parsed.snippets) ? parsed.snippets : [];
       return true;
     }
   } catch (_) { /* corrupt — ignore */ }
@@ -384,9 +501,17 @@ function createBlockElement(block) {
       ta.dataset.versionIndex = vi;
 
       ta.addEventListener('input', () => {
+        scheduleTextSnapshot();
         block.versions[block.focusedIndex] = ta.value;
         autoResize(ta);
         autosave();
+      });
+
+      // Prevent native undo/redo — we handle it globally
+      ta.addEventListener('keydown', (ev) => {
+        if ((ev.ctrlKey || ev.metaKey) && (ev.key === 'z' || ev.key === 'Z')) {
+          ev.preventDefault();
+        }
       });
 
       ta.addEventListener('focus', () => {
@@ -625,6 +750,20 @@ function handleTextareaKeydown(e) {
 document.addEventListener('keydown', (e) => {
   const mod = e.ctrlKey || e.metaKey;
 
+  // Undo
+  if (mod && !e.shiftKey && e.key === 'z') {
+    e.preventDefault();
+    undo();
+    return;
+  }
+
+  // Redo (Ctrl+Shift+Z or Ctrl+Y)
+  if (mod && ((e.shiftKey && (e.key === 'z' || e.key === 'Z')) || e.key === 'y')) {
+    e.preventDefault();
+    redo();
+    return;
+  }
+
   // Save
   if (mod && e.key === 's') {
     e.preventDefault();
@@ -674,8 +813,14 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
-  // Escape → close help
+  // Escape → close overlays
   if (e.key === 'Escape') {
+    const snippetsOv = document.getElementById('snippets-overlay');
+    if (snippetsOv && snippetsOv.classList.contains('visible')) {
+      snippetsOv.classList.remove('visible');
+      e.preventDefault();
+      return;
+    }
     const help = document.getElementById('help-overlay');
     if (help.classList.contains('visible')) {
       help.classList.remove('visible');
@@ -710,18 +855,105 @@ document.getElementById('help-overlay').addEventListener('click', (e) => {
   if (e.target === e.currentTarget) toggleHelp();
 });
 
+// ── Snippets overlay ─────────────────────────
+
+function toggleSnippets() {
+  const overlay = document.getElementById('snippets-overlay');
+  if (overlay.classList.contains('visible')) {
+    overlay.classList.remove('visible');
+  } else {
+    renderSnippetsOverlay();
+    overlay.classList.add('visible');
+  }
+}
+
+function renderSnippetsOverlay() {
+  const list = document.getElementById('snippets-list');
+  list.innerHTML = '';
+
+  if (state.snippets.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'snippets-empty';
+    empty.textContent = 'No snippets yet. Snippets are created automatically when blocks with multiple versions are joined.';
+    list.appendChild(empty);
+    return;
+  }
+
+  state.snippets.forEach((text, i) => {
+    const item = document.createElement('div');
+    item.className = 'snippet-item';
+    item.dataset.index = i;
+
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.spellcheck = false;
+    ta.rows = 1;
+    ta.addEventListener('input', () => {
+      state.snippets[i] = ta.value;
+      autoResize(ta);
+      autosave();
+    });
+
+    const actions = document.createElement('div');
+    actions.className = 'snippet-actions';
+
+    const btnRemove = document.createElement('button');
+    btnRemove.type = 'button';
+    btnRemove.className = 'snippet-btn snippet-btn-remove';
+    btnRemove.title = 'Remove snippet';
+    btnRemove.textContent = '×';
+    btnRemove.addEventListener('click', () => {
+      state.snippets.splice(i, 1);
+      renderSnippetsOverlay();
+      autosave();
+    });
+
+    actions.appendChild(btnRemove);
+    item.appendChild(ta);
+    item.appendChild(actions);
+    list.appendChild(item);
+
+    // Auto-size after mount
+    requestAnimationFrame(() => autoResize(ta));
+  });
+}
+
+// Close snippets on background click
+document.getElementById('snippets-overlay').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) toggleSnippets();
+});
+
+// Add new snippet button
+document.getElementById('snippets-add-btn').addEventListener('click', () => {
+  state.snippets.push('');
+  renderSnippetsOverlay();
+  autosave();
+  // Focus the new (last) textarea
+  requestAnimationFrame(() => {
+    const list = document.getElementById('snippets-list');
+    const items = list.querySelectorAll('.snippet-item textarea');
+    if (items.length > 0) {
+      const last = items[items.length - 1];
+      last.focus({ preventScroll: true });
+      last.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  });
+});
+
 // ── Toolbar visibility ──────────────────────
 
 let toolbarTimer = null;
 const toolbar = document.getElementById('toolbar');
+const modeToggle = document.getElementById('mode-toggle');
 
 function showToolbar() {
   toolbar.classList.add('visible');
+  modeToggle.classList.add('visible');
   clearTimeout(toolbarTimer);
   toolbarTimer = setTimeout(() => {
-    // Don't hide if mouse is over toolbar
-    if (!toolbar.matches(':hover')) {
+    if (!toolbar.matches(':hover') && !modeToggle.matches(':hover')) {
       toolbar.classList.remove('visible');
+      modeToggle.classList.remove('visible');
     }
   }, 2500);
 }
@@ -733,10 +965,27 @@ document.addEventListener('mousemove', (e) => {
 toolbar.addEventListener('mouseenter', () => {
   clearTimeout(toolbarTimer);
   toolbar.classList.add('visible');
+  modeToggle.classList.add('visible');
 });
 
 toolbar.addEventListener('mouseleave', () => {
-  toolbarTimer = setTimeout(() => toolbar.classList.remove('visible'), 1200);
+  toolbarTimer = setTimeout(() => {
+    toolbar.classList.remove('visible');
+    modeToggle.classList.remove('visible');
+  }, 1200);
+});
+
+modeToggle.addEventListener('mouseenter', () => {
+  clearTimeout(toolbarTimer);
+  toolbar.classList.add('visible');
+  modeToggle.classList.add('visible');
+});
+
+modeToggle.addEventListener('mouseleave', () => {
+  toolbarTimer = setTimeout(() => {
+    toolbar.classList.remove('visible');
+    modeToggle.classList.remove('visible');
+  }, 1200);
 });
 
 // ── Toolbar buttons ─────────────────────────
@@ -746,6 +995,7 @@ document.getElementById('btn-open').addEventListener('click', openFile);
 document.getElementById('btn-export').addEventListener('click', exportFile);
 document.getElementById('btn-theme').addEventListener('click', toggleTheme);
 document.getElementById('btn-help').addEventListener('click', toggleHelp);
+document.getElementById('btn-snippets').addEventListener('click', toggleSnippets);
 document.getElementById('btn-version').addEventListener('click', () => {
   if (state.activeBlockId) addVersion(state.activeBlockId, true);
 });
@@ -753,6 +1003,255 @@ document.getElementById('file-input').addEventListener('change', (e) => {
   if (e.target.files[0]) handleFileOpen(e.target.files[0]);
   e.target.value = '';
 });
+
+// ── View / Edit Mode ─────────────────────────
+
+let currentMode = 'edit';
+let viewContainer = null;
+
+function setMode(mode) {
+  if (mode === currentMode) return;
+  currentMode = mode;
+
+  document.getElementById('btn-mode-view').classList.toggle('active', mode === 'view');
+  document.getElementById('btn-mode-edit').classList.toggle('active', mode === 'edit');
+
+  if (mode === 'view') {
+    article.style.display = 'none';
+    if (!viewContainer) {
+      viewContainer = document.createElement('main');
+      viewContainer.className = 'article-view';
+      viewContainer.id = 'article-view';
+      article.parentNode.insertBefore(viewContainer, article.nextSibling);
+    }
+    viewContainer.style.display = '';
+    renderView();
+  } else {
+    if (viewContainer) viewContainer.style.display = 'none';
+    article.style.display = '';
+  }
+}
+
+document.getElementById('btn-mode-view').addEventListener('click', () => setMode('view'));
+document.getElementById('btn-mode-edit').addEventListener('click', () => setMode('edit'));
+
+// ── &ND Renderer ─────────────────────────────
+
+/**
+ * Parse inline &ND markup within a text string and return an HTML string.
+ * Handles: [* strong], [/ emphasis], [$ inline code], [@ url | label]
+ */
+function renderAndInline(text) {
+  let result = '';
+  let i = 0;
+
+  while (i < text.length) {
+    // Escape sequences
+    if (text[i] === '\\' && i + 1 < text.length) {
+      const next = text[i + 1];
+      if (next === '[' || next === ']' || next === '|' || next === '\\') {
+        result += escapeHtml(next);
+        i += 2;
+        continue;
+      }
+    }
+
+    // Inline tag opener: [X ...]
+    if (text[i] === '[' && i + 2 < text.length && text[i + 2] === ' ') {
+      const tag = text[i + 1];
+      if (tag === '*' || tag === '/' || tag === '$' || tag === '@') {
+        const inner = findClosingBracket(text, i + 3);
+        if (inner !== -1) {
+          const content = text.substring(i + 3, inner);
+          if (tag === '*') {
+            result += '<strong>' + renderAndInline(content) + '</strong>';
+          } else if (tag === '/') {
+            result += '<em>' + renderAndInline(content) + '</em>';
+          } else if (tag === '$') {
+            result += '<code>' + escapeHtml(content) + '</code>';
+          } else if (tag === '@') {
+            const pipeIdx = findUnescapedPipe(content);
+            if (pipeIdx !== -1) {
+              const url = content.substring(0, pipeIdx).trim();
+              const label = content.substring(pipeIdx + 1).trim();
+              result += '<a href="' + escapeHtml(url) + '">' + renderAndInline(label) + '</a>';
+            } else {
+              result += escapeHtml(text.substring(i, inner + 1));
+            }
+          }
+          i = inner + 1;
+          continue;
+        }
+      }
+    }
+
+    result += escapeHtml(text[i]);
+    i++;
+  }
+
+  return result;
+}
+
+function findClosingBracket(text, start) {
+  let depth = 1;
+  let i = start;
+  while (i < text.length) {
+    if (text[i] === '\\' && i + 1 < text.length) {
+      i += 2;
+      continue;
+    }
+    if (text[i] === '[') depth++;
+    if (text[i] === ']') {
+      depth--;
+      if (depth === 0) return i;
+    }
+    i++;
+  }
+  return -1;
+}
+
+function findUnescapedPipe(text) {
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === '\\' && i + 1 < text.length) { i++; continue; }
+    if (text[i] === '|') return i;
+  }
+  return -1;
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/**
+ * Parse &ND block content and return HTML string.
+ * Handles: headings, paragraphs, lists, blockquotes, code blocks, horizontal rules.
+ */
+function renderAndBlocks(text) {
+  const lines = text.split('\n');
+  let html = '';
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Blank line — skip
+    if (line.trim() === '') { i++; continue; }
+
+    // Horizontal rule
+    if (line.trim() === '---') {
+      html += '<hr>';
+      i++;
+      continue;
+    }
+
+    // Heading
+    const headingMatch = line.match(/^(#{1,6}) (.+)$/);
+    if (headingMatch) {
+      const level = headingMatch[1].length;
+      html += `<h${level}>${renderAndInline(headingMatch[2])}</h${level}>`;
+      i++;
+      continue;
+    }
+
+    // Code block
+    const codeMatch = line.match(/^(`{3,})(\w*)$/);
+    if (codeMatch) {
+      const fence = codeMatch[1];
+      const lang = codeMatch[2];
+      const codeLines = [];
+      i++;
+      while (i < lines.length && lines[i] !== fence) {
+        codeLines.push(lines[i]);
+        i++;
+      }
+      if (i < lines.length) i++; // skip closing fence
+      const langAttr = lang ? ` class="language-${escapeHtml(lang)}"` : '';
+      html += `<pre><code${langAttr}>${escapeHtml(codeLines.join('\n'))}</code></pre>`;
+      continue;
+    }
+
+    // Blockquote
+    if (line.startsWith('> ') || line === '>') {
+      const quoteLines = [];
+      while (i < lines.length && (lines[i].startsWith('> ') || lines[i] === '>')) {
+        quoteLines.push(lines[i].startsWith('> ') ? lines[i].substring(2) : '');
+        i++;
+      }
+      html += '<blockquote>' + renderAndBlocks(quoteLines.join('\n')) + '</blockquote>';
+      continue;
+    }
+
+    // Unordered list
+    if (line.match(/^- .+/)) {
+      html += '<ul>';
+      while (i < lines.length && lines[i].match(/^- .+/)) {
+        const itemLines = [lines[i].substring(2)];
+        i++;
+        // Continuation lines indented by 2 spaces
+        while (i < lines.length && lines[i].startsWith('  ') && !lines[i].match(/^- /)) {
+          itemLines.push(lines[i].substring(2));
+          i++;
+        }
+        html += '<li>' + renderAndInline(itemLines.join('\n')) + '</li>';
+      }
+      html += '</ul>';
+      continue;
+    }
+
+    // Ordered list
+    const olMatch = line.match(/^(\d+)\. (.+)/);
+    if (olMatch) {
+      const startNum = parseInt(olMatch[1], 10);
+      html += `<ol start="${startNum}">`;
+      while (i < lines.length && lines[i].match(/^\d+\. .+/)) {
+        const itemMatch = lines[i].match(/^\d+\. (.+)/);
+        const itemLines = [itemMatch[1]];
+        i++;
+        while (i < lines.length && lines[i].startsWith('  ') && !lines[i].match(/^\d+\. /)) {
+          itemLines.push(lines[i].substring(2));
+          i++;
+        }
+        html += '<li>' + renderAndInline(itemLines.join('\n')) + '</li>';
+      }
+      html += '</ol>';
+      continue;
+    }
+
+    // Paragraph — collect contiguous non-blank, non-block-opener lines
+    const paraLines = [];
+    while (
+      i < lines.length &&
+      lines[i].trim() !== '' &&
+      !lines[i].match(/^#{1,6} /) &&
+      !lines[i].match(/^`{3,}/) &&
+      !(lines[i].startsWith('> ') || lines[i] === '>') &&
+      !lines[i].match(/^- /) &&
+      !lines[i].match(/^\d+\. /) &&
+      lines[i].trim() !== '---'
+    ) {
+      paraLines.push(lines[i]);
+      i++;
+    }
+    if (paraLines.length > 0) {
+      html += '<p>' + renderAndInline(paraLines.join('\n')) + '</p>';
+    }
+  }
+
+  return html;
+}
+
+/**
+ * Render the full document in view mode by combining active text from all blocks.
+ */
+function renderView() {
+  if (!viewContainer) return;
+  const parts = state.blocks.map(b => activeText(b));
+  const fullText = parts.join('\n\n');
+
+  // Strip &ND header if present
+  const content = fullText.replace(/^&ND v\d+\s*\n?/, '');
+  viewContainer.innerHTML = renderAndBlocks(content);
+}
 
 // ── Init ─────────────────────────────────────
 

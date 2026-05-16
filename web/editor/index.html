@@ -11,6 +11,11 @@
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
+    <nav class="mode-toggle" id="mode-toggle" aria-label="Mode toggle">
+      <button type="button" id="btn-mode-view" class="mode-btn" title="View mode">view</button>
+      <button type="button" id="btn-mode-edit" class="mode-btn active" title="Edit mode">edit</button>
+    </nav>
+
     <nav class="toolbar" id="toolbar" aria-label="Editor toolbar">
       <button type="button" id="btn-open" title="Open .aeon file (Ctrl+O)">open</button>
       <button type="button" id="btn-save" title="Save .aeon file (Ctrl+S)">save</button>
@@ -18,6 +23,7 @@
       <button type="button" id="btn-export" title="Export .and file (Ctrl+E)">export</button>
       <span class="sep"></span>
       <button type="button" id="btn-version" title="New version (Ctrl+Shift+N)">+ver</button>
+      <button type="button" id="btn-snippets" title="Snippets">snippets</button>
       <span class="sep"></span>
       <button type="button" id="btn-theme" title="Toggle theme (Ctrl+Shift+L)">◑</button>
       <button type="button" id="btn-help" title="Keyboard shortcuts (?)">?</button>
@@ -31,6 +37,8 @@
       <div class="help-panel">
         <h2>Shortcuts</h2>
         <dl>
+          <dt>Ctrl+Z</dt><dd>Undo</dd>
+          <dt>Ctrl+Shift+Z</dt><dd>Redo</dd>
           <dt>Ctrl+S</dt><dd>Save .aeon</dd>
           <dt>Ctrl+O</dt><dd>Open .aeon</dd>
           <dt>Ctrl+E</dt><dd>Export .and</dd>
@@ -44,6 +52,18 @@
           <dt>?</dt><dd>This help</dd>
           <dt>Esc</dt><dd>Close</dd>
         </dl>
+      </div>
+    </div>
+
+    <div class="snippets-overlay" id="snippets-overlay">
+      <div class="snippets-panel">
+        <div class="snippets-header">
+          <h2>Snippets</h2>
+          <button type="button" id="snippets-add-btn" class="snippets-add" title="Add snippet">+ add</button>
+        </div>
+        <div class="snippets-list" id="snippets-list">
+          <!-- rendered by editor.js -->
+        </div>
       </div>
     </div>
 
