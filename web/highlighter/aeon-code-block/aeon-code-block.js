@@ -23,6 +23,7 @@ const LINE_COMMENT_TYPES = [
 
 const IDENTIFIER = '[A-Za-z_][A-Za-z0-9_]*';
 const QUOTED = '"(?:\\\\.|[^"])*"|\'(?:\\\\.|[^\'])*\'';
+const QUOTED_KEY = `(?:${QUOTED})`;
 const KEY = `(?:${IDENTIFIER}|${QUOTED})`;
 const TYPE_ANNOTATION = `:${IDENTIFIER}(?:<[^>\\n]+>)?(?:\\[\\s*[A-Za-z0-9!#$%&*+\\-.:;=?@^_|~<>]\\s*\\])*`;
 const REFERENCE_PATH =
@@ -242,6 +243,7 @@ function tokenizeLine(line, state) {
     ['node-open', new RegExp(`<${IDENTIFIER}`, 'y')],
     ['attr-open', /@\{/y],
     ['attr-close', /\}/y],
+    ['quoted-key', new RegExp(`${QUOTED_KEY}(?=\\s*(?:${TYPE_ANNOTATION}\\s*=|@\\{|=))`, 'y')],
     ['typed-key', new RegExp(`${KEY}(?=\\s*${TYPE_ANNOTATION}\\s*=)`, 'y')],
     ['typed-value', new RegExp(`${TYPE_ANNOTATION}(?=\\s*=)`, 'y')],
     ['key', new RegExp(`${KEY}(?=\\s*(?:@\\{|=))`, 'y')],
@@ -298,6 +300,9 @@ function tokenizeLine(line, state) {
         case 'typed-key':
         case 'key':
           html += wrap('key', match[0]);
+          break;
+        case 'quoted-key':
+          html += wrap('quoted-key', match[0]);
           break;
         case 'typed-value':
         case 'type':
@@ -488,6 +493,7 @@ const templateHtml = `
     .tok-and-invalid { color: #ff9b9b; text-decoration: underline wavy rgba(255, 155, 155, 0.75); font-style: normal; }
     .tok-directive { color: var(--aeon-directive); }
     .tok-key { color: var(--aeon-key); }
+    .tok-quoted-key { color: #4f9cff; }
     .tok-type { color: var(--aeon-type); }
     .tok-attribute { color: var(--aeon-attribute); }
     .tok-attribute-punct { color: var(--aeon-attribute-punct); }

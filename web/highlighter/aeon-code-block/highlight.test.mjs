@@ -18,7 +18,7 @@ test('highlights quoted keys, types, and bindings with paths', () => {
   const source = `"display name":string = "AEON"\nref = ~finance.revenue\nalias = ~> user`;
   const html = highlightAeon(source);
 
-  assert.match(html, /<span class="tok-key">"display name"<\/span>/);
+  assert.match(html, /<span class="tok-quoted-key">"display name"<\/span>/);
   assert.match(html, /<span class="tok-type">string<\/span>/);
   assert.match(html, /<span class="tok-binding">~finance\.revenue<\/span>/);
   assert.match(html, /<span class="tok-binding">~&gt; user<\/span>/);
