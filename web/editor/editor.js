@@ -9,11 +9,12 @@ const uid = () => 'b' + (++_id) + '_' + Math.random().toString(36).slice(2, 7);
 
 // ── Data Model ───────────────────────────────
 
-/** @type {{ blocks: Array<{id:string, versions:string[], focusedIndex:number}>, activeBlockId:string|null, snippets:string[] }} */
+/** @type {{ blocks: Array<{id:string, versions:string[], focusedIndex:number}>, activeBlockId:string|null, snippets:string[], ndVersion: 'v1' | 'v2' }} */
 const state = {
   blocks: [{ id: uid(), versions: [''], focusedIndex: 0 }],
   activeBlockId: null,
   snippets: [],
+  ndVersion: 'v2',
 };
 
 function getBlock(id) { return state.blocks.find(b => b.id === id); }
@@ -36,6 +37,7 @@ function snapshotState() {
     })),
     snippets: state.snippets.slice(),
     activeBlockId: state.activeBlockId,
+    ndVersion: state.ndVersion,
   };
 }
 
@@ -52,6 +54,7 @@ function restoreSnapshot(snap) {
   state.blocks = snap.blocks;
   state.snippets = snap.snippets;
   state.activeBlockId = snap.activeBlockId;
+  state.ndVersion = snap.ndVersion || 'v2';
   render();
   if (state.activeBlockId) {
     focusBlock(state.activeBlockId);
@@ -223,7 +226,7 @@ function escStr(s) {
 }
 
 function serializeAeon() {
-  const lines = ['aeon:header = { profile = "aeon.editor.v1" }', ''];
+  const lines = [`aeon:header = { profile = "aeon.editor.v1", nd_version = "${state.ndVersion}" }`, ''];
   state.blocks.forEach((b, i) => {
     lines.push(`block_${i} = {`);
     lines.push(`  id = ${escStr(b.id)}`);
@@ -309,14 +312,17 @@ function parseAeon(text) {
     }
   }
 
-  return blocks.length > 0 ? { blocks, snippets } : null;
+  const ndVersionMatch = text.match(/nd_version\s*=\s*"(v1|v2)"/);
+  const ndVersion = ndVersionMatch ? ndVersionMatch[1] : 'v2';
+
+  return blocks.length > 0 ? { blocks, snippets, ndVersion } : null;
 }
 
 // ── &ND Export ────────────────────────────────
 
 function exportAnd() {
   const parts = state.blocks.map(b => activeText(b));
-  return '&ND v1\n\n' + parts.join('\n\n');
+  return `&ND ${state.ndVersion}\n\n` + parts.join('\n\n');
 }
 
 // ── File I/O ─────────────────────────────────
@@ -374,8 +380,10 @@ function handleFileOpen(file) {
     if (result) {
       state.blocks = result.blocks;
       state.snippets = result.snippets || [];
+      state.ndVersion = result.ndVersion || 'v2';
       state.activeBlockId = null;
       render();
+      updateNdVersionUi();
     }
   };
   reader.readAsText(file);
@@ -394,6 +402,7 @@ function autosave() {
         id: b.id, versions: b.versions, focusedIndex: b.focusedIndex
       })),
       snippets: state.snippets,
+      ndVersion: state.ndVersion,
     }));
   } catch (_) { /* quota exceeded — silent */ }
 }
@@ -411,6 +420,7 @@ function autorestore() {
     if (parsed && Array.isArray(parsed.blocks) && parsed.blocks.length > 0) {
       state.blocks = parsed.blocks;
       state.snippets = Array.isArray(parsed.snippets) ? parsed.snippets : [];
+      state.ndVersion = parsed.ndVersion === 'v1' ? 'v1' : 'v2';
       return true;
     }
   } catch (_) { /* corrupt — ignore */ }
@@ -993,6 +1003,7 @@ modeToggle.addEventListener('mouseleave', () => {
 document.getElementById('btn-save').addEventListener('click', saveFile);
 document.getElementById('btn-open').addEventListener('click', openFile);
 document.getElementById('btn-export').addEventListener('click', exportFile);
+document.getElementById('btn-nd-version').addEventListener('click', toggleNdVersion);
 document.getElementById('btn-theme').addEventListener('click', toggleTheme);
 document.getElementById('btn-help').addEventListener('click', toggleHelp);
 document.getElementById('btn-snippets').addEventListener('click', toggleSnippets);
@@ -1008,6 +1019,21 @@ document.getElementById('file-input').addEventListener('change', (e) => {
 
 let currentMode = 'edit';
 let viewContainer = null;
+
+function updateNdVersionUi() {
+  const btn = document.getElementById('btn-nd-version');
+  if (!btn) return;
+  btn.textContent = `nd:${state.ndVersion}`;
+  btn.title = `Toggle &ND version for preview/export (current: ${state.ndVersion})`;
+}
+
+function toggleNdVersion() {
+  pushUndo();
+  state.ndVersion = state.ndVersion === 'v2' ? 'v1' : 'v2';
+  updateNdVersionUi();
+  autosave();
+  if (currentMode === 'view') renderView();
+}
 
 function setMode(mode) {
   if (mode === currentMode) return;
@@ -1039,9 +1065,10 @@ document.getElementById('btn-mode-edit').addEventListener('click', () => setMode
 
 /**
  * Parse inline &ND markup within a text string and return an HTML string.
- * Handles: [* strong], [/ emphasis], [$ inline code], [@ url | label]
+ * Handles v1 core inline and v2 promoted inline markers.
  */
-function renderAndInline(text) {
+function renderAndInline(text, options = {}) {
+  const v2 = options.v2 === true;
   let result = '';
   let i = 0;
 
@@ -1056,6 +1083,77 @@ function renderAndInline(text) {
       }
     }
 
+    if (v2) {
+      if (text.startsWith('[.]', i)) {
+        result += '<br>';
+        i += 3;
+        continue;
+      }
+
+      const fixedMarkers = {
+        '[ ]': { klass: 'nd-marker nd-marker-todo', label: 'unchecked', symbol: '☐' },
+        '[x]': { klass: 'nd-marker nd-marker-todo', label: 'checked', symbol: '☑' },
+        '[,]': { klass: 'nd-marker nd-marker-todo', label: 'in-progress', symbol: '◔' },
+        '[;]': { klass: 'nd-marker nd-marker-todo', label: 'cancelled', symbol: '⨯' },
+        '[>]': { klass: 'nd-marker nd-marker-direction', label: 'forward', symbol: '→' },
+        '[<]': { klass: 'nd-marker nd-marker-direction', label: 'backward', symbol: '←' },
+        '[%]': { klass: 'nd-marker nd-marker-auto-number', label: 'auto-number', symbol: '№' },
+      };
+
+      const fixedToken = text.slice(i, i + 3);
+      if (fixedMarkers[fixedToken]) {
+        const marker = fixedMarkers[fixedToken];
+        result += `<span class="${marker.klass}" title="${marker.label}">${marker.symbol}</span>`;
+        i += 3;
+        continue;
+      }
+
+      if (text.startsWith('[:', i)) {
+        const close = findClosingBracket(text, i + 2);
+        if (close !== -1) {
+          const inner = text.substring(i + 2, close);
+          const split = inner.search(/\s/);
+          const datatype = split > 0 ? inner.slice(0, split) : '';
+          const rawValue = split > 0 ? inner.slice(split).trim() : '';
+          if (/^[A-Za-z][A-Za-z0-9_-]*$/.test(datatype) && rawValue.length > 0) {
+            const value = rawValue.startsWith('"') && rawValue.endsWith('"') && rawValue.length >= 2
+              ? rawValue.slice(1, -1)
+              : rawValue;
+            result += `<span class="nd-typed-value" data-type="${escapeHtml(datatype)}"><span class="nd-typed-value-type">${escapeHtml(datatype)}</span>: <span class="nd-typed-value-value">${escapeHtml(value)}</span></span>`;
+            i = close + 1;
+            continue;
+          }
+        }
+      }
+
+      if (text[i] === '[' && i + 2 < text.length && text[i + 2] === ' ') {
+        const simpleTag = text[i + 1];
+        const tagMap = {
+          '#': 'nd-tag-anchor',
+          '~': 'nd-tag-reference',
+          '!': 'nd-tag-admonition',
+          '?': 'nd-tag-question',
+          '+': 'nd-tag-plus',
+          '-': 'nd-tag-strike',
+          '"': 'nd-tag-quoted',
+          "'": 'nd-tag-comment',
+          '=': 'nd-tag-highlight',
+          '_': 'nd-tag-underline',
+        };
+        if (tagMap[simpleTag]) {
+          const close = findClosingBracket(text, i + 3);
+          if (close !== -1) {
+            const content = text.substring(i + 3, close).trim();
+            if (content.length > 0) {
+              result += `<span class="nd-tag ${tagMap[simpleTag]}">${renderAndInline(content, options)}</span>`;
+              i = close + 1;
+              continue;
+            }
+          }
+        }
+      }
+    }
+
     // Inline tag opener: [X ...]
     if (text[i] === '[' && i + 2 < text.length && text[i + 2] === ' ') {
       const tag = text[i + 1];
@@ -1064,9 +1162,9 @@ function renderAndInline(text) {
         if (inner !== -1) {
           const content = text.substring(i + 3, inner);
           if (tag === '*') {
-            result += '<strong>' + renderAndInline(content) + '</strong>';
+            result += '<strong>' + renderAndInline(content, options) + '</strong>';
           } else if (tag === '/') {
-            result += '<em>' + renderAndInline(content) + '</em>';
+            result += '<em>' + renderAndInline(content, options) + '</em>';
           } else if (tag === '$') {
             result += '<code>' + escapeHtml(content) + '</code>';
           } else if (tag === '@') {
@@ -1074,7 +1172,7 @@ function renderAndInline(text) {
             if (pipeIdx !== -1) {
               const url = content.substring(0, pipeIdx).trim();
               const label = content.substring(pipeIdx + 1).trim();
-              result += '<a href="' + escapeHtml(url) + '">' + renderAndInline(label) + '</a>';
+              result += '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener noreferrer">' + renderAndInline(label, options) + '</a>';
             } else {
               result += escapeHtml(text.substring(i, inner + 1));
             }
@@ -1124,9 +1222,11 @@ function escapeHtml(s) {
 
 /**
  * Parse &ND block content and return HTML string.
- * Handles: headings, paragraphs, lists, blockquotes, code blocks, horizontal rules.
+ * Handles: headings, paragraphs, lists, blockquotes, code blocks, horizontal rules,
+ * and v2 paired blocks.
  */
-function renderAndBlocks(text) {
+function renderAndBlocks(text, options = {}) {
+  const v2 = options.v2 === true;
   const lines = text.split('\n');
   let html = '';
   let i = 0;
@@ -1136,6 +1236,40 @@ function renderAndBlocks(text) {
 
     // Blank line — skip
     if (line.trim() === '') { i++; continue; }
+
+    if (v2 && line === '~~~=') {
+      const payload = [];
+      i += 1;
+      while (i < lines.length && lines[i] !== '~~~=') {
+        payload.push(lines[i]);
+        i += 1;
+      }
+      if (i < lines.length) i += 1;
+      html += `<section class="nd-block nd-block-highlight"><p>${renderAndInline(payload.join('\n'), options)}</p></section>`;
+      continue;
+    }
+
+    if (v2 && (line.startsWith('===') || line.startsWith('***'))) {
+      const fence = line.startsWith('===') ? '===' : '***';
+      const tag = line.slice(3);
+      const className = fence === '===' ? 'nd-block-header-text' : 'nd-block-disclaimer';
+      const isHeaderText = fence === '===';
+      const isDisclaimer = fence === '***';
+      const validTag = tag.length === 0 || /^[A-Za-z][A-Za-z0-9_-]*$/.test(tag);
+      if (validTag) {
+        const payload = [];
+        i += 1;
+        const closer = isHeaderText ? '===' : (isDisclaimer ? '***' : line);
+        while (i < lines.length && lines[i] !== closer) {
+          payload.push(lines[i]);
+          i += 1;
+        }
+        if (i < lines.length) i += 1;
+        const tagAttr = tag.length > 0 ? ` data-tag="${escapeHtml(tag)}"` : '';
+        html += `<section class="nd-block ${className}"${tagAttr}><p>${renderAndInline(payload.join('\n'), options)}</p></section>`;
+        continue;
+      }
+    }
 
     // Horizontal rule
     if (line.trim() === '---') {
@@ -1148,7 +1282,15 @@ function renderAndBlocks(text) {
     const headingMatch = line.match(/^(#{1,6}) (.+)$/);
     if (headingMatch) {
       const level = headingMatch[1].length;
-      html += `<h${level}>${renderAndInline(headingMatch[2])}</h${level}>`;
+      let headingText = headingMatch[2];
+      let autoNumber = false;
+      if (v2 && headingText.startsWith('[n]')) {
+        autoNumber = true;
+        headingText = headingText.slice(3).trimStart();
+      }
+      const autoMarker = autoNumber ? '<span class="nd-heading-auto-marker" title="auto-number">#</span> ' : '';
+      const headingClass = autoNumber ? ' class="nd-heading-auto"' : '';
+      html += `<h${level}${headingClass}>${autoMarker}${renderAndInline(headingText, options)}</h${level}>`;
       i++;
       continue;
     }
@@ -1177,7 +1319,7 @@ function renderAndBlocks(text) {
         quoteLines.push(lines[i].startsWith('> ') ? lines[i].substring(2) : '');
         i++;
       }
-      html += '<blockquote>' + renderAndBlocks(quoteLines.join('\n')) + '</blockquote>';
+      html += '<blockquote>' + renderAndBlocks(quoteLines.join('\n'), options) + '</blockquote>';
       continue;
     }
 
@@ -1192,7 +1334,7 @@ function renderAndBlocks(text) {
           itemLines.push(lines[i].substring(2));
           i++;
         }
-        html += '<li>' + renderAndInline(itemLines.join('\n')) + '</li>';
+        html += '<li>' + renderAndInline(itemLines.join('\n'), options) + '</li>';
       }
       html += '</ul>';
       continue;
@@ -1211,7 +1353,7 @@ function renderAndBlocks(text) {
           itemLines.push(lines[i].substring(2));
           i++;
         }
-        html += '<li>' + renderAndInline(itemLines.join('\n')) + '</li>';
+        html += '<li>' + renderAndInline(itemLines.join('\n'), options) + '</li>';
       }
       html += '</ol>';
       continue;
@@ -1233,7 +1375,7 @@ function renderAndBlocks(text) {
       i++;
     }
     if (paraLines.length > 0) {
-      html += '<p>' + renderAndInline(paraLines.join('\n')) + '</p>';
+      html += '<p>' + renderAndInline(paraLines.join('\n'), options) + '</p>';
     }
   }
 
@@ -1248,13 +1390,15 @@ function renderView() {
   const parts = state.blocks.map(b => activeText(b));
   const fullText = parts.join('\n\n');
 
-  // Strip &ND header if present
-  const content = fullText.replace(/^&ND v\d+\s*\n?/, '');
-  viewContainer.innerHTML = renderAndBlocks(content);
+  const match = fullText.match(/^&ND\s+(v1|v2)\s*\n?/);
+  const docVersion = match ? match[1] : state.ndVersion;
+  const content = match ? fullText.slice(match[0].length) : fullText;
+  viewContainer.innerHTML = renderAndBlocks(content, { v2: docVersion === 'v2' });
 }
 
 // ── Init ─────────────────────────────────────
 
 autorestore();
 render();
+updateNdVersionUi();
 focusBlock(state.blocks[0].id, 0);
