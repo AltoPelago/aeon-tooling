@@ -303,8 +303,15 @@
       "patterns": [
         {
           "name": "meta.attribute.map.aeon",
-          "begin": "@\\{",
-          "beginCaptures": { "0": { "name": "punctuation.definition.attribute.begin.aeon" } },
+          "begin": "(@\\{)(\\s*)(?:(?:([A-Za-z_][A-Za-z0-9_-]*|\"(?:\\\\.|[^\"])*\"|'(?:\\\\.|[^'])*')\\s*(:)\\s*([A-Za-z_][A-Za-z0-9_]*)(?:\\s*(<[^>\\n]+>|(?:\\[[^\\]\\n]+\\])+))?|([A-Za-z_][A-Za-z0-9_:-]*|\"(?:\\\\.|[^\"])*\"|'(?:\\\\.|[^'])*'))(?=\\s*=))?",
+          "beginCaptures": {
+            "1": { "name": "punctuation.definition.attribute.begin.aeon" },
+            "3": { "name": "variable.other.key.aeon" },
+            "4": { "name": "punctuation.separator.type-annotation.aeon" },
+            "5": { "name": "storage.type.aeon" },
+            "6": { "name": "storage.type.parameters.aeon" },
+            "7": { "name": "variable.other.key.aeon" }
+          },
           "end": "\\}",
           "endCaptures": { "0": { "name": "punctuation.definition.attribute.end.aeon" } },
           "patterns": [
@@ -319,7 +326,17 @@
         { "include": "#strings" },
         { "include": "#literals" },
         { "include": "#numbers" },
-        { "name": "variable.other.key.aeon", "match": "(?<![A-Za-z0-9_])[A-Za-z_][A-Za-z0-9_:-]*\\b(?=\\s*(?::[A-Za-z_][A-Za-z0-9_]*(?:<[^>]+>|\\[[^\\]]+\\])?)?\\s*=)" },
+        {
+          "name": "meta.attribute.binding.typed.aeon",
+          "match": "((?:[A-Za-z_][A-Za-z0-9_-]*|\"(?:\\\\.|[^\"])*\"|'(?:\\\\.|[^'])*'))\\s*(:)\\s*([A-Za-z_][A-Za-z0-9_]*)(?:\\s*(<[^>\\n]+>|(?:\\[[^\\]\\n]+\\])+))?(?=\\s*=)",
+          "captures": {
+            "1": { "name": "variable.other.key.aeon" },
+            "2": { "name": "punctuation.separator.type-annotation.aeon" },
+            "3": { "name": "storage.type.aeon" },
+            "4": { "name": "storage.type.parameters.aeon" }
+          }
+        },
+        { "name": "variable.other.key.aeon", "match": "(?<![A-Za-z0-9_])(?:[A-Za-z_][A-Za-z0-9_:-]*|\"(?:\\\\.|[^\"])*\"|'(?:\\\\.|[^'])*')(?=\\s*=)" },
         { "name": "punctuation.separator.comma.aeon", "match": "," },
         { "name": "keyword.operator.assign.aeon", "match": "=" }
       ]
@@ -350,11 +367,16 @@
       "patterns": [
         {
           "name": "meta.node.literal.annotated.aeon",
-          "begin": "(<)([A-Za-z_][A-Za-z0-9_:-]*)(@\\{)",
+          "begin": "(<)([A-Za-z_][A-Za-z0-9_:-]*)(@\\{)(\\s*)(?:(?:([A-Za-z_][A-Za-z0-9_-]*|\"(?:\\\\.|[^\"])*\"|'(?:\\\\.|[^'])*')\\s*(:)\\s*([A-Za-z_][A-Za-z0-9_]*)(?:\\s*(<[^>\\n]+>|(?:\\[[^\\]\\n]+\\])+))?|([A-Za-z_][A-Za-z0-9_:-]*|\"(?:\\\\.|[^\"])*\"|'(?:\\\\.|[^'])*'))(?=\\s*=))?",
           "beginCaptures": {
             "1": { "name": "punctuation.definition.node.begin.aeon" },
             "2": { "name": "entity.name.tag.aeon" },
-            "3": { "name": "punctuation.definition.attribute.begin.aeon" }
+            "3": { "name": "punctuation.definition.attribute.begin.aeon" },
+            "5": { "name": "variable.other.key.aeon" },
+            "6": { "name": "punctuation.separator.type-annotation.aeon" },
+            "7": { "name": "storage.type.aeon" },
+            "8": { "name": "storage.type.parameters.aeon" },
+            "9": { "name": "variable.other.key.aeon" }
           },
           "end": "(\\})(?=\\s*[\\(\\[\\{])",
           "endCaptures": {
@@ -459,7 +481,7 @@
             { "include": "#literals" },
             { "include": "#numbers" },
             { "include": "#bindings" },
-            { "name": "punctuation.separator.comma.aeon", "match": "," }
+            { "include": "#punctuation" }
           ]
         }
       ]
@@ -480,7 +502,7 @@
             { "include": "#literals" },
             { "include": "#numbers" },
             { "include": "#bindings" },
-            { "name": "punctuation.separator.tuple.aeon", "match": "," }
+            { "include": "#punctuation" }
           ]
         }
       ]
@@ -546,6 +568,8 @@
     },
     "punctuation": {
       "patterns": [
+        { "name": "punctuation.definition.node.end.aeon", "match": ">" },
+        { "name": "punctuation.separator.tuple.aeon", "match": "," },
         { "name": "punctuation.separator.comma.aeon", "match": "," }
       ]
     }

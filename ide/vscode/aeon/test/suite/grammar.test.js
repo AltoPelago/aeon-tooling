@@ -313,6 +313,30 @@ suite('AEON grammar regex tests', () => {
     assert(re.test('title@{role="headline"} ='));
   });
 
+  test('attribute map opener captures immediate first typed attribute', () => {
+    const entry = repo['attributes'];
+    assert(entry, 'attributes repo entry not found');
+    const pat = entry.patterns && entry.patterns[0] && entry.patterns[0].begin;
+    assert(pat, 'attribute map begin pattern not found');
+    const match = '@{href:string = "#document-shape", primary:boolean = true}'.match(makeRegExp(pat));
+    assert(match, 'tight first attribute should match opener');
+    assert.equal(match[3], 'href');
+    assert.equal(match[4], ':');
+    assert.equal(match[5], 'string');
+  });
+
+  test('attribute body separates typed attribute key and datatype', () => {
+    const entry = repo['attribute-body'];
+    assert(entry, 'attribute-body repo entry not found');
+    const pat = entry.patterns.find(p => p.name === 'meta.attribute.binding.typed.aeon');
+    assert(pat && pat.match, 'typed attribute binding pattern not found');
+    const match = 'primary:boolean = true'.match(makeRegExp(pat.match));
+    assert(match, 'typed attribute body should match');
+    assert.equal(match[1], 'primary');
+    assert.equal(match[2], ':');
+    assert.equal(match[3], 'boolean');
+  });
+
   test('single-quoted and backtick string patterns exist', () => {
     const stringsEntry = repo['strings'];
     assert(stringsEntry, 'strings repo entry not found');
@@ -326,12 +350,25 @@ suite('AEON grammar regex tests', () => {
     assert(makeRegExp(pat).test('<div('));
   });
 
+  test('node closing delimiter is recognized', () => {
+    const punctuationEntry = repo['punctuation'];
+    assert(punctuationEntry, 'punctuation repo entry not found');
+    const pat = punctuationEntry.patterns.find(p => p.name === 'punctuation.definition.node.end.aeon');
+    assert(pat && pat.match, 'node end punctuation pattern not found');
+    assert(makeRegExp(pat.match).test('>'));
+  });
+
   test('annotated node introducer syntax is recognized', () => {
     const entry = repo['node-literals-annotated'];
     assert(entry, 'node-literals-annotated repo entry not found');
     const pat = entry.patterns && entry.patterns[0] && entry.patterns[0].begin;
     assert(pat, 'annotated node begin pattern not found');
     assert(makeRegExp(pat).test('<entity@{id="player_1"} ('));
+    const match = '<action@{href:string = "#document-shape"}>'.match(makeRegExp(pat));
+    assert(match, 'tight annotated node first attribute should match');
+    assert.equal(match[5], 'href');
+    assert.equal(match[6], ':');
+    assert.equal(match[7], 'string');
   });
 
   test('quoted keys match', () => {

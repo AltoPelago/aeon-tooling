@@ -25,6 +25,22 @@ converter tests. Editor and grammar integrations keep their own focused commands
 - `npm run test:vscode:grammar`
 - `npm run test:tree-sitter`
 
+The VS Code integration is a standalone pnpm package. Before running its grammar
+tests in a fresh checkout, install its local dependencies:
+
+```sh
+npm run install:vscode
+npm run test:vscode:grammar
+```
+
+Package the VS Code extension with the same hoisted install layout so `vsce`
+can inspect runtime dependencies:
+
+```sh
+npm run install:vscode
+npm run package:vscode
+```
+
 ## Converters
 
 - `converters/md-to-and/`: Markdown to canonical standalone `&ND` converter (CLI + library).

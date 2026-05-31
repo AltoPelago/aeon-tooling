@@ -1,6 +1,6 @@
 [package]
 name = "tree-sitter-aeon"
-version = "0.0.1"
+version = "0.9.2"
 edition = "2021"
 description = "Tree-sitter grammar for AEON"
 license = "MIT"

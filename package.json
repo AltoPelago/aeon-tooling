@@ -1,11 +1,14 @@
 {
   "name": "aeon-tooling",
+  "version": "0.9.2",
   "type": "module",
   "scripts": {
     "test": "npm run test --prefix web/highlighter/aeon-code-block && npm run test --prefix converters/md-to-and",
     "test:web": "npm run test --prefix web/highlighter/aeon-code-block",
     "test:md-to-and": "npm run test --prefix converters/md-to-and",
+    "install:vscode": "pnpm --dir ide/vscode/aeon install --frozen-lockfile --node-linker=hoisted",
     "test:vscode:grammar": "pnpm --dir ide/vscode/aeon test:grammar",
+    "package:vscode": "pnpm --dir ide/vscode/aeon package",
     "test:tree-sitter": "npm run test --prefix grammar/tree-sitter-aeon",
     "clean": "bash scripts/cleanup-public.sh --write",
     "clean:check": "bash scripts/cleanup-public.sh --check",

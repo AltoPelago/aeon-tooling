@@ -14,6 +14,7 @@ Install & test locally
 
 ```bash
 cd ide/vscode/aeon
+pnpm install --frozen-lockfile --node-linker=hoisted
 # open in Extension Development Host
 code --extensionDevelopmentPath=$(pwd)
 ```
@@ -31,12 +32,23 @@ Useful local checks:
 
 ```bash
 cd ide/vscode/aeon
+pnpm install --frozen-lockfile --node-linker=hoisted
 pnpm test:grammar
 pnpm test:extension
+pnpm package
 ```
 
-The extension looks for a bundled server at `server/server.js` first, then falls back to the sibling implementation build at `../../../aeon/implementations/typescript/tools/aeon-lsp/dist/server.js`.
+The extension looks for a bundled server at `server/server.js` first, then falls back to the sibling implementation build at `../../../../aeon/implementations/typescript/tools/aeon-lsp/dist/server.js`.
 That keeps local development working while leaving room to bundle the language server later.
+
+`pnpm package` builds and bundles the sibling AEON language server into `server/`
+before producing the `.vsix`.
+
+Publish an already packaged VSIX with:
+
+```bash
+pnpm exec vsce publish --packagePath aeon-vscode-0.9.3.vsix
+```
 
 Language feature samples
 

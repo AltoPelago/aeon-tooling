@@ -1,10 +1,11 @@
 {
   "name": "aeon-vscode",
-  "displayName": "AEON",
+  "displayName": "AEON Language Tools",
   "description": "Syntax highlighting, diagnostics, hover, and completion for the AEON data language.",
-  "publisher": "altopelago",
-  "version": "0.0.1",
+  "publisher": "AltoPelago",
+  "version": "0.9.3",
   "license": "MIT",
+  "icon": "assets/icon.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/AltoPelago/aeon-tooling"
@@ -17,6 +18,7 @@
     "language-configuration.json",
     "README.md",
     "LICENSE",
+    "assets/icon.png",
     "package.json",
     "syntaxes/**",
     "themes/**",
@@ -26,10 +28,12 @@
     "onLanguage:aeon"
   ],
   "scripts": {
-    "test:grammar": "./node_modules/.bin/mocha --ui tdd ./test/suite/grammar.test.js",
-    "test:extension": "pnpm -C ../../../aeon/implementations/typescript --filter @aeon/aeon-lsp build && node ./test/runTest.js",
+    "build:server": "pnpm -C ../../../../aeon/implementations/typescript --filter @altopelago/aeon-lsp build",
+    "bundle:server": "node ./scripts/bundle-server.mjs",
+    "test:grammar": "mocha --ui tdd ./test/suite/grammar.test.js",
+    "test:extension": "pnpm run build:server && node ./test/runTest.js",
     "test": "pnpm run test:grammar && pnpm run test:extension",
-    "package": "vsce package --allow-missing-repository",
+    "package": "pnpm run build:server && pnpm run bundle:server && vsce package --allow-missing-repository",
     "vscode:prepublish": "echo 'no build step'"
   },
   "dependencies": {

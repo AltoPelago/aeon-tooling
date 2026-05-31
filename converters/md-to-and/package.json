@@ -1,6 +1,6 @@
 {
   "name": "@aeon-tooling/md-to-and",
-  "version": "0.1.0",
+  "version": "0.9.2",
   "type": "module",
   "description": "Markdown to &ND converter with CLI and library APIs.",
   "main": "./dist/index.js",
