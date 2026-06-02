@@ -27,7 +27,7 @@
     { "scope": "comment.line.host.aeon", "settings": { "foreground": "#a7b2c4", "fontStyle": "italic" } },
     { "scope": "comment.line.reserved.structure.aeon, comment.block.reserved.structure.aeon", "settings": { "foreground": "#d9ad7c", "fontStyle": "italic" } },
     { "scope": "comment.line.reserved.profile.aeon, comment.block.reserved.profile.aeon", "settings": { "foreground": "#9aa9c7", "fontStyle": "italic" } },
-    { "scope": "comment.line.reserved.future.aeon, comment.block.reserved.future.aeon", "settings": { "foreground": "#a7b2c4", "fontStyle": "italic" } },
+    { "scope": "comment.line.reserved.future.aeon, comment.block.reserved.future.aeon", "settings": { "foreground": "#a7c2c4", "fontStyle": "italic" } },
 
     { "scope": "keyword.control.directive.aeon", "settings": { "foreground": "#8ec7d9", "fontStyle": "bold" } },
     { "scope": "entity.name.directive.aeon", "settings": { "foreground": "#8ec7d9" } },
@@ -44,9 +44,9 @@
     { "scope": "variable.other.readwrite.aeon, variable.other.member.aeon", "settings": { "foreground": "#7fb2ff" } },
     { "scope": "keyword.operator.assign.aeon", "settings": { "foreground": "#e5e7eb" } },
 
-    { "scope": "entity.name.tag.aeon", "settings": { "foreground": "#66d8b6", "fontStyle": "bold" } },
-    { "scope": "punctuation.definition.node.begin.aeon", "settings": { "foreground": "#66d8a5" } },
-    { "scope": "punctuation.definition.node.end.aeon", "settings": { "foreground": "#66d8a5" } },
+    { "scope": "entity.name.tag.aeon", "settings": { "foreground": "#71C2B5", "fontStyle": "bold" } },
+    { "scope": "punctuation.definition.node.begin.aeon", "settings": { "foreground": "#71C2B5" } },
+    { "scope": "punctuation.definition.node.end.aeon", "settings": { "foreground": "#71C2B5" } },
 
 
     { "scope": "string.quoted.double.aeon, string.quoted.single.aeon", "settings": { "foreground": "#d8d2c2" } },
