@@ -108,7 +108,20 @@ interface CompressionPlan {
 }
 
 const app = express();
-const upload = multer({ storage: multer.memoryStorage() });
+const uploadLimits = {
+  fieldNameSize: 100,
+  fieldSize: 1024 * 1024,
+  fields: 50,
+  fileSize: 25 * 1024 * 1024,
+  files: 500,
+  parts: 550,
+  fieldNestingDepth: 2
+} as multer.Options['limits'] & { fieldNestingDepth: number };
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: uploadLimits
+});
 const port = Number.parseInt(process.env.PORT ?? '4310', 10);
 
 app.use(express.static('public'));
