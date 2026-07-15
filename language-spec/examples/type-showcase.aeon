@@ -39,7 +39,7 @@ mode:toggle = off
 //# Encoded and symbolic literals
 color = #ff00aa
 bits:radix2 = %1011
-payload:base64 = $QmFzZTY0IQ==
+payload:base64 = &QmFzZTY0IQ==
 size:sep[x] = ^300x250
 
 //# Date and time family

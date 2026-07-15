@@ -319,7 +319,7 @@ contexts:
       captures:
         1: keyword.other.value-sigil.aeon
         2: constant.numeric.binary.aeon
-    - match: '(\$)([A-Za-z0-9+/=_-]+)'
+    - match: '(&)([A-Za-z0-9=_-]+)'
       captures:
         1: keyword.other.value-sigil.aeon
         2: constant.numeric.base64.aeon

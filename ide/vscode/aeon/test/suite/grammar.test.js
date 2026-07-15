@@ -88,7 +88,7 @@ suite('AEON grammar regex tests', () => {
   test('base64 payload matches', () => {
     const pat = findMatchByName(repo, 'constant.numeric.base64.aeon');
     assert(pat, 'base64 pattern not found');
-    assert(makeRegExp(pat).test('$QmFzZTY0IQ=='));
+    assert(makeRegExp(pat).test('&QmFzZTY0IQ=='));
     assert(makeRegExp(pat).test(sample));
   });
 

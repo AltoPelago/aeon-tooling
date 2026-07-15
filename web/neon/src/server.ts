@@ -638,8 +638,8 @@ function buildBase64Snippet(
 ): string {
   const stem = name.replace(/\.[^.]*$/, '');
   const binding = stem.replace(/[^a-zA-Z0-9_]/g, '_').replace(/^[0-9]/, 'n_');
-  const base64Str = Buffer.from(bytes).toString('base64');
-  return `${binding}@{mime="${mime}",binname="${name}",binkind="${kind}"}:base64 = $${base64Str}\n`;
+  const base64Str = Buffer.from(bytes).toString('base64url');
+  return `${binding}@{mime="${mime}",binname="${name}",binkind="${kind}"}:base64 = &${base64Str}\n`;
 }
 
 function getSingleFile(

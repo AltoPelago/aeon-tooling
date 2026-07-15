@@ -542,7 +542,7 @@
       "patterns": [
         { "match": "(#)([0-9A-Fa-f_]+)", "captures": { "1": { "name": "keyword.other.value-sigil.aeon" }, "2": { "name": "constant.numeric.hex.aeon" } } },
         { "match": "(%)([A-Za-z0-9_]+)", "captures": { "1": { "name": "keyword.other.value-sigil.aeon" }, "2": { "name": "constant.numeric.binary.aeon" } } },
-        { "match": "(\\$)([A-Za-z0-9+/=_-]+)", "captures": { "1": { "name": "keyword.other.value-sigil.aeon" }, "2": { "name": "constant.numeric.base64.aeon" } } },
+        { "match": "(&)([A-Za-z0-9=_-]+)", "captures": { "1": { "name": "keyword.other.value-sigil.aeon" }, "2": { "name": "constant.numeric.base64.aeon" } } },
         { "match": "(\\^)([^\\s,\\]\\)\\}]+)", "captures": { "1": { "name": "keyword.other.value-sigil.aeon" }, "2": { "name": "constant.numeric.dimension.aeon" } } },
         { "name": "constant.numeric.float.aeon", "match": "(?<![A-Za-z0-9_])[+-]?\\d[\\d_]*\\.\\d[\\d_]*(?:[eE][+-]?\\d[\\d_]*)?(?![A-Za-z0-9_])" }
       ]
