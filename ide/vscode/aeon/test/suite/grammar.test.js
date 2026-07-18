@@ -34,6 +34,10 @@ function makeRegExp(source) {
   try { return new RegExp(source, 'm'); } catch (e) { return null; }
 }
 
+function makeWholeRegExp(source) {
+  try { return new RegExp(`^(?:${source})$`, 'm'); } catch (e) { return null; }
+}
+
 function findPatternByName(value, name) {
   if (!value || typeof value !== 'object') return null;
   if (value.name === name) return value;
@@ -190,12 +194,15 @@ suite('AEON grammar regex tests', () => {
     const entry = repo['bindings'];
     const refPat = entry && entry.patterns.find(p => p.name === 'meta.binding.ref.aeon');
     assert(refPat && refPat.match, 'ref binding meta pattern not found');
-    assert(makeRegExp(refPat.match).test('~numbers[1]'));
-    assert(makeRegExp(refPat.match).test('~finance.revenue'));
-    assert(makeRegExp(refPat.match).test('~"a.b"'));
-    assert(makeRegExp(refPat.match).test('~$.["a.b"]'));
-    assert(makeRegExp(refPat.match).test('~a@meta'));
-    assert(makeRegExp(refPat.match).test('~a@["x.y"]'));
+    const re = makeWholeRegExp(refPat.match);
+    assert(re.test('~numbers[1]'));
+    assert(re.test('~finance.revenue'));
+    assert(re.test('~"a.b"'));
+    assert(re.test('~$.["a.b"]'));
+    assert(re.test('~a.@.meta'));
+    assert(re.test('~a.@.["x.y"]'));
+    assert(!re.test('~a@meta'));
+    assert(!re.test('~a@["x.y"]'));
   });
 
   test('key pattern matches untyped keys in sample', () => {

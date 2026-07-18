@@ -139,7 +139,7 @@ module.exports = grammar({
       field('path', $.reference_path)
     ),
 
-    reference_path: () => token(/\$?(?:\.?[A-Za-z_][A-Za-z0-9_]*|\[\d+\]|\["(?:\\.|[^"])*"\]|@\[[^\]]+\]|@[A-Za-z_][A-Za-z0-9_]*)+/),
+    reference_path: () => token(/\$?(?:\.?[A-Za-z_][A-Za-z0-9_]*|\[\d+\]|\["(?:\\.|[^"])*"\]|\.@(?:\.[A-Za-z_][A-Za-z0-9_]*|\.\["(?:\\.|[^"])*"\]))+/),
 
     _value: ($) => choice(
       $.object,

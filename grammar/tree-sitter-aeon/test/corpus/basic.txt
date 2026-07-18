@@ -79,3 +79,27 @@ world = {
               name: (identifier)
               datatype: (type_name))
             value: (number)))))))
+
+==================
+references with attribute-space paths
+==================
+
+role = ~user.@.role
+display = ~$.contact.@.["display.label"]
+alias = ~> user.@.profile
+
+---
+
+(source_file
+  (binding
+    key: (identifier)
+    value: (clone_reference
+      path: (reference_path)))
+  (binding
+    key: (identifier)
+    value: (clone_reference
+      path: (reference_path)))
+  (binding
+    key: (identifier)
+    value: (pointer_reference
+      path: (reference_path))))

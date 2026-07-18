@@ -74,12 +74,13 @@ test('highlights node heads, nested attributes, and inline comments', () => {
 });
 
 test('highlights current reference path forms and trimtick literals', () => {
-  const source = `root = ~$.["a.b"]\nmember = ~"a.b"\nprofile = ~user@["profile.name"].["display.name"]\ncopy = ~> ["quoted start"]\nnote:trimtick = >>\`hello\``;
+  const source = `root = ~$.["a.b"]\nmember = ~"a.b"\nprofile = ~user.@.["profile.name"].["display.name"]\nlegacy = ~user@["profile.name"]\ncopy = ~> ["quoted start"]\nnote:trimtick = >>\`hello\``;
   const html = highlightAeon(source);
 
   assert.match(html, /<span class="tok-binding">~\$\.\["a\.b"\]<\/span>/);
   assert.match(html, /<span class="tok-binding">~"a\.b"<\/span>/);
-  assert.match(html, /<span class="tok-binding">~user@\["profile\.name"\]\.\["display\.name"\]<\/span>/);
+  assert.match(html, /<span class="tok-binding">~user\.@\.\["profile\.name"\]\.\["display\.name"\]<\/span>/);
+  assert.doesNotMatch(html, /<span class="tok-binding">~user@\["profile\.name"\]<\/span>/);
   assert.match(html, /<span class="tok-binding">~&gt; \["quoted start"\]<\/span>/);
   assert.match(html, /<span class="tok-string">&gt;&gt;`hello`<\/span>/);
 });

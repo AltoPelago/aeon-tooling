@@ -30,7 +30,7 @@ const REFERENCE_PATH =
   '\\$?(?:' +
   `${IDENTIFIER}|${QUOTED}|\\[\\d+\\]|\\["(?:\\\\.|[^"])*"\\]` +
   `|\\.${IDENTIFIER}|\\.\\["(?:\\\\.|[^"])*"\\]` +
-  `|@${IDENTIFIER}|@\\["(?:\\\\.|[^"])*"\\]` +
+  `|\\.@\\.${IDENTIFIER}|\\.@\\.\\["(?:\\\\.|[^"])*"\\]` +
   ')+';
 
 function escapeHtml(value) {
