@@ -1,7 +1,7 @@
 /# 
 # AEON Highlight Cases
 
-- typed bindings like `season_launch:zrut = ...`
+- typed bindings like `season_launch:wtc = ...`
 - annotated keys like `title@{role="headline"} = ...`
 - annotated node tags like `<entity@{id="player_1"} (`
 
@@ -12,7 +12,7 @@ aeon:header = {
   profile = "aeon.gp.profile.v1"
 }
 
-season_launch:zrut = 2026-06-01T12:00:00Z&Asia/Tokyo
+season_launch:wtc = 2026-06-01T12:00:00Z&Asia/Tokyo
 title@{role="headline", audience="executive"} = "Quarterly operations report"
 
 world = {

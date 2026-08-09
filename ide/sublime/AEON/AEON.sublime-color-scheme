@@ -199,7 +199,7 @@
       "foreground": "var(switch)"
     },
     {
-      "scope": "constant.language.date.aeon, constant.language.time.aeon, constant.language.datetime.utc.aeon, constant.language.datetime.local.aeon, constant.language.datetime.zoned.aeon, constant.language.zrut.aeon",
+      "scope": "constant.language.date.aeon, constant.language.time.aeon, constant.language.datetime.utc.aeon, constant.language.datetime.local.aeon, constant.language.datetime.zoned.aeon, constant.language.wtc.aeon",
       "foreground": "var(number)"
     },
     {

@@ -62,7 +62,7 @@
 
     { "scope": "constant.language.boolean.aeon", "settings": { "foreground": "#c7d98a", "fontStyle": "bold" } },
     { "scope": "constant.language.switch.aeon", "settings": { "foreground": "#c7d98a" } },
-    { "scope": "constant.language.date.aeon, constant.language.time.aeon, constant.language.datetime.utc.aeon, constant.language.datetime.local.aeon, constant.language.datetime.zoned.aeon, constant.language.zrut.aeon, constant.language.timezone.aeon", "settings": { "foreground": "#c7d98a" } },
+    { "scope": "constant.language.date.aeon, constant.language.time.aeon, constant.language.datetime.utc.aeon, constant.language.datetime.local.aeon, constant.language.datetime.zoned.aeon, constant.language.wtc.aeon, constant.language.timezone.aeon", "settings": { "foreground": "#c7d98a" } },
 
     { "scope": "punctuation.section.block.begin.aeon, punctuation.section.block.end.aeon", "settings": { "foreground": "#8d96a6" } },
     { "scope": "punctuation.section.list.begin.aeon, punctuation.section.list.end.aeon", "settings": { "foreground": "#8d96a6" } },

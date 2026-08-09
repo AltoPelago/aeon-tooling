@@ -25,11 +25,11 @@ test('highlights quoted keys, types, and bindings with paths', () => {
 });
 
 test('highlights zoned values and annotated keys', () => {
-  const source = `launch:zrut = 2026-06-01T12:00:00Z&Asia/Tokyo\ntitle@{role="headline"} = "Quarterly ops"`;
+  const source = `launch:wtc = 2026-06-01T12:00:00Z&Asia/Tokyo\ntitle@{role="headline"} = "Quarterly ops"`;
   const html = highlightAeon(source);
 
   assert.match(html, /<span class="tok-key">launch<\/span>/);
-  assert.match(html, /<span class="tok-type">zrut<\/span>/);
+  assert.match(html, /<span class="tok-type">wtc<\/span>/);
   assert.match(html, /<span class="tok-literal">2026-06-01T12:00:00Z&amp;Asia\/Tokyo<\/span>/);
   assert.match(html, /role/);
 });

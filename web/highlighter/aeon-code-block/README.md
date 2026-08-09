@@ -23,7 +23,7 @@ Current features:
 
 <aeon-code-block title="Example">
   <script type="text/plain">
-launch:zrut = 2026-06-01T12:00:00Z&Asia/Tokyo
+launch:wtc = 2026-06-01T12:00:00Z&Asia/Tokyo
   </script>
 </aeon-code-block>
 ```

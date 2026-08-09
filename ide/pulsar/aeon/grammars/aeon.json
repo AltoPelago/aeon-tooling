@@ -537,7 +537,7 @@
         { "name": "constant.language.datetime.local.aeon", "match": "\\b\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\b" },
         { "name": "constant.language.time.aeon", "match": "\\b\\d{2}:\\d{2}:\\d{2}(?:Z)?\\b" },
         { "name": "constant.language.date.aeon", "match": "\\b\\d{4}-\\d{2}-\\d{2}\\b" },
-        { "name": "constant.language.zrut.aeon", "match": "\\b(?:Z&|&)(?:[A-Za-z0-9_./+-]+)\\b" },
+        { "name": "constant.language.wtc.aeon", "match": "\\b(?:Z&|&)(?:[A-Za-z0-9_./+-]+)\\b" },
         
         { "name": "constant.numeric.integer.aeon", "match": "(?<![A-Za-z0-9_])[+-]?\\d[\\d_]*(?:[eE][+-]?\\d[\\d_]*)?(?![A-Za-z0-9_])" }
       ]

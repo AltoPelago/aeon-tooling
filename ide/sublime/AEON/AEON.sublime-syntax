@@ -308,7 +308,7 @@ contexts:
     - match: '\b\d{4}-\d{2}-\d{2}\b'
       scope: constant.language.date.aeon
     - match: '\b(?:Z&|&)(?:[A-Za-z0-9_./+-]+)\b'
-      scope: constant.language.zrut.aeon
+      scope: constant.language.wtc.aeon
 
   numbers:
     - match: '(#)([0-9A-Fa-f_]+)'

@@ -220,7 +220,7 @@ suite('AEON grammar regex tests', () => {
     assert(keysEntry, 'keys repo entry not found');
     const pat = keysEntry.patterns && keysEntry.patterns[0] && keysEntry.patterns[0].match;
     assert(pat, 'key pattern match not found');
-    const match = 'season_launch:zrut ='.match(makeRegExp(pat));
+    const match = 'season_launch:wtc ='.match(makeRegExp(pat));
     assert(match, 'typed binding should still expose a key match');
     assert.equal(match[0], 'season_launch');
   });
@@ -316,7 +316,7 @@ suite('AEON grammar regex tests', () => {
     const pat = entry.patterns && entry.patterns[0] && entry.patterns[0].begin;
     assert(pat, 'typed-key-annotated begin pattern not found');
     const re = makeRegExp(pat);
-    assert(re.test('season_launch@{ns="clock"}:zrut ='));
+    assert(re.test('season_launch@{ns="clock"}:wtc ='));
     assert(re.test('title@{role="headline"} ='));
   });
 

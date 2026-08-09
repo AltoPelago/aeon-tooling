@@ -8,7 +8,7 @@ Current coverage:
 - plain, typed, and annotated bindings
 - node literals and annotated node tags
 - attribute maps
-- strings, numbers, booleans, date/time/datetime/zrut literals
+- strings, numbers, booleans, date/time/datetime/wtc literals
 - line comments and `//#` / `/# ... #/` doc comments with `&ND` styling
 - matching `AEON Dark` color scheme using the same hex palette as the VS Code theme
 

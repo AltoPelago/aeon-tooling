@@ -255,7 +255,7 @@ function tokenizeLine(line, state) {
     ['datetime', /\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\b/y],
     ['time', /\b\d{2}:\d{2}:\d{2}(?:Z)?\b/y],
     ['date', /\b\d{4}-\d{2}-\d{2}\b/y],
-    ['zrut', /\b(?:Z&|&)(?:[A-Za-z0-9_./+-]+)\b/y],
+    ['wtc', /\b(?:Z&|&)(?:[A-Za-z0-9_./+-]+)\b/y],
     ['literal-word', /-?(?:Infinity|NaN)\b/y],
     ['literal-word', /![A-Za-z_][A-Za-z0-9_]*\b/y],
     ['bool', /\b(?:true|false)\b/y],
@@ -322,7 +322,7 @@ function tokenizeLine(line, state) {
         case 'datetime':
         case 'time':
         case 'date':
-        case 'zrut':
+        case 'wtc':
         case 'literal-word':
         case 'bool':
         case 'switch':

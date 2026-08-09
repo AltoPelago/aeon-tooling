@@ -7,7 +7,7 @@ Use this file to verify highlighting across editors.
 
 - core scalar literals
 - typed and untyped bindings
-- dates, times, datetimes, and ZRUT
+- dates, times, datetimes, and WTC
 - references
 - lists, tuples, objects, and nodes
 
@@ -47,8 +47,8 @@ start:date = 2025-01-01
 at:time = 09:30:00
 utc_time:time = 09:30:00Z
 ts:datetime = 2025-01-01T09:30:00Z
-launch:zrut = 2026-06-01T12:00:00Z&Asia/Tokyo
-local_launch:zrut = 2026-06-01T12:00:00&Local
+launch:wtc = 2026-06-01T12:00:00Z&Asia/Tokyo
+local_launch:wtc = 2026-06-01T12:00:00&Local
 
 //# Containers
 user:object = {
@@ -73,7 +73,7 @@ user_ptr:object = ~>user
 
 //# Attributes
 title@{role="headline", audience="executive"} = "Quarterly operations report"
-event@{ns="clock", kind="launch"}:zrut = 2026-06-01T12:00:00Z&Asia/Tokyo
+event@{ns="clock", kind="launch"}:wtc = 2026-06-01T12:00:00Z&Asia/Tokyo
 
 //# Nodes
 world = {

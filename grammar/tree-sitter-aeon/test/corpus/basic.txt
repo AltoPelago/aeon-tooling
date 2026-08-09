@@ -6,7 +6,7 @@ aeon:header = {
   profile = "aeon.gp.profile.v1"
 }
 
-season_launch:zrut = 2026-06-01T12:00:00Z&Asia/Tokyo
+season_launch:wtc = 2026-06-01T12:00:00Z&Asia/Tokyo
 
 ---
 
