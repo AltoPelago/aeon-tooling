@@ -130,7 +130,7 @@ suite('AEON grammar regex tests', () => {
     assert(pat, 'zoned datetime pattern not found');
     const re = makeRegExp(pat);
     assert(re.test('2026-06-01T12:00:00Z&Asia/Tokyo'));
-    assert(re.test('2026-06-01T12:00:00&Local'));
+    assert(re.test('2026-06-01T12:00:00&local'));
   });
 
   test('boolean literals match', () => {

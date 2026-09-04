@@ -4,7 +4,7 @@ This repository is the maintained tooling workspace for AEON.
 
 It groups tooling by product and integration surface:
 
-- `ide/`: editor integrations for VS Code, Neovim, Pulsar, and Sublime Text.
+- `ide/`: editor and desktop integrations for VS Code, Neovim, Pulsar, Sublime Text, and macOS Quick Look.
 - `grammar/`: shared grammar/parser assets, including `tree-sitter-aeon`.
 - `converters/`: document and format translation tools.
 - `web/highlighter/`: browser/web syntax highlighting components.
@@ -39,6 +39,22 @@ can inspect runtime dependencies:
 ```sh
 npm run install:vscode
 npm run package:vscode
+```
+
+## macOS Quick Look
+
+For macOS Finder preview support with official syntax highlighting for `.aeon` and `.and` files:
+
+```sh
+npm run install:quicklook
+```
+
+This compiles and registers `AEON QuickLook.app` with Launch Services and Quick Look. Once installed, pressing Spacebar on any `.aeon` or `.and` file in Finder displays a syntax-highlighted preview.
+
+To uninstall:
+
+```sh
+npm run uninstall:quicklook
 ```
 
 ## Converters

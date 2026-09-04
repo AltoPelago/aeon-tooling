@@ -10,3 +10,4 @@ __pycache__/
 .vscode-test/
 ide/vscode/aeon/server/
 ide/vscode/aeon/*.vsix
+ide/quicklook/build/

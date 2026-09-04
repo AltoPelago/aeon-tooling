@@ -48,7 +48,7 @@ at:time = 09:30:00
 utc_time:time = 09:30:00Z
 ts:datetime = 2025-01-01T09:30:00Z
 launch:wtc = 2026-06-01T12:00:00Z&Asia/Tokyo
-local_launch:wtc = 2026-06-01T12:00:00&Local
+local_launch:wtc = 2026-06-01T12:00:00&local
 
 //# Containers
 user:object = {

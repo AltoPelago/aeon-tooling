@@ -185,7 +185,7 @@ module.exports = grammar({
 
     zoned_datetime: () => token(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z&[A-Za-z0-9_./+-]+/),
     utc_datetime: () => token(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z/),
-    local_datetime: () => token(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:&Local)?/),
+    local_datetime: () => token(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:&local)?/),
     time_literal: () => token(/\d{2}:\d{2}:\d{2}/),
     date_literal: () => token(/\d{4}-\d{2}-\d{2}/),
 
