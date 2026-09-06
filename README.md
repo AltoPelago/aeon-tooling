@@ -13,6 +13,10 @@ It groups tooling by product and integration surface:
 
 Tooling in this tree should not silently depend on AEON implementation code being housed in the same repository unless that local-development workflow is documented explicitly.
 
+The [AES interchange audit](docs/aes-interchange-audit.md) records which tooling
+surfaces are true portable-data boundaries and which use same-process
+implementation objects or tool-specific JSON.
+
 ## Validation
 
 ```sh

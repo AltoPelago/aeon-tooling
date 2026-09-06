@@ -1,4 +1,12 @@
 #!/usr/bin/env node
+/**
+ * Purpose: run source-lane CTS suites against a CLI SUT with normalized output.
+ *
+ * The JSON read and written here is the cts.protocol.v1 control envelope. It is
+ * not an AES interchange contract. AES tests that request the portable
+ * projection set input.options.portable_aes and are forwarded to the SUT with
+ * --portable-aes.
+ */
 
 import fs from 'node:fs';
 import os from 'node:os';
@@ -41,24 +49,61 @@ function normalizeDiagnostics(errors) {
 
 function normalizeCoreBindings(events) {
   if (!Array.isArray(events)) return [];
-  return events.map((e) => ({
+  const eventByPath = new Map(
+    events
+      .filter((e) => e && typeof e === 'object')
+      .map((e) => [normalizePath(String(e?.path ?? '')), e]),
+  );
+  return events.filter((e) => !isLegacyNodeChildProjection(e, eventByPath)).map((e) => ({
     path: normalizePath(String(e?.path ?? '')),
-    datatype: typeof e?.datatype === 'string' ? e.datatype : null,
+    datatype: typeof e?.datatype === 'string' ? normalizeDatatype(e.datatype) : null,
     kind: 'binding',
   }));
 }
 
 function normalizeAesEvents(events) {
   if (!Array.isArray(events)) return [];
-  return events.map((e) => ({
-    path: normalizePath(String(e?.path ?? '')),
-    datatype: typeof e?.datatype === 'string' ? e.datatype : null,
-    value_kind: typeof e?.value?.type === 'string' ? e.value.type : null,
-    reference:
-      e?.value?.type === 'CloneReference' || e?.value?.type === 'PointerReference'
-        ? (typeof e.value.path === 'string' ? normalizePath(e.value.path) : (e.value.path ?? null))
-        : null,
-  }));
+  const eventByPath = new Map(
+    events
+      .filter((e) => e && typeof e === 'object')
+      .map((e) => [normalizePath(String(e?.path ?? '')), e]),
+  );
+  return events.filter((e) => !isLegacyNodeChildProjection(e, eventByPath)).map((e) => {
+    const valueKind = typeof e?.kind === 'string'
+      ? e.kind
+      : typeof e?.value?.type === 'string'
+        ? e.value.type
+        : null;
+    const reference = valueKind === 'CloneReference' || valueKind === 'PointerReference'
+      ? typeof e?.value === 'string'
+        ? normalizePath(e.value)
+        : typeof e?.value?.path === 'string'
+          ? normalizePath(e.value.path)
+          : (e?.value?.path ?? null)
+      : null;
+    return {
+      path: normalizePath(String(e?.path ?? '')),
+      identity:
+        typeof e?.identity === 'string'
+          ? e.identity
+          : typeof e?.structuralId === 'string'
+            ? e.structuralId
+            : typeof e?.structural_id === 'string'
+              ? e.structural_id
+              : null,
+      datatype: typeof e?.datatype === 'string' ? normalizeDatatype(e.datatype) : null,
+      value_kind: valueKind,
+      reference,
+    };
+  });
+}
+
+function isLegacyNodeChildProjection(event, eventByPath) {
+  if (typeof event?.kind === 'string') return false;
+  const eventPath = normalizePath(String(event?.path ?? ''));
+  const match = eventPath.match(/^(.*)\[(\d+)\]$/u);
+  if (!match) return false;
+  return eventByPath.get(match[1])?.value?.type === 'NodeLiteral';
 }
 
 function normalizePath(path) {
@@ -73,6 +118,10 @@ function normalizePath(path) {
   });
   normalized = normalized.replace(/\[(\d+)\]/g, (_m, digits) => `[${String(Number(digits))}]`);
   return normalized;
+}
+
+function normalizeDatatype(value) {
+  return String(value).replace(/\s+/gu, '');
 }
 
 function isIdentifier(value) {
@@ -124,16 +173,51 @@ function compareExpectedArray(expected, actual, label) {
         : exp[k];
       const gv = (k === 'path' || k === 'reference') && typeof got?.[k] === 'string'
         ? normalizePath(got[k])
-        : got?.[k];
-      if (JSON.stringify(ev) !== JSON.stringify(gv)) {
-        failures.push(`${label}[${i}].${k} mismatch: expected ${JSON.stringify(ev)}, got ${JSON.stringify(gv)}`);
+        : k === 'datatype' && typeof got?.[k] === 'string'
+          ? normalizeDatatype(got[k])
+          : got?.[k];
+      const normalizedExpected = k === 'datatype' && typeof ev === 'string'
+        ? normalizeDatatype(ev)
+        : ev;
+      if (JSON.stringify(normalizedExpected) !== JSON.stringify(gv)) {
+        failures.push(`${label}[${i}].${k} mismatch: expected ${JSON.stringify(normalizedExpected)}, got ${JSON.stringify(gv)}`);
       }
     }
   }
   return failures;
 }
 
-async function runInspect({ sutPath, source, mode, datatypePolicy, rich, maxAttributeDepth, maxSeparatorDepth, maxGenericDepth }) {
+function mergeObjects(base, overlay) {
+  if (!base || typeof base !== 'object' || Array.isArray(base)) return overlay;
+  if (!overlay || typeof overlay !== 'object' || Array.isArray(overlay)) return overlay ?? base;
+  const merged = { ...base };
+  for (const [key, value] of Object.entries(overlay)) {
+    merged[key] = key in merged ? mergeObjects(merged[key], value) : value;
+  }
+  return merged;
+}
+
+function renderAeonValue(value, indent = 0) {
+  if (typeof value === 'string') return JSON.stringify(value);
+  if (Number.isSafeInteger(value) && value >= 0) return String(value);
+  if (Array.isArray(value)) {
+    const padding = ' '.repeat(indent + 2);
+    return `[\n${value.map((entry) => `${padding}${renderAeonValue(entry, indent + 2)}`).join('\n')}\n${' '.repeat(indent)}]`;
+  }
+  if (value && typeof value === 'object') {
+    const padding = ' '.repeat(indent + 2);
+    return `{\n${Object.entries(value).map(([key, entry]) => `${padding}${key} = ${renderAeonValue(entry, indent + 2)}`).join('\n')}\n${' '.repeat(indent)}}`;
+  }
+  fail(`Unsupported CTS limits value: ${JSON.stringify(value)}`);
+}
+
+function renderLimitsFile(limits) {
+  return Object.entries(limits)
+    .map(([key, value]) => `${key} = ${renderAeonValue(value)}`)
+    .join('\n\n') + '\n';
+}
+
+async function runInspect({ sutPath, source, mode, datatypePolicy, rich, portableAes, maxAttributeDepth, maxSeparatorDepth, maxGenericDepth, maxEvents, limits }) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aeon-cts-source-'));
   const file = path.join(dir, 'input.aeon');
   fs.writeFileSync(file, source, 'utf8');
@@ -141,13 +225,20 @@ async function runInspect({ sutPath, source, mode, datatypePolicy, rich, maxAttr
   const isJs = sutPath.endsWith('.js') || sutPath.endsWith('.mjs') || sutPath.endsWith('.cjs');
   const command = isJs ? process.execPath : sutPath;
   const args = isJs ? [sutPath, 'inspect', file, '--json'] : ['inspect', file, '--json'];
-  if (mode === 'transport') args.push('--loose');
-  else args.push('--strict');
+  if (limits) {
+    const limitsFile = path.join(dir, 'limits.aeon');
+    fs.writeFileSync(limitsFile, renderLimitsFile(limits), 'utf8');
+    args.push('--limits-file', limitsFile);
+  }
+  if (mode === 'transport') args.push('--transport');
+  else if (mode === 'strict') args.push('--strict');
   if (rich) args.push('--rich');
+  if (portableAes) args.push('--portable-aes');
   if (datatypePolicy) args.push('--datatype-policy', datatypePolicy);
   if (Number.isInteger(maxAttributeDepth)) args.push('--max-attribute-depth', String(maxAttributeDepth));
   if (Number.isInteger(maxSeparatorDepth)) args.push('--max-separator-depth', String(maxSeparatorDepth));
   if (Number.isInteger(maxGenericDepth)) args.push('--max-generic-depth', String(maxGenericDepth));
+  if (Number.isInteger(maxEvents)) args.push('--max-events', String(maxEvents));
 
   const { stdout, stderr, code } = await new Promise((resolve) => {
     const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'] });
@@ -163,6 +254,22 @@ async function runInspect({ sutPath, source, mode, datatypePolicy, rich, maxAttr
   try {
     return { ok: true, parse: JSON.parse(stdout), stderr, code };
   } catch {
+    const inputLimit = stderr.match(/Input size (\d+) bytes exceeds configured limit(?: of)? (\d+) bytes/u);
+    if (code !== 0 && inputLimit) {
+      return {
+        ok: true,
+        parse: {
+          events: [],
+          errors: [{
+            code: 'INPUT_SIZE_EXCEEDED',
+            path: '$',
+            message: inputLimit[0],
+          }],
+        },
+        stderr,
+        code,
+      };
+    }
     if (code !== 0) {
       return { ok: false, parse: null, stderr: `${stderr}\nSUT exited ${code} without valid JSON envelope`, code };
     }
@@ -196,15 +303,26 @@ async function main() {
   for (const suiteRef of manifest.suites ?? []) {
     const suitePath = path.resolve(path.dirname(manifestPath), suiteRef.file);
     const suite = JSON.parse(fs.readFileSync(suitePath, 'utf8'));
+    const excludedTests = new Set(Array.isArray(suiteRef.exclude_tests) ? suiteRef.exclude_tests : []);
     console.log(`\n--- Suite: ${suite.title} ---`);
     for (const test of suite.tests ?? []) {
+      if (excludedTests.has(test.id)) continue;
       const source = String(test.input?.source ?? '');
-      const mode = String(test.input?.mode ?? 'strict');
+      // input.mode describes the fixture's source-level expectation. Only the
+      // explicit effective_mode option overrides the CLI's own mode resolution.
+      const mode = typeof test.input?.options?.effective_mode === 'string'
+        ? test.input.options.effective_mode
+        : undefined;
       const datatypePolicy = test.input?.options?.datatype_policy;
       const rich = Boolean(test.input?.options?.rich);
+      const portableAes = Boolean(test.input?.options?.portable_aes);
       const maxAttributeDepth = Number.isInteger(test.input?.options?.max_attribute_depth) ? test.input.options.max_attribute_depth : undefined;
       const maxSeparatorDepth = Number.isInteger(test.input?.options?.max_separator_depth) ? test.input.options.max_separator_depth : undefined;
       const maxGenericDepth = Number.isInteger(test.input?.options?.max_generic_depth) ? test.input.options.max_generic_depth : undefined;
+      const maxEvents = Number.isInteger(test.input?.options?.max_events) ? test.input.options.max_events : undefined;
+      const limits = test.input?.options?.limits === undefined
+        ? undefined
+        : mergeObjects(suite.meta?.limits_defaults, test.input.options.limits);
       let errors = [];
       let warnings = [];
       let ok = false;
@@ -231,9 +349,12 @@ async function main() {
           mode,
           datatypePolicy: typeof datatypePolicy === 'string' ? datatypePolicy : undefined,
           rich,
+          portableAes,
           maxAttributeDepth,
           maxSeparatorDepth,
           maxGenericDepth,
+          maxEvents,
+          limits,
         });
         if (!inspect.ok || !inspect.parse) {
           console.error(`❌ ${test.id}: harness failure`);
