@@ -40,7 +40,7 @@ mode:toggle = off
 color = #ff00aa
 bits:radix2 = %1011
 payload:base64 = &QmFzZTY0IQ==
-size:sep[x] = ^300x250
+size:sep["x"] = ^300x250
 
 //# Date and time family
 start:date = 2025-01-01
@@ -76,13 +76,13 @@ title@{role="headline", audience="executive"} = "Quarterly operations report"
 event@{ns="clock", kind="launch"}:wtc = 2026-06-01T12:00:00Z&Asia/Tokyo
 
 //# Nodes
-world = {
+world = 
   <scene (
     <entity@{id="player_1", type="hero"} (
       {
         hp:int32 = 100
         label:string = "Player 1"
       }
-    )
-  )
-}
+    )>
+  )>
+
