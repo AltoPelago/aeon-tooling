@@ -5,7 +5,7 @@
   "main": "grammar.js",
   "scripts": {
     "generate": "tree-sitter generate",
-    "test": "tree-sitter test"
+    "test": "npm run generate && tree-sitter test"
   },
   "keywords": [
     "tree-sitter",
@@ -14,6 +14,6 @@
   ],
   "license": "MIT",
   "devDependencies": {
-    "tree-sitter-cli": "^0.24.0"
+    "tree-sitter-cli": "^0.27.0"
   }
 }

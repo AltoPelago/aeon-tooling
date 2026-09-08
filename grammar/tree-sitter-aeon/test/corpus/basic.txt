@@ -49,7 +49,7 @@ title@{role="headline", audience="executive"} = "Quarterly operations report"
 annotated node literal
 ==================
 
-world = 
+world =
   <scene (
     <entity@{id="player_1", type="hero"} (
       {hp:int32 = 100}
@@ -62,18 +62,18 @@ world =
 (source_file
   (binding
     key: (identifier)
-    value: (object
+    value: (node_literal
+      tag: (identifier)
       (node_literal
         tag: (identifier)
-        (node_literal
-          tag: (identifier)
-          attributes: (attribute_map
-            (attribute_assignment
-              key: (attribute_key)
-              value: (string))
-            (attribute_assignment
-              key: (attribute_key)
-              value: (string)))
+        attributes: (attribute_map
+          (attribute_assignment
+            key: (attribute_key)
+            value: (string))
+          (attribute_assignment
+            key: (attribute_key)
+            value: (string)))
+        (object
           (binding
             key: (typed_key
               name: (identifier)

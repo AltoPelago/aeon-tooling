@@ -106,9 +106,44 @@ module.exports = grammar({
       '<',
       field('tag', $.identifier),
       optional(field('attributes', $.attribute_map)),
+      optional(seq(
+        ':',
+        field('datatype', $.type_name),
+        optional(field('parameters', $.type_parameters))
+      )),
       '(',
-      repeat($._item),
-      ')'
+      optional(seq(
+        $._node_child,
+        repeat(seq(optional(','), $._node_child)),
+        optional(',')
+      )),
+      ')',
+      '>'
+    ),
+
+    _node_child: ($) => choice(
+      $._item,
+      $.object,
+      $.list,
+      $.tuple,
+      $.clone_reference,
+      $.pointer_reference,
+      $.string,
+      $.template_string,
+      $.hex_literal,
+      $.radix_literal,
+      $.encoding_literal,
+      $.separator_literal,
+      $.zoned_datetime,
+      $.utc_datetime,
+      $.local_datetime,
+      $.time_literal,
+      $.date_literal,
+      $.float,
+      $.number,
+      $.boolean,
+      $.switch_literal,
+      $.identifier
     ),
 
     object: ($) => seq(

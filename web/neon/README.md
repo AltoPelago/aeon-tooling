@@ -14,7 +14,7 @@ Web app for creating and opening Neon directory containers with AEON files and a
 ## Run
 
 ```bash
-cd /Users/altopelago/Documents/GitHub/aeon-family/altopelago/aeon-tooling/web/neon
+cd web/neon
 pnpm install
 pnpm dev
 ```
