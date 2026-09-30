@@ -247,7 +247,7 @@ function tokenizeLine(line, state) {
     ['typed-key', new RegExp(`${KEY}(?=\\s*${TYPE_ANNOTATION}\\s*=)`, 'y')],
     ['typed-value', new RegExp(`${TYPE_ANNOTATION}(?=\\s*=)`, 'y')],
     ['key', new RegExp(`${KEY}(?=\\s*(?:@\\{|=))`, 'y')],
-    ['trimtick-string', />{1,4}`(?:\\.|[^`])*`/y],
+    ['trimtick-string', /(?<!>)>[ \t]*`(?:\\.|[^`])*`/y],
     ['string-template', /`(?:\\.|[^`])*`/y],
     ['string', /"(?:\\.|[^"])*"|'(?:\\.|[^'])*'/y],
     ['datetime', /\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z)?&[A-Za-z0-9_./+-]+\b/y],
