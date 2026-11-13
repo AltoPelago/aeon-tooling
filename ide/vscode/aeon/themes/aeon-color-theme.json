@@ -9,6 +9,8 @@
     "editorCursor.foreground": "#8ec7d9"
   },
   "tokenColors": [
+    { "scope": "entity.name.label.identity.aeon", "settings": { "foreground": "#e2c97a" } },
+    { "scope": "meta.address.sansa.aeon", "settings": { "foreground": "#7fb2ff" } },
     { "scope": "comment", "settings": { "foreground": "#a8adb8", "fontStyle": "italic" } },
     { "scope": "comment.line.shebang.aeon", "settings": { "foreground": "#d38f8f" } },
     { "scope": "comment.line.doc.aeon, comment.block.doc.aeon", "settings": { "foreground": "#9aa9c7" } },

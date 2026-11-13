@@ -1,6 +1,8 @@
 local M = {}
 
 function M.apply()
+  vim.api.nvim_set_hl(0, "@label.aeon", { fg = "#e2c97a" })
+  vim.api.nvim_set_hl(0, "@string.special.path.aeon", { fg = "#7fb2ff" })
   vim.api.nvim_set_hl(0, "@property.aeon", { fg = "#7fb2ff" })
   vim.api.nvim_set_hl(0, "@type.aeon", { fg = "#c7b8ff" })
   vim.api.nvim_set_hl(0, "@attribute.aeon", { fg = "#caa0bf" })

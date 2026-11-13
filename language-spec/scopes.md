@@ -15,6 +15,8 @@ This document is the cross-editor reference for AEON token categories.
 | attribute delimiters | `punctuation.definition.attribute.begin.aeon`, `punctuation.definition.attribute.end.aeon` |
 | assignment operator | `keyword.operator.assign.aeon` |
 | reference sigils | `keyword.other.binding.sigil.aeon`, `keyword.other.binding.alias.aeon` |
+| structural identity annotation (candidate) | `entity.name.label.identity.aeon` |
+| SANSA address literal (candidate) | `meta.address.sansa.aeon` |
 | reference path | `variable.other.readwrite.aeon` |
 
 ## Literal Tokens
@@ -58,3 +60,5 @@ Inside `/# ... #/` block doc comments, use lightweight Markdown-like scopes:
 - VS Code remains the current canonical implementation.
 - Other editors should preserve semantic categories even if exact scope names differ.
 - Tree-sitter queries should map captures back to these categories where possible.
+
+Candidate scope and lexical limits: [child identity tooling](../docs/child-identity-tooling.md).

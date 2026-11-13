@@ -123,3 +123,8 @@ Next steps:
 1. add stronger list/tuple/object item recovery and separator handling
 2. add doc-comment content nodes and `&ND` markup captures
 3. generate the parser and test against `language-spec/examples/highlight-cases.aeon`
+
+The unpublished [child identity tooling candidate](../../docs/child-identity-tooling.md)
+adds occurrence identity nodes and a lexical SANSA literal subset. Generate the
+parser before use; this starter grammar remains incomplete and does not replace
+AEON/SANSA validation. Reference paths do not admit identity selectors.

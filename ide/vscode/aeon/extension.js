@@ -13,6 +13,7 @@ function resolveServerModule() {
       '..',
       '..',
       '..',
+      '..',
       'aeon',
       'implementations',
       'typescript',

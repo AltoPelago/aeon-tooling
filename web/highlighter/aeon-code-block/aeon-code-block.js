@@ -244,6 +244,7 @@ function tokenizeLine(line, state) {
     ['attr-open', /@\{/y],
     ['attr-close', /\}/y],
     ['quoted-key', new RegExp(`${QUOTED_KEY}(?=\\s*(?:${TYPE_ANNOTATION}\\s*=|@\\{|=))`, 'y')],
+    ['key', /(?:[A-Za-z_][A-Za-z0-9_:-]*|"(?:\\.|[^"])*"|'(?:\\.|[^'])*')(?=\\[A-Za-z0-9_-]+\\)/y],
     ['typed-key', new RegExp(`${KEY}(?=\\s*${TYPE_ANNOTATION}\\s*=)`, 'y')],
     ['typed-value', new RegExp(`${TYPE_ANNOTATION}(?=\\s*=)`, 'y')],
     ['key', new RegExp(`${KEY}(?=\\s*(?:@\\{|=))`, 'y')],
@@ -260,6 +261,8 @@ function tokenizeLine(line, state) {
     ['literal-word', /![A-Za-z_][A-Za-z0-9_]*\b/y],
     ['bool', /\b(?:true|false)\b/y],
     ['switch', /\b(?:yes|no|on|off)\b/y],
+    ['identity', /\\[A-Za-z0-9_-]+\\/y],
+    ['sansa', /(?<![~A-Za-z0-9_$?])[$?](?:\.(?:\\[A-Za-z0-9_-]+\\|[A-Za-z_][A-Za-z0-9_]*|\*{1,2}|@|\["(?:\\.|[^"\\])*"\]|<"(?:\\.|[^"\\])*">)|\[(?:0|[1-9][0-9]*)\])*(?![A-Za-z0-9_])/y],
     ['number-sigil', /[#%$^][^\s,\])}]+/y],
     ['float', /(?<![A-Za-z0-9_])[+-]?\d[\d_]*\.\d[\d_]*(?:[eE][+-]?\d[\d_]*)?(?![A-Za-z0-9_])/y],
     ['number', /(?<![A-Za-z0-9_])[+-]?\d[\d_]*(?:[eE][+-]?\d[\d_]*)?(?![A-Za-z0-9_])/y],
@@ -330,6 +333,12 @@ function tokenizeLine(line, state) {
         case 'float':
         case 'number':
           html += wrap('literal', match[0]);
+          break;
+        case 'identity':
+          html += wrap('identity', match[0]);
+          break;
+        case 'sansa':
+          html += wrap('sansa', match[0]);
           break;
         case 'binding':
           html += wrap('binding', match[0]);
@@ -502,6 +511,8 @@ const templateHtml = `
     .tok-punct { color: var(--aeon-punct); }
     .tok-string { color: var(--aeon-string); }
     .tok-literal { color: var(--aeon-literal); }
+    .tok-identity { color: var(--aeon-tag, #e2c97a); }
+    .tok-sansa { color: var(--aeon-binding, #7fb2ff); }
     .tok-binding { color: var(--aeon-key); }
     .tok-operator { color: var(--aeon-fg); }
   </style>

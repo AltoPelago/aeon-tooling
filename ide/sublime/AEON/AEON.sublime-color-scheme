@@ -36,6 +36,8 @@
     "caret": "var(tag)"
   },
   "rules": [
+    { "scope": "entity.name.label.identity.aeon", "foreground": "#e2c97a" },
+    { "scope": "meta.address.sansa.aeon", "foreground": "#7fb2ff" },
     {
       "scope": "comment",
       "foreground": "var(comment)",
