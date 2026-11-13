@@ -64,3 +64,7 @@ npm run uninstall:quicklook
 ## Converters
 
 - `converters/md-to-and/`: Markdown to canonical standalone `&ND` converter (CLI + library).
+
+The unpublished [child identity tooling candidate](docs/child-identity-tooling.md)
+records editor/highlighter support, the constrained-reference boundary and
+explicit candidate server bundling.

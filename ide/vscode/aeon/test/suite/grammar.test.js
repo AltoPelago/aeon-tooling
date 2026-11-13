@@ -386,4 +386,40 @@ suite('AEON grammar regex tests', () => {
     const re = makeRegExp(pat);
     assert(re.test('"display name" ='));
   });
+
+  test('identity annotations and SANSA literals have separate presentation scopes', () => {
+    const identity = makeWholeRegExp(repo['structural-identities'].patterns.find(p => p.name === 'entity.name.label.identity.aeon').match);
+    assert(identity.test(String.raw`\item1\ `.trimEnd()));
+    assert(!identity.test(String.raw`\\ `.trimEnd()));
+    assert(!identity.test(String.raw`\bad.id\ `.trimEnd()));
+    const address = makeWholeRegExp(repo['sansa-addresses'].patterns[0].match);
+    for (const text of [String.raw`$.items.\item1\.\name1\ `.trimEnd(), String.raw`?.\name1\ `.trimEnd(), String.raw`$.reading.@.\unit1\ `.trimEnd(), String.raw`$.["\\item1\\"]`]) assert(address.test(text), text);
+    for (const entry of repo.bindings.patterns.filter(p => p.match && p.name.startsWith('meta.binding.'))) {
+      const ref = makeWholeRegExp(entry.match);
+      assert(!ref.test(String.raw`~$.items.\item1\ `.trimEnd()));
+      assert(!ref.test(String.raw`~>$.items.\item1\ `.trimEnd()));
+    }
+  });
+
+  test('Pulsar uses the same candidate lexical identity and address contract', () => {
+    const pulsar = JSON.parse(fs.readFileSync(path.join(toolingRepoRoot, 'ide/pulsar/aeon/grammars/aeon.json'), 'utf8'));
+    for (const name of ['structural-identities', 'sansa-addresses', 'bindings']) assert.deepEqual(pulsar.repository[name], repo[name]);
+  });
+
+
+  test('nested editor regions include identity metadata and SANSA literal rules', () => {
+    const visit = node => {
+      if (!node || typeof node !== 'object') return;
+      if (Array.isArray(node.patterns) && node.patterns.some(p => p.include === '#strings')) {
+        assert(node.patterns.some(p => p.include === '#structural-identities'));
+        assert(node.patterns.some(p => p.include === '#sansa-addresses'));
+      }
+      for (const child of Object.values(node)) {
+        if (Array.isArray(child)) child.forEach(visit);
+        else if (child && typeof child === 'object') visit(child);
+      }
+    };
+    visit(grammar);
+  });
+
 });

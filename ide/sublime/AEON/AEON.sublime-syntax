@@ -17,6 +17,8 @@ contexts:
     - include: bindings
     - include: strings
     - include: literals
+    - include: sansa-addresses
+    - include: structural-identities
     - include: numbers
     - include: keys
     - include: containers
@@ -176,6 +178,8 @@ contexts:
     - include: comments
     - include: strings
     - include: literals
+    - include: sansa-addresses
+    - include: structural-identities
     - include: numbers
     - match: '(?<![A-Za-z0-9_])[A-Za-z_][A-Za-z0-9_:-]*\b(?=\s*(?::[A-Za-z_][A-Za-z0-9_]*(?:<[^>\n]+>|\[[^\]\n]+\])?)?\s*=)'
       scope: variable.other.key.aeon
@@ -206,6 +210,8 @@ contexts:
     - include: comments
     - include: strings
     - include: literals
+    - include: sansa-addresses
+    - include: structural-identities
     - include: numbers
     - match: '(?<![A-Za-z0-9_])[A-Za-z_][A-Za-z0-9_:-]*\b(?=\s*(?::[A-Za-z_][A-Za-z0-9_]*(?:<[^>\n]+>|\[[^\]\n]+\])?)?\s*=)'
       scope: variable.other.key.aeon
@@ -251,6 +257,8 @@ contexts:
     - include: comments
     - include: strings
     - include: literals
+    - include: sansa-addresses
+    - include: structural-identities
     - include: numbers
     - match: '(?<![A-Za-z0-9_])[A-Za-z_][A-Za-z0-9_:-]*\b(?=\s*(?::[A-Za-z_][A-Za-z0-9_]*(?:<[^>\n]+>|\[[^\]\n]+\])?)?\s*=)'
       scope: variable.other.key.aeon
@@ -355,3 +363,11 @@ contexts:
       scope: punctuation.separator.comma.aeon
     - match: ':'
       scope: punctuation.separator.type-annotation.aeon
+
+  sansa-addresses:
+    - match: '(?<![~A-Za-z0-9_$?])[$?](?:\.(?:\\[A-Za-z0-9_-]+\\|[A-Za-z_][A-Za-z0-9_]*|\*{1,2}|@|\["(?:\\.|[^"\\])*"\]|<"(?:\\.|[^"\\])*">)|\[(?:0|[1-9][0-9]*)\])*'
+      scope: meta.address.sansa.aeon
+
+  structural-identities:
+    - match: '\\[A-Za-z0-9_-]+\\'
+      scope: entity.name.label.identity.aeon

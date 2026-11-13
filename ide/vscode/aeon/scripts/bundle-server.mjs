@@ -1,9 +1,13 @@
 import fs from 'node:fs/promises';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 
 const extensionRoot = path.resolve(import.meta.dirname, '..');
-const aeonTypescriptRoot = path.resolve(extensionRoot, '..', '..', '..', '..', 'aeon', 'implementations', 'typescript');
+// An explicit build root supports a retained candidate without changing sibling installs.
+const aeonTypescriptRoot = process.argv[2]
+  ? path.resolve(process.argv[2])
+  : path.resolve(extensionRoot, '..', '..', '..', '..', 'aeon', 'implementations', 'typescript');
 const lspRoot = path.join(aeonTypescriptRoot, 'tools', 'aeon-lsp');
 const serverRoot = path.join(extensionRoot, 'server');
 const serverNodeModules = path.join(serverRoot, 'node_modules');
@@ -102,7 +106,20 @@ function resolvePackageRoot(packageName, requireFrom) {
   try {
     entry = requireFrom.resolve(`${packageName}/package.json`);
   } catch {
-    entry = requireFrom.resolve(packageName);
+    try {
+      entry = requireFrom.resolve(packageName);
+    } catch (error) {
+      // Import-only exports (including SANSA and its shared cursor) have no
+      // require entry. Locate their manifest through this importer's normal
+      // node_modules search roots rather than resolving an unrelated sibling.
+      for (const root of requireFrom.resolve.paths(packageName) ?? []) {
+        const manifest = path.join(root, packageName, 'package.json');
+        if (existsSync(manifest) && JSON.parse(readFileSync(manifest, 'utf8')).name === packageName) {
+          return path.dirname(manifest);
+        }
+      }
+      throw error;
+    }
   }
 
   let current = path.dirname(entry);

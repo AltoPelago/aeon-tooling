@@ -85,3 +85,11 @@ Workspace settings:
 - `aeon.validation.schema`
 
 When `contractRegistry` plus `schema`/`profile` ids are set, the editor validates using the trusted registry and fails closed on unknown ids or hash mismatches.
+
+Candidate identity annotation/literal scopes and descriptive language-service
+hovers are documented in [the tooling contract](../../../docs/child-identity-tooling.md).
+Use a coordinated candidate server build for those hovers and validation. From
+this directory, `node scripts/bundle-server.mjs "$AEON_TYPESCRIPT_ROOT"` bundles
+an explicitly selected, already-built TypeScript graph. The existing package
+command keeps its default sibling build behavior; no extension is installed or
+published by this preparation.

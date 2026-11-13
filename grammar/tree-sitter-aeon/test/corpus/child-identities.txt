@@ -1,0 +1,57 @@
+==================
+identified member, attribute and anonymous list item
+==================
+
+items = [ \item1\ = { name\name1\ = "Widget" } ]
+reading@{unit\unit1\ = "cm"} = 42
+
+---
+
+(source_file
+  (binding
+    (identifier)
+    (list
+      (identified_value
+        (structural_identity)
+        (object
+          (binding
+            (identified_key (identifier) (structural_identity))
+            (string))))))
+  (binding
+    (annotated_key
+      (identifier)
+      (attribute_map
+        (attribute_assignment (attribute_key) (structural_identity) (string))))
+    (number)))
+
+==================
+embedded identity literals, quoted member and ordinary references
+==================
+
+chosen:sansa = $.items.\item1\.\name1\
+context:sansa = ?.\name1\
+quoted:sansa = $.["\\item1\\"]
+copy = ~items[0].name
+pointer = ~> items[0].name
+
+---
+
+(source_file
+  (binding (typed_key (identifier) (type_name)) (sansa_address))
+  (binding (typed_key (identifier) (type_name)) (sansa_address))
+  (binding (typed_key (identifier) (type_name)) (sansa_address))
+  (binding (identifier) (clone_reference (reference_path)))
+  (binding (identifier) (pointer_reference (reference_path))))
+
+==================
+identified node head and typed identified binding
+==================
+
+reading\r1\:number = 42
+head = <thing\h1\ ( "hello" )>
+
+---
+
+(source_file
+  (binding (identified_key (identifier) (structural_identity) (type_name)) (number))
+  (binding (identifier) (node_literal (identifier) (structural_identity) (string))))

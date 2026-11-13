@@ -90,3 +90,40 @@ test('does not highlight a repeated marker as a trimtick substring', () => {
 
   assert.doesNotMatch(html, /<span class="tok-string">&gt;`invalid`<\/span>/);
 });
+
+
+test('highlights identities and child identity literals separately from structural references', () => {
+  const source = String.raw`items = [ \item1\ = { name\name1\ = "Widget" } ]
+chosen:sansa = $.items.\item1\.\name1\
+context:sansa = ?.\name1\
+attr:sansa = $.reading.@.\unit1\
+copy = ~items[0].name
+pointer = ~> items[0].name`;
+  const html = highlightAeon(source);
+  assert.equal((html.match(/class="tok-identity"/g) ?? []).length, 2);
+  for (const literal of [String.raw`$.items.\item1\.\name1\ `.trimEnd(), String.raw`?.\name1\ `.trimEnd(), String.raw`$.reading.@.\unit1\ `.trimEnd()]) {
+    assert.ok(html.includes(`<span class="tok-sansa">${literal}</span>`), literal);
+  }
+  assert.match(html, /<span class="tok-binding">~items\[0\]\.name<\/span>/);
+  assert.match(html, /<span class="tok-binding">~&gt; items\[0\]\.name<\/span>/);
+  assert.match(html, /<span class="tok-key">name<\/span><span class="tok-identity">/);
+});
+
+test('identity-looking strings/comments and marker-shaped quoted members retain their categories', () => {
+  const html = highlightAeon(String.raw`text = "\\item1\\"
+// \comment1\
+quoted:sansa = $.["\\item1\\"]
+legacy = $QmFzZTY0
+empty = \\
+invalid = \bad.id\ `.trimEnd());
+  assert.doesNotMatch(html, /tok-identity/);
+  assert.match(html, /<span class="tok-literal">\$QmFzZTY0<\/span>/);
+  assert.match(html, /<span class="tok-sansa">\$\.\["\\\\item1\\\\"\]<\/span>/);
+});
+
+test('identity syntax never becomes a whole highlighted clone/pointer reference', () => {
+  for (const marker of ['~', '~>']) {
+    const source = String.raw`${marker}$.items.\item1\ `.trimEnd();
+    assert.ok(!highlightAeon(source).includes(`<span class="tok-binding">${source.replace('>', '&gt;')}</span>`));
+  }
+});

@@ -17,13 +17,39 @@
     { "include": "#containers" },
     { "include": "#lists" },
     { "include": "#tuples" },
+    { "include": "#structural-identities" },
     { "include": "#strings" },
     { "include": "#literals" },
+    { "include": "#sansa-addresses" },
     { "include": "#numbers" },
     { "include": "#keys" },
     { "include": "#punctuation" }
   ],
   "repository": {
+    "structural-identities": {
+      "patterns": [
+        {
+          "name": "variable.other.key.aeon",
+          "match": "(?:[A-Za-z_][A-Za-z0-9_:-]*|\"(?:\\\\.|[^\"])*\"|\\x27(?:\\\\.|[^\\x27])*\\x27)(?=\\\\[A-Za-z0-9_-]+\\\\)"
+        },
+        {
+          "name": "entity.name.label.identity.aeon",
+          "match": "\\\\[A-Za-z0-9_-]+\\\\"
+        },
+        {
+          "name": "storage.type.aeon",
+          "match": "(?<=\\\\):[A-Za-z_][A-Za-z0-9_]*(?:<[^>\\n]+>|\\[[^\\]\\n]+\\])?"
+        }
+      ]
+    },
+    "sansa-addresses": {
+      "patterns": [
+        {
+          "name": "meta.address.sansa.aeon",
+          "match": "(?<![~A-Za-z0-9_$?])[$?](?:\\.(?:\\\\[A-Za-z0-9_-]+\\\\|[A-Za-z_][A-Za-z0-9_]*|\\*{1,2}|@|\\[\"(?:\\\\.|[^\"\\\\])*\"\\]|<\"(?:\\\\.|[^\"\\\\])*\">)|\\[(?:0|[1-9][0-9]*)\\])*"
+        }
+      ]
+    },
     "shebang": {
       "patterns": [
         { "name": "comment.line.shebang.aeon", "match": "^//!.*$" }
@@ -319,8 +345,10 @@
     "attribute-body": {
       "patterns": [
         { "include": "#comments" },
+        { "include": "#structural-identities" },
         { "include": "#strings" },
         { "include": "#literals" },
+        { "include": "#sansa-addresses" },
         { "include": "#numbers" },
         { "name": "variable.other.key.aeon", "match": "(?<![A-Za-z0-9_])[A-Za-z_][A-Za-z0-9_:-]*\\b(?=\\s*(?::[A-Za-z_][A-Za-z0-9_]*(?:<[^>]+>|\\[[^\\]]+\\])?)?\\s*=)" },
         { "name": "punctuation.separator.comma.aeon", "match": "," },
@@ -437,8 +465,10 @@
             { "include": "#containers" },
             { "include": "#lists" },
             { "include": "#tuples" },
+            { "include": "#structural-identities" },
             { "include": "#strings" },
             { "include": "#literals" },
+            { "include": "#sansa-addresses" },
             { "include": "#numbers" },
             { "include": "#keys" },
             { "include": "#punctuation" }
@@ -458,8 +488,10 @@
             { "include": "#comments" },
             { "include": "#node-literals-annotated" },
             { "include": "#node-literals" },
+            { "include": "#structural-identities" },
             { "include": "#strings" },
             { "include": "#literals" },
+            { "include": "#sansa-addresses" },
             { "include": "#numbers" },
             { "include": "#bindings" },
             { "name": "punctuation.separator.comma.aeon", "match": "," }
@@ -479,8 +511,10 @@
             { "include": "#comments" },
             { "include": "#node-literals-annotated" },
             { "include": "#node-literals" },
+            { "include": "#structural-identities" },
             { "include": "#strings" },
             { "include": "#literals" },
+            { "include": "#sansa-addresses" },
             { "include": "#numbers" },
             { "include": "#bindings" },
             { "name": "punctuation.separator.tuple.aeon", "match": "," }

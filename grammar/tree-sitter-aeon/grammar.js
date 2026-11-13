@@ -5,6 +5,8 @@ function commaSep1(rule) {
 module.exports = grammar({
   name: 'aeon',
 
+  conflicts: ($) => [[$.quoted_key, $.string], [$._key_name, $._node_child]],
+
   extras: ($) => [
     /[ \t\r\n]+/
   ],
@@ -39,10 +41,28 @@ module.exports = grammar({
     ),
 
     _key: ($) => choice(
+      $.identified_key,
       $.typed_key,
       $.annotated_key,
       $.directive_key,
       $._key_name
+    ),
+
+    identified_key: ($) => seq(
+      field('name', $._key_name),
+      field('identity', $.structural_identity),
+      optional(field('attributes', $.attribute_map)),
+      optional(seq(':', field('datatype', $.type_name), optional($.type_parameters)))
+    ),
+
+    structural_identity: () => token(/\\[A-Za-z0-9_-]+\\/),
+
+    identified_value: ($) => seq(
+      field('identity', $.structural_identity),
+      optional(field('attributes', $.attribute_map)),
+      optional(seq(':', field('datatype', $.type_name), optional($.type_parameters))),
+      '=',
+      field('value', $._value)
     ),
 
     typed_key: ($) => seq(
@@ -82,6 +102,8 @@ module.exports = grammar({
 
     attribute_assignment: ($) => seq(
       field('key', $.attribute_key),
+      optional(field('identity', $.structural_identity)),
+      optional(seq(':', field('datatype', $.type_name), optional($.type_parameters))),
       '=',
       field('value', $._value)
     ),
@@ -105,6 +127,7 @@ module.exports = grammar({
     node_literal: ($) => seq(
       '<',
       field('tag', $.identifier),
+      optional(field('identity', $.structural_identity)),
       optional(field('attributes', $.attribute_map)),
       optional(seq(
         ':',
@@ -132,6 +155,8 @@ module.exports = grammar({
       $.template_string,
       $.hex_literal,
       $.radix_literal,
+      $.sansa_address,
+      $.identified_value,
       $.encoding_literal,
       $.separator_literal,
       $.zoned_datetime,
@@ -174,6 +199,9 @@ module.exports = grammar({
       field('path', $.reference_path)
     ),
 
+    // Lexical editor subset; SANSA/AEON remain the validation authority.
+    sansa_address: () => token(/[$?](?:\.(?:\\[A-Za-z0-9_-]+\\|[A-Za-z_][A-Za-z0-9_]*|\*{1,2}|@|\["(?:\\.|[^"\\])*"\]|<"(?:\\.|[^"\\])*">)|\[(?:0|[1-9][0-9]*)\])*/),
+
     reference_path: () => token(/\$?(?:\.?[A-Za-z_][A-Za-z0-9_]*|\[\d+\]|\["(?:\\.|[^"])*"\]|\.@(?:\.[A-Za-z_][A-Za-z0-9_]*|\.\["(?:\\.|[^"])*"\]))+/),
 
     _value: ($) => choice(
@@ -187,6 +215,8 @@ module.exports = grammar({
       $.template_string,
       $.hex_literal,
       $.radix_literal,
+      $.sansa_address,
+      $.identified_value,
       $.encoding_literal,
       $.separator_literal,
       $.zoned_datetime,
