@@ -1,5 +1,8 @@
 # AEON Tooling Workspace
 
+See [release integration](RELEASING.md) for beta/RC/stable acceptance and the
+shared AEON 0.17.0 checklist.
+
 This repository is the maintained tooling workspace for AEON.
 
 It groups tooling by product and integration surface:
