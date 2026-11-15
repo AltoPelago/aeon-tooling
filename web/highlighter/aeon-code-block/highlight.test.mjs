@@ -43,7 +43,7 @@ test('highlights zoned values and annotated keys', () => {
 
   assert.match(html, /<span class="tok-key">launch<\/span>/);
   assert.match(html, /<span class="tok-type">wtc<\/span>/);
-  assert.match(html, /<span class="tok-literal">2026-06-01T12:00:00Z&amp;Asia\/Tokyo<\/span>/);
+  assert.match(html, /<span class="tok-temporal">2026-06-01T12:00:00Z&amp;Asia\/Tokyo<\/span>/);
   assert.match(html, /role/);
 });
 

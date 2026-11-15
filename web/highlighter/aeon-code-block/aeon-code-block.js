@@ -17,6 +17,9 @@ const templateHtml = `
       --aeon-tag: #e2c97a;
       --aeon-string: #d9c58b;
       --aeon-literal: #c7d98a;
+      --aeon-number: #7dd3fc;
+      --aeon-temporal: #f5e6a8;
+      --aeon-symbol: #50dabe;
       --aeon-directive: #8ec7d9;
       --aeon-comment: #a8adb8;
       --aeon-comment-doc: #9aa9c7;
@@ -141,9 +144,11 @@ const templateHtml = `
     .tok-punct { color: var(--aeon-punct); }
     .tok-string { color: var(--aeon-string); }
     .tok-literal { color: var(--aeon-literal); }
+    .tok-number { color: var(--aeon-number); }
+    .tok-temporal { color: var(--aeon-temporal); }
     .tok-identity { color: var(--aeon-tag, #e2c97a); }
-    .tok-symbol { color: #50dabe; }
-    .tok-sansa { color: var(--aeon-binding, #7fb2ff); }
+    .tok-symbol { color: var(--aeon-symbol); }
+    .tok-sansa { color: var(--aeon-symbol); }
     .tok-binding { color: var(--aeon-key); }
     .tok-operator { color: var(--aeon-fg); }
   </style>
