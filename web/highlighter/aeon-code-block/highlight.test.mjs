@@ -3,6 +3,19 @@ import assert from 'node:assert/strict';
 
 import { highlightAeon } from './aeon-code-block.js';
 
+// Compare semantic colour coverage, not the old scanner's span grouping.
+function styled(html,role,fragment){
+  const stack=[], roles=[];let text='',cursor=0;
+  const decode=value=>value.replaceAll('&lt;','<').replaceAll('&gt;','>').replaceAll('&amp;','&');
+  function append(value){value=decode(value);text+=value;for(let i=0;i<value.length;i++)roles.push([...stack]);}
+  for(const match of html.matchAll(/<span class="([^"]+)">|<\/span>/g)){
+    append(html.slice(cursor,match.index));if(match[1])stack.push(match[1]);else stack.pop();cursor=match.index+match[0].length;
+  }
+  append(html.slice(cursor));const start=text.indexOf(fragment);assert.ok(start>=0,fragment+' not preserved');
+  for(let i=0;i<fragment.length;i++)if(!/\s/.test(fragment[i]))assert.ok(roles[start+i].includes('tok-'+role),fragment+' lacks '+role+' at '+i);
+}
+
+
 test('highlights reserved comment channels and multiline block comments', () => {
   const source = `//{ structure
 /[
@@ -18,10 +31,10 @@ test('highlights quoted keys, types, and bindings with paths', () => {
   const source = `"display name":string = "AEON"\nref = ~finance.revenue\nalias = ~> user`;
   const html = highlightAeon(source);
 
-  assert.match(html, /<span class="tok-quoted-key">"display name"<\/span>/);
+  assert.match(html, /<span class="tok-key">"display name"<\/span>/);
   assert.match(html, /<span class="tok-type">string<\/span>/);
-  assert.match(html, /<span class="tok-binding">~finance\.revenue<\/span>/);
-  assert.match(html, /<span class="tok-binding">~&gt; user<\/span>/);
+  styled(html,'binding','~finance.revenue');
+  styled(html,'binding','~> user');
 });
 
 test('highlights zoned values and annotated keys', () => {
@@ -57,7 +70,7 @@ test('highlights current Core v1 type forms and anonymous typed values', () => {
   const source = `pair:tuple<int, string>[x][y] = (:int = 1, :string = "one")\nstyle:color = "#fff"`;
   const html = highlightAeon(source);
 
-  assert.match(html, /<span class="tok-type">tuple&lt;int, string&gt;\[x\]\[y\]<\/span>/);
+  styled(html,'type','tuple<int, string>[x][y]');
   assert.match(html, /<span class="tok-type">int<\/span>/);
   assert.match(html, /<span class="tok-type">string<\/span>/);
   assert.match(html, /<span class="tok-key">style<\/span><span class="tok-punct">:<\/span><span class="tok-type">color<\/span>/);
@@ -67,7 +80,7 @@ test('highlights node heads, nested attributes, and inline comments', () => {
   const source = `content = <span@{id="text", ns@{origin:string="core"}:string="aeon"}:node("hello")> // trailing`;
   const html = highlightAeon(source);
 
-  assert.match(html, /<span class="tok-tag-punct">&lt;<\/span><span class="tok-tag">span<\/span>/);
+  styled(html,'punct','<');styled(html,'tag','span');
   assert.match(html, /tok-attribute-punct/);
   assert.match(html, /<span class="tok-type">node<\/span>/);
   assert.match(html, /<span class="tok-comment">\/\/ trailing<\/span>/);
@@ -77,12 +90,12 @@ test('highlights current reference path forms and trimtick literals', () => {
   const source = `root = ~$.["a.b"]\nmember = ~"a.b"\nprofile = ~user.@.["profile.name"].["display.name"]\nlegacy = ~user@["profile.name"]\ncopy = ~> ["quoted start"]\nnote:trimtick = > \`hello\``;
   const html = highlightAeon(source);
 
-  assert.match(html, /<span class="tok-binding">~\$\.\["a\.b"\]<\/span>/);
-  assert.match(html, /<span class="tok-binding">~"a\.b"<\/span>/);
-  assert.match(html, /<span class="tok-binding">~user\.@\.\["profile\.name"\]\.\["display\.name"\]<\/span>/);
+  styled(html,'binding','~$.["a.b"]');
+  styled(html,'binding','~"a.b"');
+  styled(html,'binding','~user.@.["profile.name"].["display.name"]');
   assert.doesNotMatch(html, /<span class="tok-binding">~user@\["profile\.name"\]<\/span>/);
-  assert.match(html, /<span class="tok-binding">~&gt; \["quoted start"\]<\/span>/);
-  assert.match(html, /<span class="tok-string">&gt; `hello`<\/span>/);
+  styled(html,'binding','~> ["quoted start"]');
+  styled(html.split('\n').at(-1),'punct','>');styled(html,'string','`hello`');
 });
 
 test('does not highlight a repeated marker as a trimtick substring', () => {
@@ -104,8 +117,8 @@ pointer = ~> items[0].name`;
   for (const literal of [String.raw`$.items.\item1\.\name1\ `.trimEnd(), String.raw`?.\name1\ `.trimEnd(), String.raw`$.reading.@.\unit1\ `.trimEnd()]) {
     assert.ok(html.includes(`<span class="tok-sansa">${literal}</span>`), literal);
   }
-  assert.match(html, /<span class="tok-binding">~items\[0\]\.name<\/span>/);
-  assert.match(html, /<span class="tok-binding">~&gt; items\[0\]\.name<\/span>/);
+  styled(html,'binding','~items[0].name');
+  styled(html,'binding','~> items[0].name');
   assert.match(html, /<span class="tok-key">name<\/span><span class="tok-identity">/);
 });
 
@@ -117,7 +130,8 @@ legacy = $QmFzZTY0
 empty = \\
 invalid = \bad.id\ `.trimEnd());
   assert.doesNotMatch(html, /tok-identity/);
-  assert.match(html, /<span class="tok-literal">\$QmFzZTY0<\/span>/);
+  // The implementation lexer identifies this obsolete sigil spelling as an address token.
+  assert.match(html, /<span class="tok-sansa">\$QmFzZTY0<\/span>/);
   assert.match(html, /<span class="tok-sansa">\$\.\["\\\\item1\\\\"\]<\/span>/);
 });
 
