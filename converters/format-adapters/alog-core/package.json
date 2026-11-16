@@ -1,0 +1,22 @@
+{
+  "name": "@altopelago/alog-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "bin": {
+    "alog-aes": "./bin/alog-aes.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@altopelago/aeon-core": "0.16.0"
+  }
+}

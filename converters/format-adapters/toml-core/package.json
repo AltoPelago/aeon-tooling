@@ -1,0 +1,31 @@
+{
+  "name": "@altopelago/toml-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Dependency-free TOML v1.0 to portable AES (aes.events.v1) and telex.aes converter",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "bin": {
+    "toml-aes": "./bin/toml-aes.js"
+  },
+  "files": [
+    "src",
+    "bin"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "aeon",
+    "aes",
+    "assignment-event-stream",
+    "telex",
+    "toml"
+  ],
+  "scripts": {
+    "test": "node --test"
+  }
+}

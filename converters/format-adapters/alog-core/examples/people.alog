@@ -1,0 +1,4 @@
+&LOG v1
+// Scalar records retain their order.
+1, "Alice", true
+2, "Bob", false

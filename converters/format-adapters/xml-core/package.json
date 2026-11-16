@@ -1,0 +1,22 @@
+{
+  "name": "@altopelago/xml-core",
+  "version": "0.1.0",
+  "description": "Strict XML 1.0 to AES (Aeonite Event Specification) and Telex v1 source-format adapter.",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./xml-aes": "./src/xml-aes.js",
+    "./telex": "./src/telex.js"
+  },
+  "bin": {
+    "xml-aes": "./bin/xml-aes.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,5 @@
+people:
+  - name: Alice
+    active: true
+  - name: Bob
+    active: false

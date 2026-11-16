@@ -1,0 +1,32 @@
+{
+  "name": "@altopelago/json-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Dependency-free JSON to portable AES (aes.events.v1) and telex.aes converter",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "bin": {
+    "json-aes": "./bin/json-aes.js"
+  },
+  "files": [
+    "src",
+    "bin"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "aeon",
+    "aes",
+    "assignment-event-stream",
+    "telex",
+    "json"
+  ],
+  "scripts": {
+    "test": "node --test",
+    "test:cts": "node --test test/cts.test.js"
+  }
+}

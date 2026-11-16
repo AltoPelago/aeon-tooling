@@ -1,0 +1,32 @@
+# Cluster configuration & node inventory (TOML v1.0)
+cluster = "prod-ap-southeast"
+snapshot_date = 2026-10-19
+maintenance_window = 03:30:00
+max_connections = 1_000
+retry_limit = inf
+
+[database]
+host = "db.internal"
+ports = [5432, 5433]
+permissions = 0o750
+
+[[nodes]]
+id = "node-01"
+role = "primary"
+load = 0.42
+flags = 0b1101
+heartbeat = 2026-10-19T03:25:00Z
+
+[[nodes]]
+id = "node-02"
+role = "replica"
+load = 0.88
+flags = 0b0100
+heartbeat = 2026-10-19T03:29:30Z
+
+[[nodes]]
+id = "node-03"
+role = "replica"
+load = 0.19
+flags = 0b1111
+heartbeat = 2026-10-19T03:28:00Z

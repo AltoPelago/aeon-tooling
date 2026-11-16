@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<inventory warehouse="Melbourne 2" xmlns:inv="urn:altopelago:inventory">
+  <inv:item sku="A-100" qty="03" price="19.50" discontinued="false">
+    <name>Anchor</name>
+    <notes><![CDATA[Heavy-duty <galvanized> steel & chain ready]]></notes>
+  </inv:item>
+  <inv:item sku="B-200" qty="12" price="7.25" discontinued="false">
+    <name>Buoy</name>
+  </inv:item>
+  <inv:item sku="B-210" qty="04" price="11.00" discontinued="true">
+    <name>Buoy (large)</name>
+  </inv:item>
+</inventory>

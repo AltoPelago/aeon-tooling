@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Local lossless or lossy format conversion for AEON and source format adapters.">
+  <title>Format adapters · AEON Playground</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="Format adapters home"><span class="brand-mark">æ</span> AEON <span class="brand-divider">/</span> <span>Format adapters</span></a>
+    <span class="local-pill"><span aria-hidden="true">●</span> Local playground</span>
+  </header>
+  <main class="playground-app-shell">
+    <h1 class="visually-hidden">Format adapter playground</h1>
+    <div class="playground-toolbar">
+      <div class="conversion-controls">
+        <label class="format-label" for="from">From <select id="from"><option value="json">JSON</option><option value="aeon">AEON</option><option value="xml">XML</option><option value="toml">TOML</option><option value="yaml">YAML · experimental</option><option value="alog">&amp;LOG v1</option></select></label>
+        <button id="swap" class="swap-button" type="button" title="Swap formats and use the converted output as input" aria-label="Swap input and output formats" disabled>⇄</button>
+        <label class="format-label" for="to">To <select id="to"><option value="aeon">AEON</option><option value="json">JSON</option><option value="xml">XML</option><option value="toml">TOML</option><option value="yaml">YAML · experimental</option><option value="alog">&amp;LOG v1</option></select></label>
+        <label class="format-label mode-label" for="mode">Mode <select id="mode" aria-label="Conversion mode"><option value="lossless">Lossless</option><option value="lossy">Lossy · stringify scalars</option></select></label>
+      </div>
+      <div class="toolbar-actions"><label class="auto-label"><input id="auto" type="checkbox" checked> Auto-convert</label><button class="primary" id="convert" type="button">Convert <span class="shortcut" aria-hidden="true">⌘ ↵</span></button></div>
+    </div>
+    <section class="example-picker" aria-label="Conversion examples">
+      <label for="example-choice">Example <select id="example-choice" aria-describedby="example-description example-expectations"></select></label>
+      <button id="example" type="button">Load example</button>
+      <div class="example-details"><p id="example-description"></p><p id="example-expectations"></p></div>
+    </section>
+    <section class="panel source-pane" aria-labelledby="source-title">
+      <div class="panel-head"><h2 id="source-title">JSON source</h2><div class="panel-tools"><span id="source-count">0 characters</span><button id="open" type="button">Open file</button></div></div>
+      <textarea id="source" spellcheck="false" autocapitalize="off" autocomplete="off" aria-labelledby="source-title" aria-describedby="source-note"></textarea>
+      <div class="pane-foot" id="source-note">Paste a document or open a file.</div>
+    </section>
+    <section class="panel output-pane" aria-labelledby="output-title">
+      <div class="panel-head"><h2 id="output-title">AEON output</h2><div class="panel-tools"><button id="copy" type="button" disabled>Copy</button><button id="download" type="button" disabled>Download</button></div></div>
+      <pre class="output-frame" tabindex="0" aria-labelledby="output-title"><code id="output"></code></pre>
+      <div class="pane-foot"><span id="output-note">Ready to convert</span><span id="output-count"></span></div>
+    </section>
+    <section class="panel diagnostics-pane" aria-labelledby="diagnostics-title">
+      <div class="panel-head"><h2 id="diagnostics-title">Diagnostics</h2><span id="status" class="status">Ready</span></div>
+      <pre id="diagnostics" role="status" aria-live="polite" aria-atomic="true">Preparing the local converter…</pre>
+    </section>
+    <footer>Source and output stay on this computer.<span id="mode-note">Lossless mode rejects values the selected format cannot preserve.</span></footer>
+  </main>
+  <input type="file" id="file" accept=".aeon,.json,.xml,.toml,.yaml,.yml,.alog,.log,.txt" hidden>
+</body>
+</html>

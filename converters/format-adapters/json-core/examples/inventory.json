@@ -1,0 +1,10 @@
+{
+  "inventory": {
+    "warehouse": "Melbourne 2",
+    "items": [
+      { "sku": "A-100", "name": "Anchor", "qty": 3, "price": 19.50, "discontinued": null },
+      { "sku": "B-200", "name": "Buoy", "qty": 12, "price": 7.25, "discontinued": false },
+      { "sku": "B-210", "name": "Buoy (large)", "qty": 4, "price": 11.0, "discontinued": true }
+    ]
+  }
+}

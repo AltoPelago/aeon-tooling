@@ -27,7 +27,8 @@ npm run test
 ```
 
 The root test command covers the dependency-light browser code block tests and the `md-to-and`
-converter tests. Editor and grammar integrations keep their own focused commands:
+converter tests, plus format adapters (install their dependencies first with
+`npm run install:adapters`). Editor and grammar integrations keep their own focused commands:
 
 - `npm run test:vscode:grammar`
 - `npm run test:tree-sitter`
@@ -66,8 +67,18 @@ npm run uninstall:quicklook
 
 ## Converters
 
+- `converters/format-adapters/`: JSON, TOML, XML, ALOG v1 and experimental YAML to AES/Telex/AEON; see the [proposal and migration guide](docs/format-adapters.md). Run `npm run install:adapters` before the first test run.
 - `converters/md-to-and/`: Markdown to canonical standalone `&ND` converter (CLI + library).
 
 The unpublished [child identity tooling candidate](docs/child-identity-tooling.md)
 records editor/highlighter support, the constrained-reference boundary and
 explicit candidate server bundling.
+
+## Format adapter playground
+
+Run `npm run playground:adapters` for the local two-pane format converter, including
+AEON to JSON and reverse conversions. See [playground setup](converters/format-adapters/playground/README.md)
+for the local compiler requirement and supported export profiles.
+
+The [format support matrix](docs/format-adapter-support.md) records language
+features, reverse-export restrictions and the XML CDATA preservation contract.

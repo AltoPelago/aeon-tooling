@@ -3,7 +3,7 @@
   "version": "0.9.2",
   "type": "module",
   "scripts": {
-    "test": "npm run test --prefix web/highlighter/aeon-code-block && npm run test --prefix converters/md-to-and",
+    "test": "npm run test --prefix web/highlighter/aeon-code-block && npm run test --prefix converters/md-to-and && npm run test:adapters",
     "test:web": "npm run test --prefix web/highlighter/aeon-code-block",
     "test:md-to-and": "npm run test --prefix converters/md-to-and",
     "install:vscode": "pnpm --dir ide/vscode/aeon install --frozen-lockfile --node-linker=hoisted",
@@ -17,6 +17,9 @@
     "clean": "bash scripts/cleanup-public.sh --write",
     "clean:check": "bash scripts/cleanup-public.sh --check",
     "check:local-paths": "bash scripts/check-no-local-paths.sh",
-    "precommit": "bash scripts/pre-commit-check.sh"
+    "precommit": "bash scripts/pre-commit-check.sh",
+    "test:adapters": "node --test converters/format-adapters/test/*.test.js converters/format-adapters/*-core/test/*.test.js",
+    "install:adapters": "npm ci --ignore-scripts --prefix converters/format-adapters/alog-core && npm ci --ignore-scripts --prefix converters/format-adapters/yaml-core",
+    "playground:adapters": "node converters/format-adapters/playground/server.mjs"
   }
 }

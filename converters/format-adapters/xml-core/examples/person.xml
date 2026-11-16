@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<person id="123">
+  <name:user>Alice</name:user>
+  <!-- comments can be converted -->
+  mixed strings between nodes
+  <age>30</age>
+  <purchase price="3.30">cards</purchase>
+  <purchase price="6.99">paper</purchase>
+</person>
