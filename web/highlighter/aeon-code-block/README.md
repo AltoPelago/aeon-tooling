@@ -41,3 +41,17 @@ launch:wtc = 2026-06-01T12:00:00Z&Asia/Tokyo
 cd tooling/web/highlighter/aeon-code-block
 node --test highlight.test.mjs
 ```
+
+## Shared AEON package
+
+This is now a legacy frame/copy compatibility wrapper around
+`@altopelago/aeon-highlight`. It contains no AEON scanner. New integrations should
+prefer the package renderer or optional element entry directly; the existing
+frame, title/copy API and palette remain here for existing clients.
+
+Run `npm ci --ignore-scripts` at the tooling repository root before tests. The
+root lockfile selects the reviewed local candidate archives while publication is
+held. Serve the repository root over loopback and open this directory's demo;
+its import map loads the installed package and matching lexer. Lexer token
+boundaries replace regex guesses, including the separate trim marker and string.
+Editor grammars remain separate host integrations.

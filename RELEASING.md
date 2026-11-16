@@ -33,3 +33,25 @@ Record commands, CI results, runtime/platform versions, package/lock integrity,
 artifact digests, skips and verification limits in the shared checklist. Local
 builds and tarballs do not establish registry availability. Do not mark a release
 row accepted until the required evidence for its exact combination is retained.
+
+## Shared browser highlighter candidate
+
+The code-block shell imports the implementation-backed AEON renderer. Its
+existing frame, copy control and colours remain local; IDE grammars are unchanged.
+The demo import map loads the development packages installed at the repository
+root. `.candidate-packages/highlight.json` records exact archive hashes and the
+producer commit. These local pins must be replaced by qualified exact registry
+artifacts before release.
+
+Local verification: all 11 highlighter tests and all 3 converter tests pass.
+The worktree converter test used a Node loader mapping its existing sibling
+&ND import to the primary `and-core` checkout; no converter source or pin changed.
+The browser demo renders with the existing dark palette. Clipboard permission
+and the browser matrix remain release checks. Releases and deployment stay held.
+
+Colour follow-up: numeric/radix literals use the shared `tok-number` role and
+temporal values `tok-temporal`. Dark colours are cyan `#7dd3fc` / light yellow
+`#f5e6a8`, with light-theme equivalents `#006b80` / `#806500`. SANSA address
+literals share the symbol colour. The development highlighter archive is
+repinned with SHA-256 provenance; parsers, target checks and budgets are unchanged.
+Releases and deployment remain held.

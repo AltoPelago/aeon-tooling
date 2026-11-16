@@ -4,5 +4,8 @@
   "type": "module",
   "scripts": {
     "test": "node --test highlight.test.mjs"
+  },
+  "peerDependencies": {
+    "@altopelago/aeon-highlight": "^0.17.0-rc.1"
   }
 }
