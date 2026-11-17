@@ -9,6 +9,7 @@ when their value models overlap.
 From the **aeon-tooling repository root**:
 
 ```sh
+npm ci --ignore-scripts
 npm run install:adapters
 npm run playground:adapters
 ```
@@ -16,6 +17,11 @@ npm run playground:adapters
 Open [the local playground](http://127.0.0.1:4317).
 Change `PORT` if that port is in use. Stop with Ctrl+C.
 No build step, CDN, remote conversion service or account is needed.
+The root install supplies the locked shared highlighter and lexer packages.
+The server exposes only their required browser modules under `/vendor/` and
+resolves their package imports to local URLs; it does not expose `node_modules`
+or require an import map or a weaker content security policy. Restart the
+playground server after updating its module routes or installed dependencies.
 The server binds only to `127.0.0.1`; files are read only when opened explicitly,
 and conversion documents are not logged or persisted.
 
@@ -35,8 +41,9 @@ to another built compatible Core module:
 AEON_CORE_MODULE=/path/to/aeon-core/dist/index.js npm run playground:adapters
 ```
 
-The module is loaded by Node; its own package dependencies must also resolve.
-Compiler code and filesystem paths are never served to the browser.
+The Core module is loaded by Node; its own package dependencies must also resolve.
+It remains server-side. Only the allowlisted highlighter and matching lexer
+modules are served to the browser; filesystem paths are not exposed.
 
 ## Lossless and lossy modes
 

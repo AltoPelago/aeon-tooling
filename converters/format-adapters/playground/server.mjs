@@ -12,6 +12,15 @@ export function createPlaygroundServer(convert) {
     ['/style.css', ['public/style.css', 'text/css']],
     ['/highlighter.js', ['../../../web/highlighter/aeon-code-block/aeon-code-block.js', 'text/javascript']],
   ]);
+  // Serve only the installed highlighter's browser dependency graph, never an
+  // arbitrary node_modules path. Package versions remain pinned by the root lock.
+  for (const [name, files] of [
+    ['aeon-highlight', ['index.js', 'renderer.js', 'aeon-token-highlight.mjs', 'presentation-highlight.mjs']],
+    ['aeon-lexer', ['index.js', 'lexer.js', 'tokens.js', 'errors.js']],
+  ]) {
+    const entry = import.meta.resolve(`@altopelago/${name}`);
+    for (const file of files) assets.set(`/vendor/${name}/${file}`, [new URL(file, entry), 'text/javascript']);
+  }
   return http.createServer(async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -42,7 +51,17 @@ export function createPlaygroundServer(convert) {
     if (req.method !== 'GET' || !assets.has(req.url)) return reply(404, {error: 'Not found'});
     try {
       const [path, type] = assets.get(req.url);
-      const content = await readFile(new URL(path, import.meta.url));
+      let content = await readFile(new URL(path, import.meta.url));
+      if (type === 'text/javascript') {
+        // Browser ESM has no Node package resolution. Keep relative imports and
+        // replace the two known bare imports with same-origin allowlisted URLs.
+        content = content.toString('utf8');
+        for (const name of ['aeon-highlight', 'aeon-lexer']) {
+          for (const quote of ["'", '"']) content = content.replaceAll(
+            `from ${quote}@altopelago/${name}${quote}`,
+            `from ${quote}/vendor/${name}/index.js${quote}`);
+        }
+      }
       res.writeHead(200, {'Content-Type': `${type}; charset=utf-8`}); res.end(content);
     } catch { reply(500, {error: 'Unable to load playground asset.'}); }
   });
