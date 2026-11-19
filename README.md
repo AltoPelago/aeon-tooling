@@ -80,5 +80,8 @@ Run `npm run playground:adapters` for the local two-pane format converter, inclu
 AEON to JSON and reverse conversions. See [playground setup](converters/format-adapters/playground/README.md)
 for the local compiler requirement and supported export profiles.
 
+Run `npm run examples:adapters` for [AES → AEOS → SANSA examples](converters/format-adapters/examples/validate-and-query/README.md)
+covering every adapter, schema validation failures and typed query results.
+
 The [format support matrix](docs/format-adapter-support.md) records language
 features, reverse-export restrictions and the XML CDATA preservation contract.

@@ -2,13 +2,19 @@ import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { createConverter, loadCompiler, formats } from './convert.mjs';
+import { cases } from '../examples/validate-and-query/cases.mjs';
+import { createPipelineRunner } from './pipeline.mjs';
 
-export function createPlaygroundServer(convert) {
+export function createPlaygroundServer(convert, { runPipeline = createPipelineRunner() } = {}) {
   const assets = new Map([
     ['/', ['public/index.html', 'text/html']],
     ['/favicon.svg', ['public/favicon.svg', 'image/svg+xml']],
     ['/examples.js', ['public/examples.js', 'text/javascript']],
     ['/app.js', ['public/app.js', 'text/javascript']],
+    ['/pipeline.js', ['public/pipeline.js', 'text/javascript']],
+    ['/editor-highlighting.js', ['public/editor-highlighting.js', 'text/javascript']],
+    ['/source-highlighting.js', ['public/source-highlighting.js', 'text/javascript']],
+    ['/result-highlighting.js', ['public/result-highlighting.js', 'text/javascript']],
     ['/style.css', ['public/style.css', 'text/css']],
     ['/highlighter.js', ['../../../web/highlighter/aeon-code-block/aeon-code-block.js', 'text/javascript']],
   ]);
@@ -31,7 +37,8 @@ export function createPlaygroundServer(convert) {
     if (req.headers.host !== expectedHost && req.headers.host !== `localhost:${req.socket.localPort}`) return reply(403, {error: 'Use the local playground URL.'});
     if (req.headers.origin && req.headers.origin !== `http://${req.headers.host}`) return reply(403, {error: 'Cross-origin requests are not allowed.'});
     if (req.url === '/api/formats' && req.method === 'GET') return reply(200, {formats});
-    if (req.url === '/api/convert' && req.method === 'POST') {
+    if (req.url === '/api/pipeline/examples' && req.method === 'GET') return reply(200, {examples: cases});
+    if (['/api/convert', '/api/pipeline'].includes(req.url) && req.method === 'POST') {
       if (!req.headers['content-type']?.startsWith('application/json')) return reply(415, {error: 'Expected JSON request.'});
       try {
         const chunks = []; let size = 0;
@@ -41,8 +48,8 @@ export function createPlaygroundServer(convert) {
           chunks.push(chunk);
         }
         const input = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-        if (typeof input.source !== 'string' || Buffer.byteLength(input.source) > 1_048_576) return reply(413, {error: 'Source must be text up to 1 MiB.'});
-        reply(200, convert(input));
+        if (typeof input?.source !== 'string' || Buffer.byteLength(input.source) > 1_048_576) return reply(413, {error: 'Source must be text up to 1 MiB.'});
+        reply(200, req.url === '/api/pipeline' ? await runPipeline(input) : convert(input));
       } catch (error) {
         reply(422, {error: error.message, code: error.code ?? 'CONVERSION_ERROR', path: error.path, line: error.line, column: error.column});
       }

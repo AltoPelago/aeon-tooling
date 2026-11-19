@@ -33,6 +33,16 @@ The imported root lives at `$.[""]`; the source attribute is optional via
 `{ sourceMetadata: false }`. Existing JSON/TOML/XML consumers can explicitly
 select `{ mapping: 'native' }` or CLI `--native` for their previous mapping.
 
+## Validate and query imported data
+
+Run `npm run examples:adapters` for examples importing JSON, TOML, XML, ALOG and
+YAML into AES, validating with AEOS, and querying the validated records with
+SANSA. Each includes expected results and an invalid variant. See the
+[runnable pipeline examples](examples/validate-and-query/README.md) for setup,
+schemas and format-specific addressing.
+The playground's **Validate & query** workspace also provides these examples,
+an AES/Telex viewer, editable schemas and queries, and validation diagnostics.
+
 The [original architecture investigation](source-format-adapters.md) is retained
 as historical context; current behavior is documented by the proposal above.
 

@@ -1,6 +1,9 @@
-import { highlightAeon } from '/highlighter.js';
 import { samples, sampleFor, examplesFor } from './examples.js';
+import { initPipeline } from './pipeline.js';
+import { attachHighlightEditor } from './editor-highlighting.js';
+import { highlightSource } from './source-highlighting.js';
 const $ = id => document.getElementById(id);
+const refreshSource = attachHighlightEditor($('source'), $('source-highlight'), source => highlightSource(source, $('from').value));
 const labels = {aeon: 'AEON', json: 'JSON', xml: 'XML', toml: 'TOML', yaml: 'YAML', alog: '&LOG v1'};
 const hints = {
   aeon: 'Use ordinary AEON bindings, or an imported root under "".',
@@ -43,6 +46,7 @@ function invalidate() {
   $('output-note').textContent = 'Ready to convert'; $('output-count').textContent = '';
 }
 function describe() {
+  refreshSource();
   $('source-title').textContent = `${labels[$('from').value]} source`;
   $('output-title').textContent = `${labels[$('to').value]} output`;
   $('source-note').textContent = hints[$('from').value];
@@ -73,8 +77,7 @@ async function convert() {
       return;
     }
     output = result.output; outputPair = snapshot;
-    if ($('to').value === 'aeon') $('output').innerHTML = highlightAeon(output);
-    else $('output').textContent = output;
+    $('output').innerHTML = highlightSource(output, $('to').value);
     for (const button of ['copy', 'download', 'swap']) $(button).disabled = false;
     $('output-note').textContent = 'Conversion complete'; $('output-count').textContent = count(output);
     const warnings = result.warnings ?? [];
@@ -150,5 +153,6 @@ $('file').addEventListener('change', async () => {
   } catch { status('Cannot open file', 'error', 'Choose a UTF-8 text file.'); }
   $('file').value = '';
 });
-document.addEventListener('keydown', event => { if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {event.preventDefault(); convert();} });
+document.addEventListener('keydown', event => { if (!$('conversion-workspace').hidden && (event.ctrlKey || event.metaKey) && event.key === 'Enter') {event.preventDefault(); convert();} });
+initPipeline();
 convert();

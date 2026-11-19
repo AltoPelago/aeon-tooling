@@ -1,0 +1,46 @@
+//! format:aeos-v1
+aeos:schema = {
+  rules:list<object> = [
+    {
+      path:sansa = $.[""].items
+      constraints:object = {
+        required:boolean = true
+        type:string = "ListNode"
+      }
+    }
+    {
+      selector:sansa = $.[""].items.*.sku
+      constraints:object = {
+        type:string = "StringLiteral"
+        min_length:number = 2
+      }
+    }
+    {
+      selector:sansa = $.[""].items.*.price
+      constraints:object = {
+        type:string = "NumberLiteral"
+        min_value:number = 0
+      }
+    }
+    {
+      selector:sansa = $.[""].items.*.active
+      constraints:object = {
+        type:string = "BooleanLiteral"
+      }
+    }
+    {
+      path:sansa = $.[""].note
+      constraints:object = {
+        required:boolean = true
+        type:string = "StringLiteral"
+      }
+    }
+    {
+      path:sansa = $.[""].day
+      constraints:object = {
+        required:boolean = true
+        type:string = "StringLiteral"
+      }
+    }
+  ]
+}

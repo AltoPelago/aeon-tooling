@@ -14,7 +14,11 @@
     <a class="brand" href="/" aria-label="Format adapters home"><span class="brand-mark">æ</span> AEON <span class="brand-divider">/</span> <span>Format adapters</span></a>
     <span class="local-pill"><span aria-hidden="true">●</span> Local playground</span>
   </header>
-  <main class="playground-app-shell">
+  <nav class="workspace-nav" aria-label="Playground workspace">
+    <button id="view-convert" type="button" aria-pressed="true" aria-controls="conversion-workspace">Convert formats</button>
+    <button id="view-pipeline" type="button" aria-pressed="false" aria-controls="pipeline-workspace">Validate &amp; query</button>
+  </nav>
+  <main class="playground-app-shell" id="conversion-workspace">
     <h1 class="visually-hidden">Format adapter playground</h1>
     <div class="playground-toolbar">
       <div class="conversion-controls">
@@ -32,12 +36,15 @@
     </section>
     <section class="panel source-pane" aria-labelledby="source-title">
       <div class="panel-head"><h2 id="source-title">JSON source</h2><div class="panel-tools"><span id="source-count">0 characters</span><button id="open" type="button">Open file</button></div></div>
-      <textarea id="source" spellcheck="false" autocapitalize="off" autocomplete="off" aria-labelledby="source-title" aria-describedby="source-note"></textarea>
+      <div class="highlight-editor source-highlight">
+        <pre class="highlight-backdrop" id="source-highlight" aria-hidden="true"><code></code></pre>
+        <textarea id="source" wrap="soft" spellcheck="false" autocapitalize="off" autocomplete="off" aria-labelledby="source-title" aria-describedby="source-note"></textarea>
+      </div>
       <div class="pane-foot" id="source-note">Paste a document or open a file.</div>
     </section>
     <section class="panel output-pane" aria-labelledby="output-title">
       <div class="panel-head"><h2 id="output-title">AEON output</h2><div class="panel-tools"><button id="copy" type="button" disabled>Copy</button><button id="download" type="button" disabled>Download</button></div></div>
-      <pre class="output-frame" tabindex="0" aria-labelledby="output-title"><code id="output"></code></pre>
+      <pre class="output-frame syntax-highlight" tabindex="0" aria-labelledby="output-title"><code id="output"></code></pre>
       <div class="pane-foot"><span id="output-note">Ready to convert</span><span id="output-count"></span></div>
     </section>
     <section class="panel diagnostics-pane" aria-labelledby="diagnostics-title">
@@ -45,6 +52,59 @@
       <pre id="diagnostics" role="status" aria-live="polite" aria-atomic="true">Preparing the local converter…</pre>
     </section>
     <footer>Source and output stay on this computer.<span id="mode-note">Lossless mode rejects values the selected format cannot preserve.</span></footer>
+  </main>
+  <main class="pipeline-shell" id="pipeline-workspace" hidden>
+    <h1 class="visually-hidden">Import, validate and query</h1>
+    <section class="pipeline-toolbar" aria-label="Pipeline examples">
+      <div class="pipeline-intro"><h2>Import → AES → AEOS → SANSA</h2><p>Inspect imported data, validate its types, then query the matching bindings.</p></div>
+      <div class="pipeline-controls">
+        <label class="format-label" for="pipeline-example">Example <select id="pipeline-example" disabled></select></label>
+        <button id="pipeline-load" type="button" disabled>Load example</button>
+        <button id="pipeline-invalid" type="button" disabled>Load invalid variant</button>
+      </div>
+      <p id="pipeline-description">Loading examples…</p>
+    </section>
+    <section class="panel pipeline-source" aria-labelledby="pipeline-source-title">
+      <div class="panel-head"><h2 id="pipeline-source-title">Source document</h2><label class="format-label" for="pipeline-format">Format <select id="pipeline-format"><option value="json">JSON</option><option value="toml">TOML</option><option value="yaml">YAML</option><option value="xml">XML</option><option value="alog">&amp;LOG v1</option></select></label></div>
+      <div class="highlight-editor source-highlight">
+        <pre class="highlight-backdrop" id="pipeline-source-highlight" aria-hidden="true"><code></code></pre>
+        <textarea id="pipeline-source" wrap="soft" spellcheck="false" autocapitalize="off" autocomplete="off" aria-labelledby="pipeline-source-title"></textarea>
+      </div>
+      <div class="pane-foot">Edit the source, then import to refresh AES.</div>
+    </section>
+    <section class="panel pipeline-aes" aria-labelledby="pipeline-aes-title">
+      <div class="panel-head"><h2 id="pipeline-aes-title">Imported AES</h2><label class="format-label" for="pipeline-aes-view">View <select id="pipeline-aes-view"><option value="records">Records</option><option value="telex">Telex</option></select></label></div>
+      <pre class="output-frame syntax-highlight" id="pipeline-aes" tabindex="0" aria-labelledby="pipeline-aes-title">Load an example to inspect its AES.</pre>
+      <div class="pane-foot" id="pipeline-aes-note">Addresses, kinds and exact value lexemes.</div>
+    </section>
+    <section class="panel pipeline-schema" aria-labelledby="pipeline-schema-title">
+      <div class="panel-head"><h2 id="pipeline-schema-title">AEOS schema</h2><button class="primary" id="pipeline-validate" type="button" disabled>Import &amp; validate</button></div>
+      <div class="highlight-editor">
+        <pre class="highlight-backdrop" id="pipeline-schema-highlight" aria-hidden="true"><code></code></pre>
+        <textarea id="pipeline-schema" wrap="off" spellcheck="false" autocapitalize="off" autocomplete="off" aria-labelledby="pipeline-schema-title"></textarea>
+      </div>
+      <div class="pane-foot">Native .aeos syntax · edit rules to check types, ranges and required bindings.</div>
+    </section>
+    <section class="panel pipeline-validation" aria-labelledby="pipeline-validation-title">
+      <div class="panel-head"><h2 id="pipeline-validation-title">AEOS validation</h2><span id="pipeline-validation-status" class="status">Ready</span></div>
+      <pre class="pipeline-diagnostic syntax-highlight" id="pipeline-validation" tabindex="0" aria-labelledby="pipeline-validation-title">Import a document to run its schema.</pre>
+      <div class="pane-foot">Queries run only after validation passes.</div>
+    </section>
+    <section class="panel pipeline-query" aria-labelledby="pipeline-query-title">
+      <div class="panel-head"><h2 id="pipeline-query-title">SANSA query</h2><button class="primary" id="pipeline-run" type="button" disabled>Run query</button></div>
+      <div class="query-editor"><label class="query-choice-label" for="pipeline-query-choice">Example query <select id="pipeline-query-choice"></select></label><div class="highlight-editor">
+        <pre class="highlight-backdrop" id="pipeline-query-highlight" aria-hidden="true"><code></code></pre>
+        <textarea id="pipeline-query" wrap="off" spellcheck="false" autocapitalize="off" autocomplete="off" aria-labelledby="pipeline-query-title" aria-describedby="pipeline-query-note"></textarea>
+      </div></div>
+      <div class="pane-foot" id="pipeline-query-note">Edit freely. ⌘/Ctrl + Enter runs the current query after validation.</div>
+    </section>
+    <section class="panel pipeline-results" aria-labelledby="pipeline-results-title">
+      <div class="panel-head"><h2 id="pipeline-results-title">Query results</h2><span id="pipeline-query-status" class="status">Ready</span></div>
+      <pre class="output-frame syntax-highlight" id="pipeline-results" tabindex="0" aria-labelledby="pipeline-results-title">Run a query to see values and binding details.</pre>
+      <div class="pane-foot" id="pipeline-result-note">Results retain source addresses and representation kinds.</div>
+    </section>
+    <p id="pipeline-status" class="pipeline-status" role="status" aria-live="polite">Preparing the pipeline…</p>
+    <footer>Source, schemas and queries stay on this computer.<span>Exact scalar kinds are preserved through AES.</span></footer>
   </main>
   <input type="file" id="file" accept=".aeon,.json,.xml,.toml,.yaml,.yml,.alog,.log,.txt" hidden>
 </body>

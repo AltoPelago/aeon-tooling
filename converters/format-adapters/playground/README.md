@@ -25,6 +25,69 @@ playground server after updating its module routes or installed dependencies.
 The server binds only to `127.0.0.1`; files are read only when opened explicitly,
 and conversion documents are not logged or persisted.
 
+## Validate & query workspace
+
+Choose **Validate & query** beside **Convert formats**. It loads the same five
+[pipeline examples](../examples/validate-and-query/README.md) as
+`npm run examples:adapters`:
+
+1. Choose JSON, TOML, YAML, XML or ALOG and click **Load example**. The source,
+   schema and first query load and run together. **Load invalid variant** shows
+   a source that imports successfully but fails its schema.
+2. Inspect **Imported AES** as JSON records or Telex. Addresses, representation
+   kinds, datatypes and exact numeric lexemes remain visible.
+3. Edit the source and the **AEOS schema** in native `.aeos` syntax, using
+   `aeos:schema = { ... }`, SANSA literals for rule targets, and numeric literals
+   for bounds. **Import & validate**
+   refreshes AES and the full validation envelope, including errors and paths.
+4. Choose an example query or edit **SANSA query**, then click **Run query**
+   (or ⌘/Ctrl + Enter). The current source and schema are revalidated first.
+   Results include values, addresses and representation kinds. Binding, scalar
+   and object projections are supported; transform extensions are disabled.
+
+The native AEOS and SANSA query editors highlight syntax as you type and when
+loading examples. AEOS uses the shared AEON highlighter; SANSA adds presentation
+colors for query keywords, operators, functions and members over lexer spans.
+Both retain ordinary textarea selection, caret, Tab indentation and synchronized
+horizontal/vertical scrolling. Highlighting tolerates unfinished input and does
+not validate it; AEOS/SANSA diagnostics remain authoritative. In forced-color
+display modes the editors use normal system-colored text.
+
+Source editors in both workspaces also highlight the selected format: JSON,
+TOML, YAML, XML, ALOG or AEON. Colors update when typing, opening a file, swapping
+formats or loading an example. Source text wraps with a synchronized highlight
+layer. The AES viewer highlights JSON records and Telex fields, paths, kinds
+and scalar payloads; switching views preserves the original displayed text.
+TOML/YAML/XML use tolerant presentation scanners, not syntax validators. YAML
+date-shaped and `yes`/`on` plain values are colored as strings under the selected
+Core profile; TOML dates and ALOG native scalar forms retain their own colors.
+
+AEOS validation highlights its JSON envelope, with distinct pass/fail summaries.
+SANSA results highlight returned AEON values and paths, JSON binding details,
+and query-error diagnostics. Empty results and skipped queries stay explicit.
+Highlighting preserves the displayed text and escapes source-derived values and
+diagnostic messages before inserting markup.
+
+The conversion output uses the selected format's highlighter for JSON, XML,
+TOML, YAML, ALOG and AEON. Copy, download and swap continue to use the original
+conversion text, without highlighting markup.
+
+Queries are skipped when AEOS rejects the data. Schema errors and unavailable
+runtimes still leave imported AES visible. Query parse/evaluation errors appear
+in the results panel while successful validation and AES remain available.
+Editing source clears stale AES and results; editing a schema or query marks
+affected results as needing another run. Example selection previews its
+description; loading explicitly replaces the workspace editors.
+
+This workspace needs built sibling AEON TypeScript packages, including AEOS, and
+the sibling `sansa` checkout. SANSA runs from its JavaScript source and uses its
+workbench Telex namespace bridge; see the linked pipeline examples for build
+commands and compatibility limits. These modules stay on the server, and the
+conversion workspace remains available if pipeline runtimes are missing.
+The pipeline endpoint shares the converter's same-origin and source-size checks;
+schemas are limited to 256 KiB, queries to 64 KiB, and query evaluation uses
+binding/candidate/result budgets (10,000/10,000/1,000). No query mutates source.
+
 ## Local AEON compiler
 
 AEON input needs a built compiler with empty-key support. In the documented
