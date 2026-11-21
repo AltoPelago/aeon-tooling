@@ -39,6 +39,12 @@ literal, complete identities from the entire document, rename IDs or rewrite
 references. Existing trusted-contract hash checks and compiler/schema errors
 remain active. Identity selectors in schema `path` fields remain rejected.
 
+Property literals have a separate [editor/host support boundary](property-selector-support.md).
+The current starter grammars do not cover their suffixes. The LSP accepts inert
+property literals through the compiler but retains native-event AEOS property
+denial; the selected portable profile is a distinct API. Child identity support
+described above does not imply property support in every host.
+
 ## Verify and bundle
 
 Run the existing web, grammar and Tree-sitter checks, plus the bundle regression:
