@@ -62,6 +62,7 @@ From the tooling repository root:
 ```sh
 npm ci --ignore-scripts
 npm run test:editor-properties
+npm ci --prefix grammar/tree-sitter-aeon
 npm run test:tree-sitter
 node scripts/verify-editor-property-literals.mjs --aeon-root /path/to/built-aeon --sansa-root /path/to/sansa
 ```
