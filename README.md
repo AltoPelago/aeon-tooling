@@ -20,6 +20,11 @@ The [AES interchange audit](docs/aes-interchange-audit.md) records which tooling
 surfaces are true portable-data boundaries and which use same-process
 implementation objects or tool-specific JSON.
 
+The [property-selector host guide](docs/property-selector-support.md) records
+the current editor grammar subset, compiler-backed LSP literal handling and
+intentional native-event schema denial. Property parsing does not establish
+full editor presentation, evaluation or installed-artifact acceptance.
+
 ## Validation
 
 ```sh
