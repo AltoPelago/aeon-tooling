@@ -128,3 +128,16 @@ The unpublished [child identity tooling candidate](../../docs/child-identity-too
 adds occurrence identity nodes and a lexical SANSA literal subset. Generate the
 parser before use; this starter grammar remains incomplete and does not replace
 AEON/SANSA validation. Reference paths do not admit identity selectors.
+
+## Property literals (unreleased source candidate)
+
+Complete `&key`, `&tag` and `&headTag` forms remain `sansa_address` nodes and use
+the existing Neovim path capture. Unfinished known arguments use a separate
+`incomplete_sansa_address` recovery node with an `@error` capture; subsequent
+bindings remain parseable. This recovery node is editor syntax, not compiler
+acceptance. Reference paths retain their existing restrictions.
+
+[Source checks and remaining host qualification](../../docs/property-selector-support.md)
+cover the shared fixture, real implementation oracle and headless Neovim check.
+Regenerate and rebuild the parser before use; existing installed parsers do not
+change when this source changes.

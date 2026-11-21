@@ -2,6 +2,14 @@ function commaSep1(rule) {
   return seq(rule, repeat(seq(',', rule)));
 }
 
+// Lexical editor subset only; the implementation owns address validation.
+function sansaPrefix() {
+  return seq(/[$?]/, repeat(choice(
+    /\.(?:\\[A-Za-z0-9_-]+\\|[A-Za-z_][A-Za-z0-9_]*|\*{1,2}|@|\["(?:\\.|[^"\\])*"\]|<"(?:\\.|[^"\\])*">)|\[(?:0|[1-9][0-9]*)\]/,
+    /&(?:key|tag|headTag)\("(?:\\[^\r\n]|[^"\\\r\n])*"\)/
+  )));
+}
+
 module.exports = grammar({
   name: 'aeon',
 
@@ -156,6 +164,7 @@ module.exports = grammar({
       $.hex_literal,
       $.radix_literal,
       $.sansa_address,
+      $.incomplete_sansa_address,
       $.identified_value,
       $.encoding_literal,
       $.separator_literal,
@@ -199,8 +208,12 @@ module.exports = grammar({
       field('path', $.reference_path)
     ),
 
-    // Lexical editor subset; SANSA/AEON remain the validation authority.
-    sansa_address: () => token(/[$?](?:\.(?:\\[A-Za-z0-9_-]+\\|[A-Za-z_][A-Za-z0-9_]*|\*{1,2}|@|\["(?:\\.|[^"\\])*"\]|<"(?:\\.|[^"\\])*">)|\[(?:0|[1-9][0-9]*)\])*/),
+    sansa_address: () => token(sansaPrefix()),
+
+    // Recovery is explicit, not a claim that an unfinished address is valid.
+    incomplete_sansa_address: () => token(seq(sansaPrefix(),
+      /&(?:key|tag|headTag)\((?:"(?:\\[^\r\n]|[^"\\\r\n])*(?:\\|")?)?/
+    )),
 
     reference_path: () => token(/\$?(?:\.?[A-Za-z_][A-Za-z0-9_]*|\[\d+\]|\["(?:\\.|[^"])*"\]|\.@(?:\.[A-Za-z_][A-Za-z0-9_]*|\.\["(?:\\.|[^"])*"\]))+/),
 
@@ -216,6 +229,7 @@ module.exports = grammar({
       $.hex_literal,
       $.radix_literal,
       $.sansa_address,
+      $.incomplete_sansa_address,
       $.identified_value,
       $.encoding_literal,
       $.separator_literal,

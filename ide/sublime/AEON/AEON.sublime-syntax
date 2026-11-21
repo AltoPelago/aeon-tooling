@@ -365,8 +365,10 @@ contexts:
       scope: punctuation.separator.type-annotation.aeon
 
   sansa-addresses:
-    - match: '(?<![~A-Za-z0-9_$?])[$?](?:\.(?:\\[A-Za-z0-9_-]+\\|[A-Za-z_][A-Za-z0-9_]*|\*{1,2}|@|\["(?:\\.|[^"\\])*"\]|<"(?:\\.|[^"\\])*">)|\[(?:0|[1-9][0-9]*)\])*'
+    - match: '(?<![~A-Za-z0-9_$?])[$?](?:\.(?:\\[A-Za-z0-9_-]+\\|[A-Za-z_][A-Za-z0-9_]*|\*{1,2}|@|\["(?:\\.|[^"\\])*"\]|<"(?:\\.|[^"\\])*">)|\[(?:0|[1-9][0-9]*)\]|&(?:key|tag|headTag)\("(?:\\[^\r\n]|[^"\\\r\n])*"\))*(&(?:key|tag|headTag)\((?:"(?:\\[^\r\n]|[^"\\\r\n])*(?:\\|")?)?$)?'
       scope: meta.address.sansa.aeon
+      captures:
+        1: invalid.illegal.sansa.incomplete.aeon
 
   structural-identities:
     - match: '\\[A-Za-z0-9_-]+\\'

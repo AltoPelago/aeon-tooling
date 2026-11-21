@@ -111,6 +111,7 @@
 ; Declared occurrence identity is metadata, not a canonical path.
 (structural_identity) @label
 (sansa_address) @string.special.path
+(incomplete_sansa_address) @error
 (identified_key name: [(identifier) (quoted_key)] @property)
 (identified_key datatype: (type_name) @type)
 (identified_value datatype: (type_name) @type)
