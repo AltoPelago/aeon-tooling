@@ -1,19 +1,32 @@
 # Property selectors: editor and host support
 
-Unreleased coordination guidance, 22 November 2026. This guide describes current
-boundaries; it adds no grammar, provider, parser, capability or installed bundle.
+Unreleased source candidate, 22 November 2026. Editor property-literal rules are
+implemented in this candidate; installed extensions, parsers and vendor bundles
+retain their separate qualification gate. No provider, evaluator, LSP validation
+representation or runtime dependency is admitted by an editor grammar.
 
 ## Presentation and validation are separate
 
-`&key("name")`, `&tag("book")` and `&headTag("book")` are accepted by the coordinated
-AEON/SANSA implementation. The current VS Code/Pulsar/Sublime lexical rules retain
-the earlier subset; they can color only the address prefix before a property
-suffix. The Tree-sitter starter grammar likewise does not yet accept the suffix,
-and Neovim consumers of that grammar inherit the limitation. Full property-literal
-presentation is a remaining integration task, including escaped arguments,
-chained/attribute navigation and preservation of constrained-reference rules.
-Do not treat partial coloring or a starter-grammar error as the compiler's result.
-These presentation patterns do not implement SANSA evaluation.
+VS Code, Pulsar and Sublime recognise complete `&key("name")`, `&tag("book")`
+and `&headTag("book")` suffixes inside the existing lexical address subset.
+Quoted spaces, escaped quotes/backslashes/controls, Unicode payloads, chained
+properties, child identities and attribute navigation stay inside the address
+scope. These are lexical rules; the implementation remains authoritative for
+escapes, Unicode validity, limits, semantics and supported address forms.
+
+Tree-sitter retains the single `sansa_address` node for complete literals, so
+Neovim's existing `@string.special.path` capture continues to apply. A separate
+`incomplete_sansa_address` recovery node and `@error` capture keep unfinished known
+property arguments on their current line; they do not make incomplete input a
+valid AEON value. TextMate/Sublime mark that unfinished suffix as
+`invalid.illegal.sansa.incomplete.aeon`. The following binding remains visible.
+No complete SANSA grammar, resolver or Query implementation is added to an editor.
+The starter grammar's other existing omissions remain outside this slice.
+
+Structural reference rules are unchanged. Clone/pointer references do not gain
+properties, identities, recursion or expanded matching from literal highlighting.
+LSP compiler diagnostics remain authoritative even when an editor colours a
+malformed expression. Grammar recognition does not activate stored literals.
 
 The shared web highlighter uses the selected implementation lexer/renderer.
 Its source tests cover property literal text, but an old installed/vendor graph,
@@ -41,5 +54,35 @@ the already-built server graph. The bundle's provenance and complete dependency
 graph, rather than its directory name, determine what was actually tested.
 Website/Tonics vendor pins remain separate owning inputs. Final host-artifact,
 platform and registry qualification stays open after grammar integration.
+
+## Reproduce source checks
+
+From the tooling repository root:
+
+```sh
+npm ci --ignore-scripts
+npm run test:editor-properties
+npm ci --prefix grammar/tree-sitter-aeon
+npm run test:tree-sitter
+node scripts/verify-editor-property-literals.mjs --aeon-root /path/to/built-aeon --sansa-root /path/to/sansa
+```
+
+The last command calls the real compiler, canonicalizer and SANSA parser; it has
+no editor-side semantic parser. It checks literal/canonical round trips and
+continued reference rejection against the supplied exact source/build graph.
+
+For headless Neovim capture and recovery checks, first generate/build the parser
+in `grammar/tree-sitter-aeon` with its installed CLI, then run:
+
+```sh
+node grammar/tree-sitter-aeon/node_modules/tree-sitter-cli/cli.js build grammar/tree-sitter-aeon -o grammar/tree-sitter-aeon/parser.so
+nvim --headless -u NONE -l test/property-literals.nvim.lua grammar/tree-sitter-aeon/parser.so .
+```
+
+These checks exercise real TextMate/Oniguruma engines, the generated Tree-sitter
+parser and Neovim captures. Sublime's shared expression is checked with Oniguruma;
+its native application, live editor extension/Neovim plugin installation, themes,
+bundles, platforms and registry publication remain separate acceptance work.
+
 Compatibility/target checks and the existing 1.15x latency / 1.20x memory budgets
 are unchanged. Official releases, deployment and stable promotion remain held.
