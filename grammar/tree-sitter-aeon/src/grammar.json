@@ -830,6 +830,10 @@
         },
         {
           "type": "SYMBOL",
+          "name": "incomplete_sansa_address"
+        },
+        {
+          "type": "SYMBOL",
           "name": "identified_value"
         },
         {
@@ -979,8 +983,66 @@
     "sansa_address": {
       "type": "TOKEN",
       "content": {
-        "type": "PATTERN",
-        "value": "[$?](?:\\.(?:\\\\[A-Za-z0-9_-]+\\\\|[A-Za-z_][A-Za-z0-9_]*|\\*{1,2}|@|\\[\"(?:\\\\.|[^\"\\\\])*\"\\]|<\"(?:\\\\.|[^\"\\\\])*\">)|\\[(?:0|[1-9][0-9]*)\\])*"
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "PATTERN",
+            "value": "[$?]"
+          },
+          {
+            "type": "REPEAT",
+            "content": {
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "PATTERN",
+                  "value": "\\.(?:\\\\[A-Za-z0-9_-]+\\\\|[A-Za-z_][A-Za-z0-9_]*|\\*{1,2}|@|\\[\"(?:\\\\.|[^\"\\\\])*\"\\]|<\"(?:\\\\.|[^\"\\\\])*\">)|\\[(?:0|[1-9][0-9]*)\\]"
+                },
+                {
+                  "type": "PATTERN",
+                  "value": "&(?:key|tag|headTag)\\(\"(?:\\\\[^\\r\\n]|[^\"\\\\\\r\\n])*\"\\)"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "incomplete_sansa_address": {
+      "type": "TOKEN",
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "SEQ",
+            "members": [
+              {
+                "type": "PATTERN",
+                "value": "[$?]"
+              },
+              {
+                "type": "REPEAT",
+                "content": {
+                  "type": "CHOICE",
+                  "members": [
+                    {
+                      "type": "PATTERN",
+                      "value": "\\.(?:\\\\[A-Za-z0-9_-]+\\\\|[A-Za-z_][A-Za-z0-9_]*|\\*{1,2}|@|\\[\"(?:\\\\.|[^\"\\\\])*\"\\]|<\"(?:\\\\.|[^\"\\\\])*\">)|\\[(?:0|[1-9][0-9]*)\\]"
+                    },
+                    {
+                      "type": "PATTERN",
+                      "value": "&(?:key|tag|headTag)\\(\"(?:\\\\[^\\r\\n]|[^\"\\\\\\r\\n])*\"\\)"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "type": "PATTERN",
+            "value": "&(?:key|tag|headTag)\\((?:\"(?:\\\\[^\\r\\n]|[^\"\\\\\\r\\n])*(?:\\\\|\")?)?"
+          }
+        ]
       }
     },
     "reference_path": {
@@ -1036,6 +1098,10 @@
         {
           "type": "SYMBOL",
           "name": "sansa_address"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "incomplete_sansa_address"
         },
         {
           "type": "SYMBOL",

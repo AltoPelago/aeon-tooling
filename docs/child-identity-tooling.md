@@ -40,10 +40,14 @@ references. Existing trusted-contract hash checks and compiler/schema errors
 remain active. Identity selectors in schema `path` fields remain rejected.
 
 Property literals have a separate [editor/host support boundary](property-selector-support.md).
-The current starter grammars do not cover their suffixes. The LSP accepts inert
-property literals through the compiler but retains native-event AEOS property
-denial; the selected portable profile is a distinct API. Child identity support
-described above does not imply property support in every host.
+The source candidate grammars cover key/tag/headTag suffixes and explicit
+incomplete-argument recovery. Regenerate and rebuild Tree-sitter before using
+those source changes; installed extensions, parsers and vendor bundles retain
+separate qualification requirements. The starter grammar remains a subset of the
+full language. The LSP accepts inert property literals through the compiler but
+retains native-event AEOS property denial; the selected portable profile is a
+distinct API. Source literal support does not imply property evaluation in every
+host.
 
 ## Verify and bundle
 

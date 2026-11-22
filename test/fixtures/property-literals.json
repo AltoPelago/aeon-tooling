@@ -1,0 +1,46 @@
+{
+  "valid": [
+    "$&key(\"\")",
+    "$.inventory.n&tag(\"book\")",
+    "$.inventory.n.*&headTag(\"book\")",
+    "$&key(\"é😀\")",
+    "$&key(\"\\u{1F600}\")",
+    "$&key(\"quote\\\"slash\\\\\")",
+    "$&key(\"line\\nCR\\rtab\\t\")",
+    "$&key(\"*?\")",
+    "$&tag(\"a b\")",
+    "$&key(\"x// /* */ @{} [ ] , = : < > ( )\")",
+    "$&key(\"select from where and or\")",
+    "$.inventory&key(\"inventory\")&tag(\"catalog\")[0].*&headTag(\"book\")",
+    "$.inventory.n&tag(\"book\").*&headTag(\"book\").*",
+    "$.reading.@.*&key(\"unit\")",
+    "$.reading&key(\"reading\").@.unit&key(\"unit\")",
+    "$.\\group1\\.@.\\unit1\\&key(\"unit\")",
+    "$.<\"request\">.items.*&key(\"id\")",
+    "$.inventory.**&tag(\"book\")",
+    "$.[\"\"]&key(\"\")",
+    "$.[\"a b\"]&key(\"a b\")",
+    "$.[\"x\\\"y\"]&key(\"x\\\"y\")",
+    "?&key(\"row\")",
+    "?.items[0]&tag(\"book\")",
+    "$&headTag(\"book\").@.*&key(\"lang\")"
+  ],
+  "unfinished": [
+    "$&key(",
+    "$&tag(\"unfinished",
+    "$.n&headTag(\"escape\\",
+    "$&key(\"closed quote\"",
+    "$&key(\"x\")&tag(\"next"
+  ],
+  "invalid": [
+    "$&unknown(\"x\")",
+    "$&key(\"x\",\"y\")",
+    "$&key(x)",
+    "$&key( \"x\")",
+    "$&key(\"\\q\")"
+  ],
+  "referencePrefixes": [
+    "~",
+    "~>"
+  ]
+}

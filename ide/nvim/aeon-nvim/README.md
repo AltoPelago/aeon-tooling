@@ -84,3 +84,14 @@ require("aeon").setup({
 - document comments use `&ND`; the current parser exposes them as single tokens, so fine-grained `&ND` captures need grammar support before they can replace the removed Markdown injection
 - after first setup, install the parser with `:TSInstall aeon`
 - if `:TSInstall aeon` says unsupported, the plugin has not been loaded yet; restart Neovim and check your `lazy.nvim` config
+
+## Property literals (unreleased source candidate)
+
+The coordinated grammar recognises property suffixes as `sansa_address` nodes;
+the existing `@string.special.path` capture applies. Unfinished known arguments
+use `incomplete_sansa_address` and `@error`. Regenerate/rebuild and reinstall the
+parser to use these source changes. Headless grammar/query checks do not qualify
+a live plugin installation, theme or bundled artifact. Reference restrictions
+and compiler authority remain unchanged.
+
+See [source checks and remaining host gates](../../../docs/property-selector-support.md).
