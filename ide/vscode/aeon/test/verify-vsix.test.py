@@ -2,6 +2,7 @@
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
 import struct
 import sys
@@ -140,9 +141,11 @@ class ExtractionTests(unittest.TestCase):
                 extract.assert_not_called()
 
     def test_required_paths_cannot_escape_extension(self):
-        for invalid in ("../escape", "/absolute", "C:/drive", "bad\\path", "", "\x00"):
+        for invalid in ("../escape", "/absolute", "C:/drive", "bad\\path", "", "\x00",
+                        "./grammar.json/", "grammar.json/"):
             manifest = {"main": "./extension.js", "contributes": {"grammars": [{"path": invalid}]}}
-            members = [("extension/package.json", json.dumps(manifest)), ("extension/extension.js", "")]
+            members = [("extension/package.json", json.dumps(manifest)), ("extension/extension.js", ""),
+                       ("extension/grammar.json", "{}")]
             members += [(name, "") for name in STATIC_FILES]
             with self.subTest(path=invalid), patch.object(verifier, "extract") as extract:
                 with self.assertRaisesRegex(ValueError, "artifact path"):
@@ -272,6 +275,50 @@ class RuntimeTests(unittest.TestCase):
         file = "extension/server/node_modules/vscode-languageserver-textdocument/lib/esm/main.js"
         with self.assertRaisesRegex(ValueError, "Bundled server IPC check failed"):
             verifier.verify(self.rewrite(omit=file))
+
+    def test_server_cannot_borrow_dependency_from_ancestor_node_modules(self):
+        prefix = "extension/server/node_modules/vscode-languageserver-textdocument/"
+        stripped = io.BytesIO()
+        with tempfile.TemporaryDirectory(prefix="aeon-ancestor-") as ancestor:
+            ancestor_pkg = Path(ancestor)/"node_modules"/"vscode-languageserver-textdocument"
+            with zipfile.ZipFile(CANDIDATE) as source, zipfile.ZipFile(stripped, "w") as output:
+                found = False
+                for entry in source.infolist():
+                    data = source.read(entry)
+                    if entry.filename.startswith(prefix):
+                        found = True
+                        if not entry.is_dir():
+                            target = ancestor_pkg/entry.filename[len(prefix):]
+                            target.parent.mkdir(parents=True, exist_ok=True)
+                            target.write_bytes(data)
+                    else:
+                        output.writestr(entry, data)
+                self.assertTrue(found)
+            stripped.seek(0)
+            tmp_child = Path(ancestor)/"tmp"
+            tmp_child.mkdir()
+            with patch.dict(os.environ, {"TMPDIR": str(tmp_child)}), \
+                    patch.object(tempfile, "tempdir", str(tmp_child)):
+                with self.assertRaisesRegex(ValueError, "outside the extracted VSIX"):
+                    verifier.verify(stripped)
+
+    def test_server_disconnecting_during_shutdown_without_exit_fails(self):
+        server = """
+process.on('message', message => {
+  if (message.method === 'initialize') {
+    process.send({jsonrpc: '2.0', id: message.id, result: {capabilities: {hoverProvider: true}}});
+  } else if (message.method === 'shutdown') {
+    process.send({jsonrpc: '2.0', id: message.id, result: null}, () => {
+      process.disconnect();
+      setTimeout(() => process.exit(0), 150);
+    });
+  }
+});
+"""
+        for attempt in range(3):
+            with self.subTest(attempt=attempt):
+                with self.assertRaisesRegex(ValueError, "Bundled server IPC check failed"):
+                    verifier.verify(self.rewrite(replace={"extension/server/server.js": server}))
 
     def test_server_early_successful_exit_is_not_verification_success(self):
         with self.assertRaisesRegex(ValueError, "exited before clean shutdown"):

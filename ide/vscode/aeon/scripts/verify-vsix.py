@@ -17,7 +17,58 @@ const path = require('node:path');
 const {createRequire} = require('node:module');
 const Module = require('node:module');
 const {fork} = require('node:child_process');
-const {pathToFileURL} = require('node:url');
+const {fileURLToPath, pathToFileURL} = require('node:url');
+
+function confinementPreload(root) {
+  const hook = [
+    "import fs from 'node:fs';",
+    "import path from 'node:path';",
+    "import {fileURLToPath} from 'node:url';",
+    "const root = " + JSON.stringify(root) + ";",
+    "export async function resolve(specifier, context, nextResolve) {",
+    "  const resolved = await nextResolve(specifier, context);",
+    "  if (resolved.url && resolved.url.startsWith('file:')) {",
+    "    const file = fileURLToPath(resolved.url);",
+    "    const relative = path.relative(root, fs.realpathSync(file));",
+    "    if (!relative || relative === '..' || relative.startsWith('..'+path.sep) || path.isAbsolute(relative)) {",
+    "      throw new Error('Runtime dependency resolves outside the extracted VSIX: '+file);",
+    "    }",
+    "  }",
+    "  return resolved;",
+    "}",
+  ].join('\n');
+  const source = [
+    "import fs from 'node:fs';",
+    "import Module from 'node:module';",
+    "import path from 'node:path';",
+    "import {fileURLToPath} from 'node:url';",
+    "const root = " + JSON.stringify(root) + ";",
+    "const inside = file => {",
+    "  const relative = path.relative(root, fs.realpathSync(file));",
+    "  if (!relative || relative === '..' || relative.startsWith('..'+path.sep) || path.isAbsolute(relative)) {",
+    "    throw new Error('Runtime dependency resolves outside the extracted VSIX: '+file);",
+    "  }",
+    "};",
+    "const originalLoad = Module._load;",
+    "Module._load = function(request, parent, isMain) {",
+    "  const entry = Module._resolveFilename(request, parent, isMain);",
+    "  if (!Module.isBuiltin(entry)) inside(entry);",
+    "  return Reflect.apply(originalLoad, this, [request, parent, isMain]);",
+    "};",
+    "if (typeof Module.registerHooks === 'function') {",
+    "  Module.registerHooks({",
+    "    resolve(specifier, context, nextResolve) {",
+    "      const resolved = nextResolve(specifier, context);",
+    "      if (resolved.url && resolved.url.startsWith('file:')) inside(fileURLToPath(resolved.url));",
+    "      return resolved;",
+    "    },",
+    "  });",
+    "} else if (typeof Module.register === 'function') {",
+    "  Module.register('data:text/javascript,'+encodeURIComponent(" + JSON.stringify(hook) + "));",
+    "}",
+  ].join('\n');
+  return 'data:text/javascript,' + encodeURIComponent(source);
+}
 
 // Exercise the actual packaged entry point and IPC imports, not just helpers.
 async function checkServer(root) {
@@ -25,18 +76,36 @@ async function checkServer(root) {
     .resolve('vscode-languageclient/node'));
   const protocol = clientRequire('vscode-languageserver-protocol/node');
   const child = fork(path.join(root, 'server/server.js'), ['--node-ipc'], {
-    cwd: root, silent: true, execArgv: [],
+    cwd: root, silent: true, execArgv: ['--import', confinementPreload(root)],
   });
+  let stderr = '', timer, phase = 'initialize', exitDelivered = false, fail, resolveExitSent;
+  const exitSent = new Promise(resolve => { resolveExitSent = resolve; });
+  const originalSend = child.send.bind(child);
+  child.send = (message, ...args) => {
+    if (message?.method === 'exit') {
+      const callback = typeof args[args.length - 1] === 'function' ? args.pop() : null;
+      return originalSend(message, ...args, error => {
+        if (error) {
+          fail(new Error('exit notification failed: ' + error.message));
+        } else {
+          exitDelivered = true;
+          phase = 'exit';
+          resolveExitSent();
+        }
+        if (callback) callback(error);
+      });
+    }
+    return originalSend(message, ...args);
+  };
   const connection = protocol.createProtocolConnection(
     new protocol.IPCMessageReader(child), new protocol.IPCMessageWriter(child));
-  let stderr = '', timer, phase = 'initialize', fail;
   child.stdout.resume();
   child.stderr.on('data', chunk => { stderr = (stderr + chunk).slice(-8192); });
   const closed = new Promise(resolve => child.once('close', resolve));
   const failure = new Promise((_, reject) => { fail = reject; });
   child.on('error', fail);
   child.on('exit', (code, signal) => {
-    if (phase !== 'exit' || code !== 0) {
+    if (phase !== 'exit' || !exitDelivered || code !== 0) {
       fail(new Error('exited before clean shutdown ('+code+', '+signal+')'));
     }
   });
@@ -54,8 +123,11 @@ async function checkServer(root) {
       phase = 'shutdown';
       await connection.sendNotification('initialized', {});
       assert.equal(await connection.sendRequest('shutdown'), null, 'Invalid shutdown response');
-      phase = 'exit';
+      // A compliant server must remain connected after shutdown until exit is sent.
+      await new Promise(resolve => setTimeout(resolve, 50));
+      assert(child.connected && child.exitCode === null, 'Server closed before exit notification');
       await connection.sendNotification('exit');
+      await exitSent;
       await closed;
       assert.equal(child.exitCode, 0, 'Server did not exit cleanly');
     })();
@@ -165,6 +237,7 @@ async function checkServer(root) {
   for (const directory of seen) {
     assert(directory === root || installed.has(directory), 'Production package missing from client inventory');
   }
+  await import(confinementPreload(root));
   const service = await import(pathToFileURL(path.join(root, 'server/language-service.js')).href);
   await import(pathToFileURL(path.join(root, 'server/validation.js')).href);
   assert.deepEqual(service.getDiagnostics('selected:sansa = $.n&tag("book")'), []);
@@ -216,7 +289,7 @@ def read_manifest(z, entry):
 
 
 def artifact_path(value):
-    if not isinstance(value, str) or not value or "\x00" in value:
+    if not isinstance(value, str) or not value or "\x00" in value or value.endswith("/"):
         raise ValueError("Invalid required artifact path")
     path = PurePosixPath(value)
     if (not path.parts or path.is_absolute() or ".." in path.parts
