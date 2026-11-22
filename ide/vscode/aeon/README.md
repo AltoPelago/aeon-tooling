@@ -120,13 +120,17 @@ After packaging, run `pnpm run verify:package` to check the default output
 archive, or pass an explicit artifact path as shown below. This verification
 requires Python 3.9+ and Node on PATH. The verifier streams stored/deflated ZIP
 members in bounded chunks into a temporary directory (10,000 entries, 64 MiB
-total), then checks the client dependency closure and loads the actual client
+total). Before extraction, it checks required static files, reads only the
+manifest in bounded chunks, and checks the declared entry and grammar paths.
+Required paths must identify regular file members, not directories. It then
+checks the client dependency closure and loads the actual client
 and extension entry points. Only VS Code's host-provided base classes are shimmed
 for this import check; packaged dependencies are never mocked. This checks module
 loading, not activation in an Extension Host.
 
 The verifier also exercises inert property literals and reference rejection,
-then starts the packaged server over Node IPC, requires a successful LSP
+then starts the packaged server over Node IPC using the protocol connection
+resolved from the packaged client dependency graph. It requires a successful LSP
 initialize/shutdown/exit exchange, and rejects startup failures or a 10-second
 timeout. It runs candidate code in Node; use it only with trusted local builds.
 
@@ -138,7 +142,7 @@ python3 scripts/verify-vsix.py /path/to/candidate.vsix
 
 Run verifier regressions against the same real artifact, including deliberately
 removed client and server runtime files, extra client packages, early exit,
-invalid responses and timeout:
+invalid responses, directory/absent grammar paths, extraction order and timeout:
 
 ```sh
 pnpm run test:package /path/to/candidate.vsix

@@ -21,49 +21,55 @@ const {pathToFileURL} = require('node:url');
 
 // Exercise the actual packaged entry point and IPC imports, not just helpers.
 async function checkServer(root) {
+  const clientRequire = createRequire(createRequire(path.join(root, 'extension.js'))
+    .resolve('vscode-languageclient/node'));
+  const protocol = clientRequire('vscode-languageserver-protocol/node');
   const child = fork(path.join(root, 'server/server.js'), ['--node-ipc'], {
     cwd: root, silent: true, execArgv: [],
   });
-  let stderr = '', timer;
+  const connection = protocol.createProtocolConnection(
+    new protocol.IPCMessageReader(child), new protocol.IPCMessageWriter(child));
+  let stderr = '', timer, phase = 'initialize', fail;
   child.stdout.resume();
   child.stderr.on('data', chunk => { stderr = (stderr + chunk).slice(-8192); });
+  const closed = new Promise(resolve => child.once('close', resolve));
+  const failure = new Promise((_, reject) => { fail = reject; });
+  child.on('error', fail);
+  child.on('exit', (code, signal) => {
+    if (phase !== 'exit' || code !== 0) {
+      fail(new Error('exited before clean shutdown ('+code+', '+signal+')'));
+    }
+  });
+  connection.onError(([error]) => fail(error));
+  connection.onClose(() => {
+    if (phase !== 'exit') fail(new Error('connection closed before clean shutdown'));
+  });
+  connection.listen();
   try {
-    await new Promise((resolve, reject) => {
-      let phase = 'initialize';
-      const fail = error => reject(new Error('Bundled server IPC check failed: '+error+' '+stderr));
-      const send = message => child.send({jsonrpc: '2.0', ...message}, error => {
-        if (error) fail(error.message);
-      });
-      child.on('error', error => fail(error.message));
-      child.on('exit', (code, signal) => {
-        if (phase === 'exit' && code === 0) resolve();
-        else fail('exited before clean shutdown ('+code+', '+signal+')');
-      });
-      child.on('message', message => {
-        if (message.id !== 1 && message.id !== 2) return;
-        try {
-          assert(!message.error, JSON.stringify(message.error));
-          if (phase === 'initialize' && message.id === 1) {
-            assert.equal(message.result?.capabilities?.hoverProvider, true,
-              'Missing initialize capabilities');
-            phase = 'shutdown';
-            send({method: 'initialized', params: {}});
-            send({id: 2, method: 'shutdown', params: null});
-          } else if (phase === 'shutdown' && message.id === 2) {
-            assert.equal(message.result, null, 'Invalid shutdown response');
-            phase = 'exit';
-            send({method: 'exit', params: null});
-          }
-        } catch (error) { fail(error.message); }
-      });
-      timer = setTimeout(() => fail('timed out'), 10000);
-      send({id: 1, method: 'initialize', params: {
+    const handshake = (async () => {
+      const result = await connection.sendRequest('initialize', {
         processId: process.pid, rootUri: null, capabilities: {},
-      }});
+      });
+      assert.equal(result?.capabilities?.hoverProvider, true, 'Missing initialize capabilities');
+      phase = 'shutdown';
+      await connection.sendNotification('initialized', {});
+      assert.equal(await connection.sendRequest('shutdown'), null, 'Invalid shutdown response');
+      phase = 'exit';
+      await connection.sendNotification('exit');
+      await closed;
+      assert.equal(child.exitCode, 0, 'Server did not exit cleanly');
+    })();
+    const timeout = new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error('timed out')), 10000);
     });
+    await Promise.race([handshake, failure, timeout]);
+  } catch (error) {
+    throw new Error('Bundled server IPC check failed: '+error.message+' '+stderr);
   } finally {
     clearTimeout(timer);
-    if (child.exitCode === null && child.signalCode === null) child.kill();
+    connection.dispose();
+    if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+    await closed;
   }
 }
 
@@ -168,6 +174,7 @@ async function checkServer(root) {
     clientPackageInventoryMatchesClosure: true,
     clientEntryImportedWithHostShim: true, extensionEntryImported: true,
     bundledServerImports: true, serverIpcInitializeShutdown: true,
+    serverIpcUsesPackagedClientProtocol: true,
     propertyLiteralDiagnostics: 0, propertyReferenceRejected: true}));
 })().catch(error => { console.error(error.message); process.exit(1); });
 """
@@ -176,12 +183,40 @@ MAX_BYTES = 64 * 1024 * 1024
 CHUNK_BYTES = 64 * 1024
 
 
+def is_directory(entry):
+    return entry.is_dir() or stat.S_ISDIR(entry.external_attr >> 16)
+
+
+def read_manifest(z, entry):
+    """Read only the manifest before extraction, without an unbounded ZIP read."""
+    content = bytearray()
+    with z.open(entry) as source:
+        while True:
+            chunk = source.read(CHUNK_BYTES)
+            if not chunk:
+                break
+            if len(content) + len(chunk) > MAX_BYTES:
+                raise ValueError("Candidate exceeds actual manifest byte limit")
+            content.extend(chunk)
+    return json.loads(content)
+
+
+def artifact_path(value):
+    if not isinstance(value, str) or not value or "\x00" in value:
+        raise ValueError("Invalid required artifact path")
+    path = PurePosixPath(value)
+    if (not path.parts or path.is_absolute() or ".." in path.parts
+            or "\\" in value or ":" in value):
+        raise ValueError("Unsafe required artifact path")
+    return "extension/" + path.as_posix()
+
+
 def extract(z, entries, destination):
     """Bound each decompression request and account for actual extracted bytes."""
     total = 0
     for entry in entries:
         target = destination.joinpath(*PurePosixPath(entry.filename).parts)
-        if entry.is_dir():
+        if is_directory(entry):
             target.mkdir(parents=True, exist_ok=True)
             continue
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -201,7 +236,7 @@ def verify(archive):
         entries = z.infolist()
         if len(entries) > 10000 or sum(e.file_size for e in entries) > MAX_BYTES:
             raise ValueError("Candidate exceeds verifier archive limits")
-        names = set()
+        names, files = set(), {}
         for entry in entries:
             path = PurePosixPath(entry.filename)
             if (not path.parts or path.is_absolute() or ".." in path.parts
@@ -213,19 +248,27 @@ def verify(archive):
             names.add(normalized)
             if stat.S_ISLNK(entry.external_attr >> 16):
                 raise ValueError("Candidate must contain ordinary files, not symlinks")
+            if stat.S_IFMT(entry.external_attr >> 16) not in (0, stat.S_IFREG, stat.S_IFDIR):
+                raise ValueError("Candidate must contain ordinary files or directories")
             if entry.compress_type not in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED):
                 raise ValueError("Unsupported archive compression method")
+            if not is_directory(entry):
+                files[normalized] = entry
+
+        def require_file(name):
+            if name not in files:
+                raise ValueError("Required artifact missing: "+name)
+
+        for name in ("extension/package.json", "extension/server/server.js",
+                     "extension/server/language-service.js", "extension/server/validation.js"):
+            require_file(name)
+        manifest = read_manifest(z, files["extension/package.json"])
+        require_file(artifact_path(manifest["main"]))
+        for grammar in manifest.get("contributes", {}).get("grammars", []):
+            require_file(artifact_path(grammar["path"]))
         with tempfile.TemporaryDirectory(prefix="aeon-vsix-check-") as temporary:
             extract(z, entries, Path(temporary))
             root = Path(temporary)/"extension"
-            manifest = json.loads((root/"package.json").read_bytes())
-            required = ["extension/"+manifest["main"].removeprefix("./"),
-                        "extension/server/server.js", "extension/server/language-service.js"]
-            required += ["extension/"+g["path"].removeprefix("./")
-                         for g in manifest.get("contributes", {}).get("grammars", [])]
-            for name in required:
-                if name not in names:
-                    raise ValueError("Required artifact missing: "+name)
             env = dict(os.environ)
             env.pop("NODE_PATH", None)
             env.pop("NODE_OPTIONS", None)

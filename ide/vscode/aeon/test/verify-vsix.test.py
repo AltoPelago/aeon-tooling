@@ -15,6 +15,8 @@ SPEC = importlib.util.spec_from_file_location(
 verifier = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(verifier)
 CANDIDATE = Path(sys.argv.pop(1)).resolve() if len(sys.argv) > 1 else None
+STATIC_FILES = ["extension/server/server.js", "extension/server/language-service.js",
+                "extension/server/validation.js"]
 
 
 def archive(members, compression=zipfile.ZIP_DEFLATED):
@@ -45,7 +47,8 @@ class ExtractionTests(unittest.TestCase):
             return read(stream, size)
 
         for width in (256 * 1024, 2 * 1024 * 1024):
-            raw = bytearray(archive([("extension/package.json", b" " * width)]).getvalue())
+            raw = bytearray(archive([("extension/package.json", b" " * width)] +
+                                    [(name, "") for name in STATIC_FILES]).getvalue())
             # Both directory and local headers understate the uncompressed size.
             struct.pack_into("<I", raw, raw.index(b"PK\x03\x04") + 22, 10)
             struct.pack_into("<I", raw, raw.index(b"PK\x01\x02") + 24, 10)
@@ -90,11 +93,61 @@ class ExtractionTests(unittest.TestCase):
                 "grammars": [{"path": "./grammar.json"}] * count + [{"path": "missing.json"}]}}
             members = [("extension/package.json", json.dumps(manifest)),
                        ("extension/extension.js", ""), ("extension/server/server.js", ""),
-                       ("extension/server/language-service.js", ""), ("extension/grammar.json", "{}")]
+                       ("extension/server/language-service.js", ""),
+                       ("extension/server/validation.js", ""), ("extension/grammar.json", "{}")]
             with self.subTest(count=count), patch.object(
                     zipfile.ZipFile, "namelist", side_effect=AssertionError("rebuild")):
                 with self.assertRaisesRegex(ValueError, "Required artifact missing"):
                     verifier.verify(archive(members))
+
+    def test_missing_required_files_preflight_before_extraction(self):
+        manifest = {"main": "./extension.js", "contributes": {
+            "grammars": [{"path": "./grammar.json"}]}}
+        members = [("extension/package.json", json.dumps(manifest)),
+                   ("extension/extension.js", ""), ("extension/grammar.json", "{}")]
+        members += [(name, "") for name in STATIC_FILES]
+        members += [("extension/unrelated-payload", "x" * (256 * 1024))]
+        original_open = zipfile.ZipFile.open
+        for missing, _ in members[:-1]:
+            reads = []
+
+            def observed(z, entry, *args, **kwargs):
+                reads.append(entry.filename if isinstance(entry, zipfile.ZipInfo) else entry)
+                return original_open(z, entry, *args, **kwargs)
+
+            candidate = archive([(name, data) for name, data in members if name != missing])
+            with self.subTest(missing=missing), patch.object(verifier, "extract") as extract:
+                with patch.object(zipfile.ZipFile, "open", observed):
+                    with self.assertRaisesRegex(ValueError, "Required artifact missing: "+missing):
+                        verifier.verify(candidate)
+                extract.assert_not_called()
+                expected = [] if missing in STATIC_FILES + ["extension/package.json"] else ["extension/package.json"]
+                self.assertEqual(reads, expected)
+
+    def test_declared_grammar_directory_is_not_a_file(self):
+        manifest = {"main": "./extension.js", "contributes": {
+            "grammars": [{"path": "./grammar.json"}]}}
+        for trailing_slash in (False, True):
+            directory = zipfile.ZipInfo("extension/grammar.json" + ("/" if trailing_slash else ""))
+            directory.create_system = 3
+            directory.external_attr = 0o40755 << 16
+            members = [("extension/package.json", json.dumps(manifest)),
+                       ("extension/extension.js", ""), (directory, "")]
+            members += [(name, "") for name in STATIC_FILES]
+            with self.subTest(trailing_slash=trailing_slash), patch.object(verifier, "extract") as extract:
+                with self.assertRaisesRegex(ValueError, "Required artifact missing: extension/grammar.json"):
+                    verifier.verify(archive(members))
+                extract.assert_not_called()
+
+    def test_required_paths_cannot_escape_extension(self):
+        for invalid in ("../escape", "/absolute", "C:/drive", "bad\\path", "", "\x00"):
+            manifest = {"main": "./extension.js", "contributes": {"grammars": [{"path": invalid}]}}
+            members = [("extension/package.json", json.dumps(manifest)), ("extension/extension.js", "")]
+            members += [(name, "") for name in STATIC_FILES]
+            with self.subTest(path=invalid), patch.object(verifier, "extract") as extract:
+                with self.assertRaisesRegex(ValueError, "artifact path"):
+                    verifier.verify(archive(members))
+                extract.assert_not_called()
 
 
 @unittest.skipUnless(CANDIDATE, "Pass a real VSIX path for executable artifact controls")
@@ -121,6 +174,7 @@ class RuntimeTests(unittest.TestCase):
         self.assertTrue(result["clientEntryImportedWithHostShim"])
         self.assertTrue(result["extensionEntryImported"])
         self.assertTrue(result["serverIpcInitializeShutdown"])
+        self.assertTrue(result["serverIpcUsesPackagedClientProtocol"])
         self.assertTrue(result["clientPackageInventoryMatchesClosure"])
         self.assertTrue(result["propertyReferenceRejected"])
         self.assertEqual(result["propertyLiteralDiagnostics"], 0)
@@ -179,6 +233,19 @@ class RuntimeTests(unittest.TestCase):
         invalid = "process.on('message', m => process.send({jsonrpc:'2.0', id:m.id, result:{}}));"
         with self.assertRaisesRegex(ValueError, "Missing initialize capabilities"):
             verifier.verify(self.rewrite(replace={"extension/server/server.js": invalid}))
+
+    def test_response_with_method_uses_client_protocol_classification(self):
+        with zipfile.ZipFile(CANDIDATE) as z:
+            shebang, body = z.read("extension/server/server.js").split(b"\n", 1)
+        for condition in ("message.result?.capabilities", "message.result === null"):
+            interceptor = ("const originalSend = process.send.bind(process);\n"
+                           "process.send = (message, ...args) => originalSend(\n"
+                           "message.id !== undefined && ("+condition+")\n"
+                           "? {...message, method: 'probe/unexpected'} : message, ...args);\n")
+            source = shebang + b"\n" + interceptor.encode() + body
+            with self.subTest(condition=condition):
+                with self.assertRaisesRegex(ValueError, "Bundled server IPC check failed: timed out"):
+                    verifier.verify(self.rewrite(replace={"extension/server/server.js": source}))
 
     def test_server_timeout_is_not_verification_success(self):
         with self.assertRaisesRegex(ValueError, "timed out"):
