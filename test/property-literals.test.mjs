@@ -69,6 +69,22 @@ for (const [host, relative] of [
     }
   });
 
+  test(host+': rejected closed-quote tails and quoted-space controls keep their scopes', () => {
+    // Bounded behavior controls for the resource regression. Work/growth is
+    // checked separately; these assertions impose no wall-clock threshold.
+    for (const count of [64, 128, 256, 512]) for (const unit of [' ', '\t']) {
+      const start = 'selected:sansa = ';
+      const payload = unit.repeat(count);
+      for (const [tail, complete, recovering] of [['"junk', false, false], ['")', true, false], ['', false, true], ['" \t', false, true]]) {
+        const address = '$&key("'+payload+tail;
+        const {tokens} = grammar.tokenizeLine(start+address);
+        assert(at(tokens, start.length, 'meta.address.sansa.aeon'));
+        assert.equal(at(tokens, start.length+1, 'meta.address.sansa.aeon'), complete || recovering);
+        assert.equal(tokens.some(t => t.scopes.includes('invalid.illegal.sansa.incomplete.aeon')), recovering);
+      }
+    }
+  });
+
   test(host+': comments and strings keep property lookalikes inert', () => {
     for (const line of ['// $&tag("book")', 'text = '+JSON.stringify('$&key("x")')]) {
       assert(!grammar.tokenizeLine(line).tokens.some(t => t.scopes.includes('meta.address.sansa.aeon')), line);
@@ -113,6 +129,11 @@ test('Sublime: same address rule and real Oniguruma complete/recovery matches', 
       const result = scanner.findNextMatchSync(a+suffix, 0);
       assert.equal(result.captureIndices[0].end, a.length, a);
       assert.equal(result.captureIndices[1].length, 0, a);
+    }
+    for (const count of [64, 128, 256, 512]) {
+      const result = scanner.findNextMatchSync('$&key("'+' '.repeat(count)+'"junk', 0);
+      assert.equal(result.captureIndices[0].end, 1);
+      assert.equal(result.captureIndices[1].length, 0);
     }
   } finally { scanner.dispose(); }
 });

@@ -365,7 +365,7 @@ contexts:
       scope: punctuation.separator.type-annotation.aeon
 
   sansa-addresses:
-    - match: '(?<![~A-Za-z0-9_$?])[$?](?:\.(?:\\[A-Za-z0-9_-]+\\|[A-Za-z_][A-Za-z0-9_]*|\*{1,2}|@|\["(?:\\.|[^"\\])*"\]|<"(?:\\.|[^"\\])*">)|\[(?:0|[1-9][0-9]*)\]|&(?:key|tag|headTag)\("(?:\\[^\r\n]|[^"\\\r\n])*"\))*(&(?:key|tag|headTag)\((?:"(?:\\[^\r\n]|[^"\\\r\n])*(?:\\|")?)?[ \t]*\r?$)?'
+    - match: '(?<![~A-Za-z0-9_$?])[$?](?:\.(?:\\[A-Za-z0-9_-]+\\|[A-Za-z_][A-Za-z0-9_]*|\*{1,2}|@|\["(?:\\.|[^"\\])*"\]|<"(?:\\.|[^"\\])*">)|\[(?:0|[1-9][0-9]*)\]|&(?:key|tag|headTag)\("(?:\\[^\r\n]|[^"\\\r\n])*"\))*(&(?:key|tag|headTag)\((?:[ \t]*|"(?:\\[^\r\n]|[^"\\\r\n])*(?:"[ \t]*|\\)?)\r?$)?'
       scope: meta.address.sansa.aeon
       captures:
         1: invalid.illegal.sansa.incomplete.aeon
