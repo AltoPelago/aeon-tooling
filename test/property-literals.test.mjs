@@ -47,14 +47,25 @@ for (const [host, relative] of [
   });
 
   test(host+': incomplete known property arguments recover at the next line', () => {
-    for (const address of fixture.unfinished) {
-      const line = 'selected:sansa = '+address;
+    for (const address of fixture.unfinished) for (const suffix of ['', ' ', '\t', ' \t  ']) for (const eol of ['', '\r']) {
+      const line = 'selected:sansa = '+address+suffix+eol;
       const first = grammar.tokenizeLine(line);
       assert(first.tokens.some(t => t.scopes.includes('invalid.illegal.sansa.incomplete.aeon')), address);
       const second = grammar.tokenizeLine('next = 1', first.ruleStack);
       assert(at(second.tokens, 0, 'variable.other.key.aeon'), address);
       assert(!at(second.tokens, 0, 'meta.address.sansa.aeon'), address);
       assert(!second.tokens.some(t => t.scopes.some(s => s.startsWith('string.quoted'))), address);
+    }
+  });
+
+  test(host+': complete literals keep trailing layout outside the address scope', () => {
+    for (const address of fixture.valid) for (const suffix of [' ', '\t', ' \t  ']) {
+      const line = 'selected:sansa = '+address+suffix;
+      const start = line.indexOf(address);
+      const {tokens} = grammar.tokenizeLine(line);
+      assert(at(tokens, start+address.length-1, 'meta.address.sansa.aeon'), line);
+      assert(!at(tokens, start+address.length, 'meta.address.sansa.aeon'), line);
+      assert(!tokens.some(t => t.scopes.includes('invalid.illegal.sansa.incomplete.aeon')), line);
     }
   });
 
@@ -90,6 +101,18 @@ test('Sublime: same address rule and real Oniguruma complete/recovery matches', 
       assert(result, a);
       assert.equal(result.captureIndices[0].start, 0, a);
       assert.equal(result.captureIndices[0].end, a.length, a);
+    }
+    for (const a of fixture.unfinished) for (const suffix of ['', ' ', '\t', ' \t  ']) for (const eol of ['', '\r']) {
+      const line = a+suffix+eol;
+      const result = scanner.findNextMatchSync(line, 0);
+      assert(result, JSON.stringify(line));
+      assert.equal(result.captureIndices[0].end, line.length, JSON.stringify(line));
+      assert(result.captureIndices[1].length > 0, JSON.stringify(line));
+    }
+    for (const a of fixture.valid) for (const suffix of [' ', '\t', ' \t  ']) {
+      const result = scanner.findNextMatchSync(a+suffix, 0);
+      assert.equal(result.captureIndices[0].end, a.length, a);
+      assert.equal(result.captureIndices[1].length, 0, a);
     }
   } finally { scanner.dispose(); }
 });
