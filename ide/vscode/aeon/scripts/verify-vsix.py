@@ -168,14 +168,28 @@ async function checkServer(root) {
   const service = await import(pathToFileURL(path.join(root, 'server/language-service.js')).href);
   await import(pathToFileURL(path.join(root, 'server/validation.js')).href);
   assert.deepEqual(service.getDiagnostics('selected:sansa = $.n&tag("book")'), []);
-  assert(service.getDiagnostics('items=[1]\ncopy=~$.items&key("items")').length > 0);
+  const referenceChecks = [['clone', '~'], ['pointer', '~>']].map(([kind, marker]) => {
+    const ordinary = 'copy='+marker+'$.items';
+    assert.deepEqual(service.getDiagnostics('items=[1]\n'+ordinary), [],
+      'Ordinary '+kind+' reference must parse without diagnostics');
+    const suffix = '&key("items")';
+    const error = service.getDiagnostics('items=[1]\n'+ordinary+suffix).find(diagnostic =>
+      diagnostic.severity === 1 && diagnostic.code === 'SYNTAX_ERROR' &&
+      diagnostic.range?.start?.line === 1 && diagnostic.range.start.character === ordinary.length &&
+      diagnostic.range?.end?.line === 1 && Number.isInteger(diagnostic.range.end.character) &&
+      diagnostic.range.end.character > ordinary.length &&
+      diagnostic.range.end.character <= ordinary.length + suffix.length);
+    assert(error, 'Missing syntax error at forbidden property selector in '+kind+' reference');
+    return {kind, ordinaryAccepted: true, selectorRejected: Boolean(error)};
+  });
   await checkServer(root);
   console.log(JSON.stringify({version: manifest.version, runtimePackages: packages,
     clientPackageInventoryMatchesClosure: true,
     clientEntryImportedWithHostShim: true, extensionEntryImported: true,
     bundledServerImports: true, serverIpcInitializeShutdown: true,
     serverIpcUsesPackagedClientProtocol: true,
-    propertyLiteralDiagnostics: 0, propertyReferenceRejected: true}));
+    propertyLiteralDiagnostics: 0,
+    propertyReferenceRejected: referenceChecks.every(check => check.selectorRejected), referenceChecks}));
 })().catch(error => { console.error(error.message); process.exit(1); });
 """
 

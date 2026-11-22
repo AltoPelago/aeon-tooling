@@ -177,8 +177,56 @@ class RuntimeTests(unittest.TestCase):
         self.assertTrue(result["serverIpcUsesPackagedClientProtocol"])
         self.assertTrue(result["clientPackageInventoryMatchesClosure"])
         self.assertTrue(result["propertyReferenceRejected"])
+        self.assertEqual(result["referenceChecks"], [
+            {"kind": "clone", "ordinaryAccepted": True, "selectorRejected": True},
+            {"kind": "pointer", "ordinaryAccepted": True, "selectorRejected": True}])
         self.assertEqual(result["propertyLiteralDiagnostics"], 0)
         self.assertEqual(len(result["runtimePackages"]), 8)
+
+    def test_reference_rejection_requires_selector_error(self):
+        error = {"severity": 1, "code": "SYNTAX_ERROR", "message": "Probe",
+                 "range": {"start": {"line": 1, "character": 13},
+                           "end": {"line": 1, "character": 17}}}
+        variants = [
+            ("unrelated warning", {**error, "severity": 2, "code": "UNRELATED_WARNING",
+                                   "range": {"start": {"line": 0, "character": 0},
+                                             "end": {"line": 0, "character": 5}}}),
+            ("warning at selector", {**error, "severity": 2}),
+            ("wrong diagnostic code", {**error, "code": "UNRELATED_ERROR"}),
+            ("error on preceding binding", {**error, "range": {
+                "start": {"line": 0, "character": 0}, "end": {"line": 0, "character": 5}}}),
+            ("error before selector", {**error, "range": {
+                "start": {"line": 1, "character": 0}, "end": {"line": 1, "character": 4}}}),
+            ("no error", None),
+        ]
+        for label, diagnostic in variants:
+            service = ("export function getDiagnostics(text) { return text.includes('&key(') ? " +
+                       json.dumps([diagnostic] if diagnostic else []) + " : []; }\n" +
+                       "export const getCodeActions=()=>[], getCompletionItems=()=>[], getHover=()=>null;\n")
+            with self.subTest(case=label):
+                with self.assertRaisesRegex(ValueError, "Missing syntax error at forbidden property selector"):
+                    verifier.verify(self.rewrite(replace={"extension/server/language-service.js": service}))
+
+    def test_ordinary_reference_is_a_positive_control(self):
+        service = ("export function getDiagnostics(text) { return [{severity:1,code:'SYNTAX_ERROR',"
+                   "range:{start:{line:1,character:13},end:{line:1,character:17}}}]; }\n"
+                   "export const getCodeActions=()=>[], getCompletionItems=()=>[], getHover=()=>null;\n")
+        # Preserve the inert-literal check, so failure comes from ordinary references.
+        service = service.replace("return [{", "if(text.startsWith('selected:')) return []; return [{")
+        with self.assertRaisesRegex(ValueError, "Ordinary clone reference must parse"):
+            verifier.verify(self.rewrite(replace={"extension/server/language-service.js": service}))
+
+    def test_pointer_reference_rejection_is_checked_separately(self):
+        service = """export function getDiagnostics(text) {
+          if (!text.includes('&key(')) return [];
+          const character = text.split('\\n')[1].indexOf('&key(');
+          return [{severity:text.includes('~>') ? 2 : 1, code:'SYNTAX_ERROR',
+            range:{start:{line:1,character},end:{line:1,character:character+4}}}];
+        }
+        export const getCodeActions=()=>[], getCompletionItems=()=>[], getHover=()=>null;
+        """
+        with self.assertRaisesRegex(ValueError, "Missing syntax error at forbidden property selector in pointer"):
+            verifier.verify(self.rewrite(replace={"extension/server/language-service.js": service}))
 
     def test_extra_client_packages_outside_closure_fail(self):
         for directory, name in (

@@ -129,6 +129,9 @@ for this import check; packaged dependencies are never mocked. This checks modul
 loading, not activation in an Extension Host.
 
 The verifier also exercises inert property literals and reference rejection,
+requiring ordinary clone and pointer references to have no diagnostics and a
+severity-1 `SYNTAX_ERROR` beginning at the forbidden property selector when that
+suffix is added. An unrelated warning or error cannot establish rejection. It
 then starts the packaged server over Node IPC using the protocol connection
 resolved from the packaged client dependency graph. It requires a successful LSP
 initialize/shutdown/exit exchange, and rejects startup failures or a 10-second
