@@ -103,3 +103,24 @@ rules; the compiler owns validation and reference restrictions remain unchanged.
 See the [source checks and host boundaries](../../../docs/property-selector-support.md).
 Installed extension/application qualification remains separate; no release or
 deployment is performed by this source change.
+
+## Verify a local VSIX candidate
+
+The package includes the extension's production client dependencies as well as
+the explicitly bundled language server. VSCE still selects production
+dependencies; development tools are excluded and checked in the archive.
+After packaging, run `pnpm run verify:package` to check the default output
+archive, or pass an explicit artifact path as shown below. This verification
+requires Python 3.9+ and Node on PATH. The verifier extracts to a temporary directory, checks the
+client dependency closure, loads the bundled server modules and exercises inert
+property literals and reference rejection. It runs candidate code in Node.
+
+For a package built with a custom output filename, run from this directory:
+
+```sh
+python3 scripts/verify-vsix.py /path/to/candidate.vsix
+```
+
+Use the explicit build-root argument documented above to select the server
+graph. This archive check does not install or activate an extension, and does
+not establish live editor/theme or marketplace qualification.
