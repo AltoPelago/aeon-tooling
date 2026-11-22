@@ -19,7 +19,7 @@ const Module = require('node:module');
 const {fork} = require('node:child_process');
 const {fileURLToPath, pathToFileURL} = require('node:url');
 
-function confinementPreload(root) {
+function confinementSource(root, observeExit = false) {
   const hook = [
     "import fs from 'node:fs';",
     "import path from 'node:path';",
@@ -42,6 +42,7 @@ function confinementPreload(root) {
     "import Module from 'node:module';",
     "import path from 'node:path';",
     "import {fileURLToPath} from 'node:url';",
+    "import {AsyncLocalStorage} from 'node:async_hooks';",
     "const root = " + JSON.stringify(root) + ";",
     "const inside = file => {",
     "  const relative = path.relative(root, fs.realpathSync(file));",
@@ -65,9 +66,39 @@ function confinementPreload(root) {
     "  });",
     "} else if (typeof Module.register === 'function') {",
     "  Module.register('data:text/javascript,'+encodeURIComponent(" + JSON.stringify(hook) + "));",
+    "} else {",
+    "  throw new Error('Verifier requires Node module.register or module.registerHooks for ESM confinement');",
     "}",
+    ...(observeExit ? [
+      // Observe a termination action in the notification's async context. A timer
+      // created during shutdown retains a different context, even after delivery.
+      "const dispatch = new AsyncLocalStorage(), exitScope = Symbol('exit');",
+      "const emit = process.emit;",
+      "process.emit = function(event, ...args) {",
+      "  const message = args[0];",
+      "  if (event === 'message' && message?.jsonrpc === '2.0' && message.method === 'exit' && message.id === undefined) {",
+      "    return dispatch.run(exitScope, () => Reflect.apply(emit, this, [event, ...args]));",
+      "  }",
+      "  return Reflect.apply(emit, this, [event, ...args]);",
+      "};",
+      "let observed = false;",
+      "for (const action of ['exit', 'disconnect']) {",
+      "  const original = process[action];",
+      "  process[action] = function(...args) {",
+      "    if (!observed && dispatch.getStore() === exitScope) {",
+      "      fs.writeSync(4, action+String.fromCharCode(10));",
+      "      observed = true;",
+      "    }",
+      "    return Reflect.apply(original, this, args);",
+      "  };",
+      "}",
+    ] : []),
   ].join('\n');
-  return 'data:text/javascript,' + encodeURIComponent(source);
+  return source;
+}
+
+function confinementPreload(root) {
+  return 'data:text/javascript,' + encodeURIComponent(confinementSource(root));
 }
 
 // Exercise the actual packaged entry point and IPC imports, not just helpers.
@@ -75,10 +106,14 @@ async function checkServer(root) {
   const clientRequire = createRequire(createRequire(path.join(root, 'extension.js'))
     .resolve('vscode-languageclient/node'));
   const protocol = clientRequire('vscode-languageserver-protocol/node');
+  // Keep bootstrap paths short so startup diagnostics survive the stderr bound.
+  const preload = path.join(root, '..', '.__aeon_verifier_preload__.mjs');
+  fs.writeFileSync(preload, confinementSource(root, true), {encoding: 'utf8', flag: 'wx'});
   const child = fork(path.join(root, 'server/server.js'), ['--node-ipc'], {
-    cwd: root, silent: true, execArgv: ['--import', confinementPreload(root)],
+    cwd: root, stdio: ['pipe', 'pipe', 'pipe', 'ipc', 'pipe'],
+    execArgv: ['--import', pathToFileURL(preload).href],
   });
-  let stderr = '', timer, phase = 'initialize', exitDelivered = false, fail, resolveExitSent;
+  let stderr = '', observation = '', timer, phase = 'initialize', exitDelivered = false, fail, resolveExitSent;
   const exitSent = new Promise(resolve => { resolveExitSent = resolve; });
   const originalSend = child.send.bind(child);
   child.send = (message, ...args) => {
@@ -103,15 +138,21 @@ async function checkServer(root) {
   child.stderr.on('data', chunk => { stderr = (stderr + chunk).slice(-8192); });
   const closed = new Promise(resolve => child.once('close', resolve));
   const failure = new Promise((_, reject) => { fail = reject; });
+  child.stdio[4].setEncoding('utf8');
+  child.stdio[4].on('error', fail);
+  child.stdio[4].on('data', chunk => {
+    observation += chunk;
+    if (observation.length > 32) fail(new Error('Invalid exit observation'));
+  });
   child.on('error', fail);
   child.on('exit', (code, signal) => {
-    if (phase !== 'exit' || !exitDelivered || code !== 0) {
+    if (!['exit-sending', 'exit'].includes(phase) || code !== 0) {
       fail(new Error('exited before clean shutdown ('+code+', '+signal+')'));
     }
   });
   connection.onError(([error]) => fail(error));
   connection.onClose(() => {
-    if (phase !== 'exit') fail(new Error('connection closed before clean shutdown'));
+    if (!['exit-sending', 'exit'].includes(phase)) fail(new Error('connection closed before clean shutdown'));
   });
   connection.listen();
   try {
@@ -123,13 +164,14 @@ async function checkServer(root) {
       phase = 'shutdown';
       await connection.sendNotification('initialized', {});
       assert.equal(await connection.sendRequest('shutdown'), null, 'Invalid shutdown response');
-      // A compliant server must remain connected after shutdown until exit is sent.
-      await new Promise(resolve => setTimeout(resolve, 50));
       assert(child.connected && child.exitCode === null, 'Server closed before exit notification');
+      phase = 'exit-sending';
       await connection.sendNotification('exit');
       await exitSent;
       await closed;
       assert.equal(child.exitCode, 0, 'Server did not exit cleanly');
+      assert(exitDelivered && ['exit\n', 'disconnect\n'].includes(observation),
+        'No termination action observed in exit notification dispatch');
     })();
     const timeout = new Promise((_, reject) => {
       timer = setTimeout(() => reject(new Error('timed out')), 10000);
@@ -261,6 +303,7 @@ async function checkServer(root) {
     clientEntryImportedWithHostShim: true, extensionEntryImported: true,
     bundledServerImports: true, serverIpcInitializeShutdown: true,
     serverIpcUsesPackagedClientProtocol: true,
+    serverExitDispatchObserved: true,
     propertyLiteralDiagnostics: 0,
     propertyReferenceRejected: referenceChecks.every(check => check.selectorRejected), referenceChecks}));
 })().catch(error => { console.error(error.message); process.exit(1); });

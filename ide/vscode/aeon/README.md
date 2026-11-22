@@ -118,7 +118,14 @@ bundled server tree is exercised through its imports and IPC startup below;
 the client inventory is not an allowlist for the server graph or arbitrary files.
 After packaging, run `pnpm run verify:package` to check the default output
 archive, or pass an explicit artifact path as shown below. This verification
-requires Python 3.9+ and Node on PATH. The verifier streams stored/deflated ZIP
+requires Python 3.9+ and Node on PATH with `node:module.registerHooks` or
+[`node:module.register`](https://nodejs.org/download/release/v20.19.0/docs/api/module.html#moduleregisterspecifier-parenturl-options).
+If neither API exists, verification fails explicitly rather than permitting ESM
+imports outside the extracted archive. This is a verifier runtime requirement,
+not a change to the extension's declared VS Code engines. Both verifier imports
+and server startup apply the same resolved-file confinement.
+
+The verifier streams stored/deflated ZIP
 members in bounded chunks into a temporary directory (10,000 entries, 64 MiB
 total). Before extraction, it checks required static files, reads only the
 manifest in bounded chunks, and checks the declared entry and grammar paths.
@@ -136,6 +143,15 @@ then starts the packaged server over Node IPC using the protocol connection
 resolved from the packaged client dependency graph. It requires a successful LSP
 initialize/shutdown/exit exchange, and rejects startup failures or a 10-second
 timeout. It runs candidate code in Node; use it only with trusted local builds.
+
+A test-only preload observes `process.exit` or `process.disconnect` invoked in
+the exit notification's asynchronous dispatch context, using a separate bounded
+pipe. Writing the notification alone does not pass. A timer created during
+shutdown has a different context and cannot establish exit handling, regardless
+of when it expires. The check permits immediate and asynchronous termination
+triggered by exit, and removes the previous 50 ms timing heuristic. It verifies
+the selected server's lifecycle; it is not a general LSP certification or live
+Extension Host activation. No observer is added to the packaged server files.
 
 For a package built with a custom output filename, run from this directory:
 

@@ -178,6 +178,7 @@ class RuntimeTests(unittest.TestCase):
         self.assertTrue(result["extensionEntryImported"])
         self.assertTrue(result["serverIpcInitializeShutdown"])
         self.assertTrue(result["serverIpcUsesPackagedClientProtocol"])
+        self.assertTrue(result["serverExitDispatchObserved"])
         self.assertTrue(result["clientPackageInventoryMatchesClosure"])
         self.assertTrue(result["propertyReferenceRejected"])
         self.assertEqual(result["referenceChecks"], [
@@ -278,29 +279,73 @@ class RuntimeTests(unittest.TestCase):
 
     def test_server_cannot_borrow_dependency_from_ancestor_node_modules(self):
         prefix = "extension/server/node_modules/vscode-languageserver-textdocument/"
-        stripped = io.BytesIO()
         with tempfile.TemporaryDirectory(prefix="aeon-ancestor-") as ancestor:
             ancestor_pkg = Path(ancestor)/"node_modules"/"vscode-languageserver-textdocument"
-            with zipfile.ZipFile(CANDIDATE) as source, zipfile.ZipFile(stripped, "w") as output:
-                found = False
-                for entry in source.infolist():
-                    data = source.read(entry)
-                    if entry.filename.startswith(prefix):
-                        found = True
-                        if not entry.is_dir():
-                            target = ancestor_pkg/entry.filename[len(prefix):]
-                            target.parent.mkdir(parents=True, exist_ok=True)
-                            target.write_bytes(data)
-                    else:
-                        output.writestr(entry, data)
-                self.assertTrue(found)
-            stripped.seek(0)
             tmp_child = Path(ancestor)/"tmp"
             tmp_child.mkdir()
-            with patch.dict(os.environ, {"TMPDIR": str(tmp_child)}), \
-                    patch.object(tempfile, "tempdir", str(tmp_child)):
-                with self.assertRaisesRegex(ValueError, "outside the extracted VSIX"):
-                    verifier.verify(stripped)
+            for entry_point in ("server", "service"):
+                stripped = io.BytesIO()
+                with zipfile.ZipFile(CANDIDATE) as source, zipfile.ZipFile(stripped, "w") as output:
+                    found = False
+                    for entry in source.infolist():
+                        data = source.read(entry)
+                        if entry.filename.startswith(prefix):
+                            found = True
+                            if not entry.is_dir():
+                                target = ancestor_pkg/entry.filename[len(prefix):]
+                                target.parent.mkdir(parents=True, exist_ok=True)
+                                target.write_bytes(data)
+                        else:
+                            if entry_point == "service" and entry.filename == "extension/server/language-service.js":
+                                data = b"import 'vscode-languageserver-textdocument';\n" + data
+                            output.writestr(entry, data)
+                    self.assertTrue(found)
+                stripped.seek(0)
+                with self.subTest(entry_point=entry_point), \
+                        patch.dict(os.environ, {"TMPDIR": str(tmp_child)}), \
+                        patch.object(tempfile, "tempdir", str(tmp_child)):
+                    with self.assertRaisesRegex(ValueError, "outside the extracted VSIX"):
+                        verifier.verify(stripped)
+
+    def test_unavailable_esm_hooks_fail_explicitly(self):
+        unavailable = ("require('node:module').register = undefined;\n"
+                       "require('node:module').registerHooks = undefined;\n" + verifier.NODE_CHECK)
+        with patch.object(verifier, "NODE_CHECK", unavailable):
+            with self.assertRaisesRegex(ValueError, "Verifier requires Node module.register or module.registerHooks"):
+                verifier.verify(CANDIDATE)
+
+    def test_shutdown_timer_ignoring_exit_fails(self):
+        server = """process.on('message', message => {
+          if (message.method === 'initialize') {
+            process.send({jsonrpc:'2.0',id:message.id,result:{capabilities:{hoverProvider:true}}});
+          } else if (message.method === 'shutdown') {
+            process.send({jsonrpc:'2.0',id:message.id,result:null}, () => {
+              setTimeout(() => process.exit(0), DELAY);
+            });
+          }
+        });"""
+        for delay in (75, 250, 1500):
+            with self.subTest(delay=delay):
+                with self.assertRaisesRegex(ValueError, "Bundled server IPC check failed"):
+                    verifier.verify(self.rewrite(replace={"extension/server/server.js":
+                                                         server.replace("DELAY", str(delay))}))
+
+    def test_termination_triggered_by_exit_notification_passes(self):
+        server = """process.on('message', message => {
+          if (message.method === 'initialize') {
+            process.send({jsonrpc:'2.0',id:message.id,result:{capabilities:{hoverProvider:true}}});
+          } else if (message.method === 'shutdown') {
+            process.send({jsonrpc:'2.0',id:message.id,result:null});
+          } else if (message.method === 'exit') {
+            ACTION;
+          }
+        });"""
+        for action in ("process.exit(0)", "setImmediate(() => process.exit(0))",
+                       "setTimeout(() => process.exit(0), 50)", "process.disconnect()"):
+            with self.subTest(action=action):
+                result = verifier.verify(self.rewrite(replace={"extension/server/server.js":
+                                                               server.replace("ACTION", action)}))
+                self.assertTrue(result["serverExitDispatchObserved"])
 
     def test_server_disconnecting_during_shutdown_without_exit_fails(self):
         server = """
