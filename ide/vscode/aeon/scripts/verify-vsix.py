@@ -129,12 +129,43 @@ async function checkServer(root) {
     const dev = path.join(root, 'node_modules', name, 'package.json');
     assert(!fs.existsSync(dev) || seen.has(path.dirname(dev)), 'Development-only package shipped: '+name);
   }
+  // Resolving required packages alone cannot detect an extra transitive dev tool.
+  // Inventory package slots, including scoped and nested node_modules, by path:
+  // the same name/version in an unused location is still an extra package.
+  const installed = new Set(), directories = [path.join(root, 'node_modules')];
+  const checkPackage = directory => {
+    const owner = fs.realpathSync(directory);
+    assert(seen.has(owner), 'Unexpected client package outside production closure: '+path.relative(root, owner));
+    installed.add(owner);
+    directories.push(owner);
+  };
+  while (directories.length) {
+    const directory = directories.pop();
+    const slots = path.basename(directory) === 'node_modules';
+    for (const entry of fs.readdirSync(directory, {withFileTypes: true})) {
+      if (!entry.isDirectory()) continue;
+      const child = path.join(directory, entry.name);
+      if (!slots) {
+        directories.push(child);
+      } else if (entry.name.startsWith('@')) {
+        for (const member of fs.readdirSync(child, {withFileTypes: true})) {
+          if (member.isDirectory()) checkPackage(path.join(child, member.name));
+        }
+      } else {
+        checkPackage(child);
+      }
+    }
+  }
+  for (const directory of seen) {
+    assert(directory === root || installed.has(directory), 'Production package missing from client inventory');
+  }
   const service = await import(pathToFileURL(path.join(root, 'server/language-service.js')).href);
   await import(pathToFileURL(path.join(root, 'server/validation.js')).href);
   assert.deepEqual(service.getDiagnostics('selected:sansa = $.n&tag("book")'), []);
   assert(service.getDiagnostics('items=[1]\ncopy=~$.items&key("items")').length > 0);
   await checkServer(root);
   console.log(JSON.stringify({version: manifest.version, runtimePackages: packages,
+    clientPackageInventoryMatchesClosure: true,
     clientEntryImportedWithHostShim: true, extensionEntryImported: true,
     bundledServerImports: true, serverIpcInitializeShutdown: true,
     propertyLiteralDiagnostics: 0, propertyReferenceRejected: true}));

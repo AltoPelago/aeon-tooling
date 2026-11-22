@@ -109,6 +109,13 @@ deployment is performed by this source change.
 The package includes the extension's production client dependencies as well as
 the explicitly bundled language server. VSCE still selects production
 dependencies; development tools are excluded and checked in the archive.
+The verifier inventories all package directories in the client `node_modules`
+tree, including scoped and nested packages, and rejects any outside the declared
+production closure—even when no directly declared development tool is present.
+Packages are compared by resolved location, not only name/version. A development
+dependency also required by the production graph is allowed. The separately
+bundled server tree is exercised through its imports and IPC startup below;
+the client inventory is not an allowlist for the server graph or arbitrary files.
 After packaging, run `pnpm run verify:package` to check the default output
 archive, or pass an explicit artifact path as shown below. This verification
 requires Python 3.9+ and Node on PATH. The verifier streams stored/deflated ZIP
@@ -130,7 +137,8 @@ python3 scripts/verify-vsix.py /path/to/candidate.vsix
 ```
 
 Run verifier regressions against the same real artifact, including deliberately
-removed client and server runtime files, early exit, invalid responses and timeout:
+removed client and server runtime files, extra client packages, early exit,
+invalid responses and timeout:
 
 ```sh
 pnpm run test:package /path/to/candidate.vsix

@@ -99,7 +99,7 @@ class ExtractionTests(unittest.TestCase):
 
 @unittest.skipUnless(CANDIDATE, "Pass a real VSIX path for executable artifact controls")
 class RuntimeTests(unittest.TestCase):
-    def rewrite(self, omit=None, replace=None):
+    def rewrite(self, omit=None, replace=None, add=None):
         result = io.BytesIO()
         replace = replace or {}
         with zipfile.ZipFile(CANDIDATE) as source, zipfile.ZipFile(result, "w") as output:
@@ -110,6 +110,9 @@ class RuntimeTests(unittest.TestCase):
             for entry in source.infolist():
                 if entry.filename != omit:
                     output.writestr(entry, replace.get(entry.filename, source.read(entry)))
+            for name, content in (add or {}).items():
+                self.assertNotIn(name, source.namelist())
+                output.writestr(name, content)
         result.seek(0)
         return result
 
@@ -118,8 +121,43 @@ class RuntimeTests(unittest.TestCase):
         self.assertTrue(result["clientEntryImportedWithHostShim"])
         self.assertTrue(result["extensionEntryImported"])
         self.assertTrue(result["serverIpcInitializeShutdown"])
+        self.assertTrue(result["clientPackageInventoryMatchesClosure"])
         self.assertTrue(result["propertyReferenceRejected"])
         self.assertEqual(result["propertyLiteralDiagnostics"], 0)
+        self.assertEqual(len(result["runtimePackages"]), 8)
+
+    def test_extra_client_packages_outside_closure_fail(self):
+        for directory, name in (
+                ("esbuild", "esbuild"), ("@probe/extra", "@probe/extra"),
+                ("minimatch/node_modules/esbuild", "esbuild"),
+                ("vscode-languageclient/node_modules/balanced-match", "balanced-match")):
+            extra = {"extension/node_modules/"+directory+"/package.json":
+                     json.dumps({"name": name, "version": "1.0.2"})}
+            with self.subTest(directory=directory):
+                with self.assertRaisesRegex(ValueError, "outside production closure"):
+                    verifier.verify(self.rewrite(add=extra))
+
+    def test_declared_scoped_production_packages_are_allowed(self):
+        # A scoped package is valid at either depth when that exact slot is used.
+        for owner in ("extension", "extension/node_modules/minimatch"):
+            with self.subTest(owner=owner), zipfile.ZipFile(CANDIDATE) as z:
+                file = owner+"/package.json"
+                manifest = json.loads(z.read(file))
+                manifest.setdefault("dependencies", {})["@probe/required"] = "1.0.0"
+                directory = owner+"/node_modules/@probe/required/"
+                extra = {directory+"package.json": json.dumps({
+                    "name": "@probe/required", "version": "1.0.0", "main": "index.js"}),
+                    directory+"index.js": "module.exports = {};"}
+                result = verifier.verify(self.rewrite(replace={file: json.dumps(manifest)}, add=extra))
+                self.assertTrue(result["clientPackageInventoryMatchesClosure"])
+                self.assertEqual(len(result["runtimePackages"]), 9)
+
+    def test_development_dependency_also_required_in_production_is_allowed(self):
+        with zipfile.ZipFile(CANDIDATE) as z:
+            manifest = json.loads(z.read("extension/package.json"))
+        manifest.setdefault("devDependencies", {})["balanced-match"] = "1.0.2"
+        result = verifier.verify(self.rewrite(replace={"extension/package.json": json.dumps(manifest)}))
+        self.assertTrue(result["clientPackageInventoryMatchesClosure"])
         self.assertEqual(len(result["runtimePackages"]), 8)
 
     def test_missing_client_runtime_code_fails(self):
