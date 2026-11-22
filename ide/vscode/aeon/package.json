@@ -22,7 +22,8 @@
     "package.json",
     "syntaxes/**",
     "themes/**",
-    "server/**"
+    "server/**",
+    "node_modules/**"
   ],
   "activationEvents": [
     "onLanguage:aeon"
@@ -31,9 +32,11 @@
     "build:server": "pnpm -C ../../../../aeon/implementations/typescript --filter @altopelago/aeon-lsp build",
     "bundle:server": "node ./scripts/bundle-server.mjs",
     "test:grammar": "mocha --ui tdd ./test/suite/grammar.test.js",
+    "test:package": "python3 test/verify-vsix.test.py",
     "test:extension": "pnpm run build:server && node ./test/runTest.js",
     "test": "pnpm run test:grammar && pnpm run test:extension",
     "package": "pnpm run build:server && pnpm run bundle:server && vsce package --allow-missing-repository",
+    "verify:package": "python3 scripts/verify-vsix.py",
     "vscode:prepublish": "echo 'no build step'"
   },
   "dependencies": {

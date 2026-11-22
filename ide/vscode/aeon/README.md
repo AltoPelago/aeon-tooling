@@ -103,3 +103,57 @@ rules; the compiler owns validation and reference restrictions remain unchanged.
 See the [source checks and host boundaries](../../../docs/property-selector-support.md).
 Installed extension/application qualification remains separate; no release or
 deployment is performed by this source change.
+
+## Verify a local VSIX candidate
+
+The package includes the extension's production client dependencies as well as
+the explicitly bundled language server. VSCE still selects production
+dependencies; development tools are excluded and checked in the archive.
+The verifier inventories all package directories in the client `node_modules`
+tree, including scoped and nested packages, and rejects any outside the declared
+production closure—even when no directly declared development tool is present.
+Packages are compared by resolved location, not only name/version. A development
+dependency also required by the production graph is allowed. The separately
+bundled server tree is exercised through its imports and IPC startup below;
+the client inventory is not an allowlist for the server graph or arbitrary files.
+After packaging, run `pnpm run verify:package` to check the default output
+archive, or pass an explicit artifact path as shown below. This verification
+requires Python 3.9+ and Node on PATH. The verifier streams stored/deflated ZIP
+members in bounded chunks into a temporary directory (10,000 entries, 64 MiB
+total). Before extraction, it checks required static files, reads only the
+manifest in bounded chunks, and checks the declared entry and grammar paths.
+Required paths must identify regular file members, not directories. It then
+checks the client dependency closure and loads the actual client
+and extension entry points. Only VS Code's host-provided base classes are shimmed
+for this import check; packaged dependencies are never mocked. This checks module
+loading, not activation in an Extension Host.
+
+The verifier also exercises inert property literals and reference rejection,
+requiring ordinary clone and pointer references to have no diagnostics and a
+severity-1 `SYNTAX_ERROR` beginning at the forbidden property selector when that
+suffix is added. An unrelated warning or error cannot establish rejection. It
+then starts the packaged server over Node IPC using the protocol connection
+resolved from the packaged client dependency graph. It requires a successful LSP
+initialize/shutdown/exit exchange, and rejects startup failures or a 10-second
+timeout. It runs candidate code in Node; use it only with trusted local builds.
+
+For a package built with a custom output filename, run from this directory:
+
+```sh
+python3 scripts/verify-vsix.py /path/to/candidate.vsix
+```
+
+Run verifier regressions against the same real artifact, including deliberately
+removed client and server runtime files, extra client packages, early exit,
+invalid responses, directory/absent grammar paths, extraction order and timeout:
+
+```sh
+pnpm run test:package /path/to/candidate.vsix
+```
+
+Without an artifact argument, only extraction/resource tests run and the runtime
+controls are explicitly skipped. No VS Code installation is required.
+
+Use the explicit build-root argument documented above to select the server
+graph. This archive check does not install or activate an extension, and does
+not establish live editor/theme or marketplace qualification.
