@@ -56,8 +56,9 @@ text, semantic comments and explicit scalar annotations are rejected.
 The parser delegates scalar validation and portable projection to the published
 AEON Core 0.17.0-rc.2 compiler from the exact public RC graph, rather than implementing another scalar grammar.
 Empty wrapper keys are produced directly as portable AES; the compiler never
-needs to parse them. The unpublished 0.17 compiler is used as an optional local
-integration oracle. A future dependency upgrade can adopt its scalar changes.
+needs to parse them. Integration checks use the selected public RC compiler in
+the documented sibling layout. This is distinct from standalone adapter
+packaging and from later stable adoption.
 
 `alogToAes` validates the entire finite input before returning. `alogToAesStream`
 accepts a byte iterable and yields bounded event batches under backpressure.
