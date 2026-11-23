@@ -25,6 +25,15 @@ the current editor grammar subset, compiler-backed LSP literal handling and
 intentional native-event schema denial. Property parsing does not establish
 full editor presentation, evaluation or installed-artifact acceptance.
 
+## Public RC integration
+
+The explicit AEON 0.17.0 candidate uses exact published RC2 highlighter, lexer
+and ALOG compiler packages. Run `npm ci --ignore-scripts` at the root and
+`npm run install:adapters` for the separate adapter graphs. The old private
+highlighter archives are historical inputs, not the active install graph.
+See [RC inputs and verification boundaries](docs/rc-registry-integration.md).
+Own tooling versions and editor/parser admission contracts stay unchanged.
+
 ## Validation
 
 ```sh
