@@ -25,8 +25,8 @@
     "examples:adapters": "node converters/format-adapters/examples/validate-and-query/run.mjs"
   },
   "devDependencies": {
-    "@altopelago/aeon-highlight": "0.17.0-rc.2",
-    "@altopelago/aeon-lexer": "0.17.0-rc.2",
+    "@altopelago/aeon-highlight": "0.17.0-rc.3",
+    "@altopelago/aeon-lexer": "0.17.0-rc.3",
     "vscode-oniguruma": "2.0.1",
     "vscode-textmate": "9.3.2"
   }

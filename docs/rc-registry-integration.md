@@ -1,13 +1,13 @@
 # Public AEON RC integration
 
 Candidate preparation, 24 November 2026. Root browser dependencies and the ALOG
-compiler graph use exact published AEON npm `0.17.0-rc.2`, producer
-`c6f338c8db191e0f0eb0c6f2b641d3cc18476199`. Its SANSA provider is
-`0.15.0-rc.2`, producer `75a56844e6076e12a55f058b58fa1541fead05d6`.
-[Immutable upstream inputs](releases/aeon-0.17.0-rc.2.json) inventory actual
-registry artifacts; that inventory is not an acceptance result. The manual AEON
-npm bootstrap has registry signatures but no CI provenance; SANSA's attestation
-is separate. Do not infer an attestation for all packages from the provider.
+compiler graph use exact published AEON npm `0.17.0-rc.3`, producer
+`110faa7f31dfe9f25c6dfb4bd52888eecf3e122e`. Its SANSA provider is
+`0.15.0-rc.3`, producer `0b9316f6e31814377220ab3e5821d8457857d16c`.
+[Immutable upstream inputs](releases/aeon-0.17.0-rc.3.json) inventory actual
+registry artifacts; that inventory is not an acceptance result. The protected AEON npm workflow supplies verified CI provenance for each AEON
+package. SANSA has its separately verified attestation; artifact digests, exact
+source/workflow identity and installed consumers remain distinct checks.
 
 Install root, converter and adapter graphs from their own frozen locks. Preserve
 third-party pins and existing scripts. The root browser shell uses the installed
