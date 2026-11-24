@@ -17,6 +17,6 @@
     "test": "node --test"
   },
   "dependencies": {
-    "@altopelago/aeon-core": "0.17.0-rc.3"
+    "@altopelago/aeon-core": "0.17.0"
   }
 }

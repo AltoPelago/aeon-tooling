@@ -54,7 +54,7 @@ text, semantic comments and explicit scalar annotations are rejected.
 `requireHeader: false` is an explicit external-version-context option.
 
 The parser delegates scalar validation and portable projection to the published
-AEON Core 0.17.0-rc.3 compiler from the exact public RC graph, rather than implementing another scalar grammar.
+AEON Core 0.17.0 compiler from the exact public RC graph, rather than implementing another scalar grammar.
 Empty wrapper keys are produced directly as portable AES; the compiler never
 needs to parse them. Integration checks use the selected public RC compiler in
 the documented sibling layout. This is distinct from standalone adapter

@@ -1,3 +1,6 @@
+Historical RC3 integration record. For current stable inputs and gates, see
+[stable integration](stable-registry-integration.md).
+
 # Public AEON RC integration
 
 Candidate preparation, 24 November 2026. Root browser dependencies and the ALOG

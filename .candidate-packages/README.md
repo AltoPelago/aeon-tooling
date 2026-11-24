@@ -2,7 +2,7 @@
 
 The following archive provenance is retained for earlier source qualification.
 The active RC integration uses exact public package versions in the root lock;
-see [public RC integration](../docs/rc-registry-integration.md). These retained
+see [public RC integration](../docs/stable-registry-integration.md). These retained
 archives and their original hash record are not the current dependency graph.
 
 # Shared highlighting development candidate

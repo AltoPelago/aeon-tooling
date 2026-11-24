@@ -36,8 +36,8 @@ row accepted until the required evidence for its exact combination is retained.
 
 ## Published RC preparation
 
-The candidate pins public AEON npm `0.17.0-rc.3` in the root highlighter/lexer
-and ALOG compiler graphs. [RC integration](docs/rc-registry-integration.md)
+The candidate pins public AEON npm `0.17.0` in the root highlighter/lexer
+and ALOG compiler graphs. [RC integration](docs/stable-registry-integration.md)
 records the exact inputs and distinct source, registry and packaged-host gates.
 Old private archives below are retained historical evidence, not active pins.
 Registry availability alone does not qualify an editor extension or install it.
