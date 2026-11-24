@@ -1,0 +1,147 @@
+{
+  "schema": "tooling.rc-upstream-inputs.v1",
+  "recorded_on": "2026-11-24",
+  "aeon_source": "c6f338c8db191e0f0eb0c6f2b641d3cc18476199",
+  "sansa_source": "75a56844e6076e12a55f058b58fa1541fead05d6",
+  "packages": [
+    {
+      "name": "@altopelago/aeos-core",
+      "version": "0.17.0-rc.2",
+      "shasum": "fff0dcedb56644eb7452b67327e07ceb1f0e9dab",
+      "integrity": "sha512-kLe2tG6S2sLb1kxcjilrCPUN+Ebr/T1g2g0FkagOEM/YgXCj9MdCRhuXUKYAdUgq1scwmcBaawrMwuqBdoZAQA==",
+      "sha256": "4f91243153b178312d8fbee3af7b404ad3783b47d90c103009adab4bcf42923c"
+    },
+    {
+      "name": "@altopelago/aeon-aes",
+      "version": "0.17.0-rc.2",
+      "shasum": "5d112061fbc3936b41dcc26613cd73bf2ed81098",
+      "integrity": "sha512-A1PnzsPcgSFK2cDJTkHuNXbJer4qJdUYj6nqimxc7jo4jWL3cwDLZd/AyDfcCqprvUb7ByEf6HdJF/LMQFuA7w==",
+      "sha256": "e249ac13774a17c1934e32440189ef8675990ab1547b74393cfe0a1fa1ec5003"
+    },
+    {
+      "name": "@altopelago/aeon-annotation-stream",
+      "version": "0.17.0-rc.2",
+      "shasum": "d3c607e762e16a2a743ada4df75833f9371d353e",
+      "integrity": "sha512-pKureK6Mg4VRObOoaI3PMdJ1h+UVyPa/UTBeD1x6suFkSZN9+HcTjRTLr6GfowgIoVMXLSTjoKrbdKbSuSxdtQ==",
+      "sha256": "a6b33bf7da6537f271c35c51cfbfcdb4847bdfe297d98a3be90a51be4bef5300"
+    },
+    {
+      "name": "@altopelago/aeon-canonical",
+      "version": "0.17.0-rc.2",
+      "shasum": "5d718eb520439f0f2f8be0476918f4502b4fee28",
+      "integrity": "sha512-7RtufjI5i72C8K9znC7etRkFCPnaizl+hYYm14tWZebh9JcyLhdpuxw7/WG7ogJU05bX2JmNgBiSeZjOV2VZcg==",
+      "sha256": "c23c090916f8f09f29aa17f56170ab538cf0cf3c5b5c8e809741e4436433abfb"
+    },
+    {
+      "name": "@altopelago/aeon-cli",
+      "version": "0.17.0-rc.2",
+      "shasum": "172e29efd8a7e4f76aa1526646863e648f4a0370",
+      "integrity": "sha512-+8ByaiTrnrCWmG8AuSLWDuCOhTIsI835WDxuCMpem1KpHix5U7/OScfkXZhABSQtEI9IsbvetI18d3YpHiu5BQ==",
+      "sha256": "3772490c0e56000e9dd91c7e5cf775a5d1628dff2f5fc9510087f6c779275ab3"
+    },
+    {
+      "name": "@altopelago/aeon-core",
+      "version": "0.17.0-rc.2",
+      "shasum": "11a4c1ca8059c5c6df34afd8d570e333712b9f60",
+      "integrity": "sha512-8AmmErU7uRrqQnx7ElWSiJEiGiNSCGprQckxWnm9D/H1usxQYcU92gDo3QIzM1o0xO1qRWT6dk+3jDDeP1i72A==",
+      "sha256": "fd378be3af7dc9ffdf2e4209d210b70bb2f52d0c18b2b4dd01e286091e455700"
+    },
+    {
+      "name": "@altopelago/aeon-finalize",
+      "version": "0.17.0-rc.2",
+      "shasum": "13af8e488e14d2038d8d1e6175ecb82eabb390f3",
+      "integrity": "sha512-p7OXfo3heCOKElfTiHLFoiNgibCtvqH/SCfVJArdrjI+MZ1lK6Ah07TvH5+qnd5N6jkNS+3xMNh9TSLuSmcaMA==",
+      "sha256": "323e6e417bfcfad12232a64abafe8cf164f651109932e03ba67d824e292badad"
+    },
+    {
+      "name": "@altopelago/aeon-highlight",
+      "version": "0.17.0-rc.2",
+      "shasum": "ae54757446341c588de38fd95444e0f14c44ba33",
+      "integrity": "sha512-4cYxZdzIymbuG408YQhX0OU1Y3U59HRY9YgjYmkUfwkW2zsPfoD5UXr0H77zJ7Gh7FHidCImCz9zpOY58+gkEQ==",
+      "sha256": "8e3ec075f087e388db82126e1f9d5ffd24cfc2fff1bfe33a553fbc9a7259fdc7"
+    },
+    {
+      "name": "@altopelago/aeon-integrity",
+      "version": "0.17.0-rc.2",
+      "shasum": "8034d754b322926aebed9788fdbfca90563b0345",
+      "integrity": "sha512-WwlpNDOtHabmNA6lYsDogP8ax9v9+B6sEH2QjOeQzq2XtUaTSVGa6D03I9gLdIUeLR34y4aOiUorV1e3cv8mCA==",
+      "sha256": "686e4d76bead692b7dee982beca16f1df4c5da09e3088573fa06f54b80484672"
+    },
+    {
+      "name": "@altopelago/aeon-lexer",
+      "version": "0.17.0-rc.2",
+      "shasum": "e91425281a18965c90a431f87340acddbb43a94b",
+      "integrity": "sha512-XcuRfcqVvuhzNSRQ/cFJ0I2dcaG7bI+rAgVD/RPIL9184ae8o3cJdM0xeTo18OUPp3N4qhy8GxyKR/ZBdOEqVw==",
+      "sha256": "a739d58f43cf3d8555ba283492ea220f423780f2ea24ba46ffb8bc9234500698"
+    },
+    {
+      "name": "@altopelago/aeon-parser",
+      "version": "0.17.0-rc.2",
+      "shasum": "b109e3daf037dcc4fa77d5b4baac31a2f3a3a2b2",
+      "integrity": "sha512-VLaXR8EPpS4w6bU7atRNcPxLd65De87MjLFDKMbMD1d/OjaIPwr5mPQwFPr+qOQHhDpgcRzYt+kC920vsmfaLw==",
+      "sha256": "e9d5ad1fa43d7f1ae03795dbfb76edbad7ef08f43b713e97a44c273b314c4940"
+    },
+    {
+      "name": "@altopelago/aeon-profiles",
+      "version": "0.17.0-rc.2",
+      "shasum": "913669f297bc8d7008e2b42d0efa2e0bb39725eb",
+      "integrity": "sha512-4VWIKgijtO5QOfiQJaMxCoUvT1HeaN2HoCgHsj8f0FrM7EtT22MIK4IrDBN1nlIhFWk0Iw1FQ3Irj4SFEFjrTg==",
+      "sha256": "bfd79db9f2c195266c10c4fba967f46779f7ab048e6094d41e73abf07bbe6961"
+    },
+    {
+      "name": "@altopelago/aeon-runtime",
+      "version": "0.17.0-rc.2",
+      "shasum": "7cef90e06685ea0abf642d337c99a197a58780cb",
+      "integrity": "sha512-hs64+fsb7XCAsXzGUBLFVhjqPz5TVIeFpFZIYEYEFIXupuKUGkPjGxedtmlkTXKhXB0xOgTSaIXpFeolmwpr3w==",
+      "sha256": "cab673c81784501e6f7512c33673cb24a65baf7fbcbda162236de4b12c1ca885"
+    },
+    {
+      "name": "@altopelago/aeon-sdk",
+      "version": "0.17.0-rc.2",
+      "shasum": "c7b908f7a4e6ac334c6422032df08db7d3e5e86c",
+      "integrity": "sha512-OYsSzxBhX4onxfNU1dAvqNmb7jHRtLk4cETht3XtrUm2jWTWf2EPqsArESx0OxDqS9DmJjVep0CwffdFaA/F9g==",
+      "sha256": "6ec6af45a504e470e68f5d50abf026d434cf56cabd44322fa089dd1d9043a1a4"
+    },
+    {
+      "name": "@altopelago/aeon-tonic",
+      "version": "0.17.0-rc.2",
+      "shasum": "d26752ca7329e883f192efbc7298d8f75f8ad84b",
+      "integrity": "sha512-GyYeHKH2rLqKJ+MhbuPzBvHIZG5h+JKps74pOLfq+FVjwrqBb+TKXh+p6PTRutE1cfJ3PFk/ngKeTuLcMxT73A==",
+      "sha256": "ed21dba509ae327bde76ead9082f29b316bc622b7167605ce042886497d4223a"
+    },
+    {
+      "name": "@altopelago/aeon-transport",
+      "version": "0.17.0-rc.2",
+      "shasum": "7e6e34bba67cfda527d3612ab359fe914cad7389",
+      "integrity": "sha512-mlnU3IHEVYlMAjb2BeJPod8TKvASYkJR1FBU0d8BCpCyH5sBopZqXOoS0mpB/HXsEjqjVywjB4flEcdYBkS8rQ==",
+      "sha256": "f61cbedc78fee36fb660b9a552f143c5831aab837b439004ab419742a6173617"
+    },
+    {
+      "name": "@altopelago/aeon-typegen",
+      "version": "0.17.0-rc.2",
+      "shasum": "fd9a64001db28e23456835ee2524c1c21c63510f",
+      "integrity": "sha512-ccH3s2zDisx6XCbdkY2MNoQcNPqeDKwNDnWjiBxjqlTNmECxPhIKbV4fduXSNVruptDAPY8kArfnXMJWgatzHg==",
+      "sha256": "7e7691cddff165b2ee957aeeba185efb2b6f964e9f59e3e93076d88ccbd982e8"
+    },
+    {
+      "name": "@altopelago/aeon-wasm",
+      "version": "0.17.0-rc.2",
+      "shasum": "ada72f9cc11d9329a66af965b3e4c189ec7f08e8",
+      "integrity": "sha512-U7kdMCi2wHmtjCpd3I4C1C6hAgz9w1Pls22DRnQ9xykbvOwjcFbxzznegkZJIZKqQrL4yoUNrghxPR4LAPwGWQ==",
+      "sha256": "9f5bf64608f3a45c312e1fb4c55776fa8d94872ced5d0afb0836e402a1c1068a"
+    },
+    {
+      "name": "@altopelago/sansa",
+      "version": "0.15.0-rc.2",
+      "integrity": "sha512-l4VHtzj3IYA5Iajng68/XDfJkDdmPXpntQaLsNPcucU4lo09d+K3KEOHQwFCn//lKFeP11qzKlmKNlUmTnR0cw==",
+      "sha256": "9e6aa13aa155682d216ce396c586174ac7857d06d53ad7541d73f58e2af88687"
+    }
+  ],
+  "aeon_npm_ci_provenance": false,
+  "acceptance": "Input inventory only; independent source/graph/consumer qualification remains separate.",
+  "active_tooling_dependencies": {
+    "root_highlighter": "@altopelago/aeon-highlight@0.17.0-rc.2",
+    "root_lexer": "@altopelago/aeon-lexer@0.17.0-rc.2",
+    "alog_compiler": "@altopelago/aeon-core@0.17.0-rc.2"
+  }
+}

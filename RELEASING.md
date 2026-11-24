@@ -34,7 +34,20 @@ artifact digests, skips and verification limits in the shared checklist. Local
 builds and tarballs do not establish registry availability. Do not mark a release
 row accepted until the required evidence for its exact combination is retained.
 
-## Shared browser highlighter candidate
+## Published RC preparation
+
+The candidate pins public AEON npm `0.17.0` in the root highlighter/lexer
+and ALOG compiler graphs. [RC integration](docs/stable-registry-integration.md)
+records the exact inputs and distinct source, registry and packaged-host gates.
+Old private archives below are retained historical evidence, not active pins.
+Registry availability alone does not qualify an editor extension or install it.
+The candidate remains under independent review; coordinated stable adoption and
+production deployment are separate gates. Existing budgets and targets remain.
+
+## Historical shared browser highlighter qualification
+
+The following records the earlier private-archive qualification. Current RC
+inputs and remaining acceptance gates are described above.
 
 The code-block shell imports the implementation-backed AEON renderer. Its
 existing frame, copy control and colours remain local; IDE grammars are unchanged.

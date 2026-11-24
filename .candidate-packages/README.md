@@ -1,3 +1,10 @@
+# Historical private highlighter inputs
+
+The following archive provenance is retained for earlier source qualification.
+The active RC integration uses exact public package versions in the root lock;
+see [public RC integration](../docs/stable-registry-integration.md). These retained
+archives and their original hash record are not the current dependency graph.
+
 # Shared highlighting development candidate
 
 These local npm archives prepare consumer integration without registry publication.

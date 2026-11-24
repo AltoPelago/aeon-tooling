@@ -87,7 +87,7 @@ Workspace settings:
 When `contractRegistry` plus `schema`/`profile` ids are set, the editor validates using the trusted registry and fails closed on unknown ids or hash mismatches.
 
 Candidate identity annotation/literal scopes and descriptive language-service
-hovers are documented in [the tooling contract](../../../docs/child-identity-tooling.md).
+hovers are documented in [the tooling contract](https://github.com/AltoPelago/aeon-tooling/blob/main/docs/child-identity-tooling.md).
 Use a coordinated candidate server build for those hovers and validation. From
 this directory, `node scripts/bundle-server.mjs "$AEON_TYPESCRIPT_ROOT"` bundles
 an explicitly selected, already-built TypeScript graph. The existing package
@@ -100,7 +100,7 @@ The grammar recognises SANSA `&key("name")`, `&tag("book")` and
 `&headTag("book")` suffixes, including quoted payloads and chained navigation.
 Incomplete known arguments recover at the line boundary. These are presentation
 rules; the compiler owns validation and reference restrictions remain unchanged.
-See the [source checks and host boundaries](../../../docs/property-selector-support.md).
+See the [source checks and host boundaries](https://github.com/AltoPelago/aeon-tooling/blob/main/docs/property-selector-support.md).
 Installed extension/application qualification remains separate; no release or
 deployment is performed by this source change.
 

@@ -1,0 +1,149 @@
+{
+  "schema": "tooling.rc-upstream-inputs.v1",
+  "recorded_on": "2026-11-24",
+  "aeon_source": "110faa7f31dfe9f25c6dfb4bd52888eecf3e122e",
+  "sansa_source": "0b9316f6e31814377220ab3e5821d8457857d16c",
+  "packages": [
+    {
+      "name": "@altopelago/aeon-profiles",
+      "version": "0.17.0-rc.3",
+      "integrity": "sha512-JKsgIjldgwNoTwVK2c5RmCph2G9CK8od61yaQEPI1tbEsR/AxLxZHWRI8IBkp1jde2QK9CKqeqtCHDC2Wed2jA==",
+      "sha256": "6b03ebbb8cbdf1785d0e007a7d65666f601f3c71d2df6c90681b27051f3b4fdc",
+      "shasum": "1cd8f21858e74a9013d1ef97c402c999806b0155"
+    },
+    {
+      "name": "@altopelago/aeon-runtime",
+      "version": "0.17.0-rc.3",
+      "integrity": "sha512-hU13rwZEMJzyWElkjCekHIsnecF6JHUepkOEoKrjtRGrtIjncAHvCjXRZl3snkBatxy3kR2O8CN4tSK+o+rk0w==",
+      "sha256": "2a4aabda4308d3b97257132dd8c5265f165dbc90d557d7a5938c3d7debf2eb63",
+      "shasum": "48bfa9812a1926fccdd0ddb69da2c1e4a555e85a"
+    },
+    {
+      "name": "@altopelago/aeos-core",
+      "version": "0.17.0-rc.3",
+      "integrity": "sha512-SofnAKYLDXRcwjbO4N+0ajOxxIF9ClKWM8MnAUcvahrgN/d3m4U+eZGP9owNQpkdvgE7glEVoRpNNK+beG/HyQ==",
+      "sha256": "0073ca6b8a24de7bcab3054178636c119b728ec0110eb825f8e5912d683b0a30",
+      "shasum": "4fdab9e5fc04cd6bad0e9321d2f5443216872126"
+    },
+    {
+      "name": "@altopelago/aeon-parser",
+      "version": "0.17.0-rc.3",
+      "integrity": "sha512-6j9jHSkZ+zClJafRCU/mZkyR3oySjxag1JtzjhzAC/SwTuX6haSHFJ45PrP7FBbwBCSKJaFSy2C2cae54n5jUA==",
+      "sha256": "8d296794d431aa61cd22b688b65f2cf8d9866d3a21a318a6f2f77a332ecb6174",
+      "shasum": "96d46be91e596ebc539e11983cd80daf18b5adc3"
+    },
+    {
+      "name": "@altopelago/aeon-wasm",
+      "version": "0.17.0-rc.3",
+      "integrity": "sha512-Ujih7oD2Ty6OPInvo5FyrquJPMxI5Ea9TeiyqHoLQ+Jd6XOKNCHFjBDG4xFpCK8YvoeAB+VigcYxI22dFETdEg==",
+      "sha256": "c8a0f76f7fbd55c78de85027f3541d2671dc8ebd5f66d29dcbf6d62cdf5b13ea",
+      "shasum": "88a8e90d65e05453bb328bcc938706d3e2b70efd"
+    },
+    {
+      "name": "@altopelago/aeon-transport",
+      "version": "0.17.0-rc.3",
+      "integrity": "sha512-r+6h4XdcWzkS22ICgaArnB3DAZAnd5WjKe75DDInIuiJ1cNCs1ej4QLcsikZX4WHVTnI/Kew8enVlfXID0w10g==",
+      "sha256": "c3e4c5750ddcd74dc5f0a7fdd16783de38feb14a14dbf0c61ca75fafe04d4a33",
+      "shasum": "c3f0eef6799746eb27f01184bfcecc631fcd8868"
+    },
+    {
+      "name": "@altopelago/aeon-integrity",
+      "version": "0.17.0-rc.3",
+      "integrity": "sha512-dmDb324dp9V3QM2W/FHQE7pcOQqlxrMkTlCt7HtNVOceOFdmFq2H1WHy51olXDhg9Y4josUd0RetjqiTGyAW0A==",
+      "sha256": "29e440b9041547f6a2710c24b331dee0c3cf10dbdb84ecae3a75833ff4917b64",
+      "shasum": "6a2339d73012f28fdfd565af9519b53b9a5d3a4e"
+    },
+    {
+      "name": "@altopelago/aeon-finalize",
+      "version": "0.17.0-rc.3",
+      "integrity": "sha512-NbqMX2o1cRLccjS3q94huQdedAcnuPqu9cpNQIwIvXVhyvfm68TbmyUJw0WRh4ORMcI4mXYlZMtTvfCEE9P/Iw==",
+      "sha256": "15a9c76087ec81a0bc0e3d7568c9da0c0790d30a2d77cf033deceb27ec969212",
+      "shasum": "23b113b04f03ad4d514c15a423d80bc010f1a869"
+    },
+    {
+      "name": "@altopelago/aeon-canonical",
+      "version": "0.17.0-rc.3",
+      "integrity": "sha512-mkOgJL7SPys+Qep/CPeGPE9YmJI8Gkny5i9u6XTO2RK4aROdfy2oK1D4iwkx+HWFkYR+TbzntkDC2V/9qYZMBg==",
+      "sha256": "3cdddc4bbbf8d1cd3d8f9028f049f2b7395d8ddb919cada52374a1d2049e1dcb",
+      "shasum": "03a5459a3b52c6047c69be89a1e2c59d465a04cb"
+    },
+    {
+      "name": "@altopelago/aeon-cli",
+      "version": "0.17.0-rc.3",
+      "integrity": "sha512-9CdMORfckKt0l23M0LmXho6DJwn5SVuf+3ghsGvf+rODKaePu8IcATg3PmMxC32AuPCZOeYoCTKXO5afclhWkQ==",
+      "sha256": "8e39dc27d660ff0998515ae5b90d8ea8be5ceebc906f328310bd0ab0cfdebb1c",
+      "shasum": "b62fff14cf5bb8eba09103bbc169e7ef3c98fbae"
+    },
+    {
+      "name": "@altopelago/aeon-highlight",
+      "version": "0.17.0-rc.3",
+      "integrity": "sha512-YElxxrogkqeG9z2eEHHlk/7FDooScxm85HQwypQ1OVZjZ+rZ4i8HioRVvl9NU2j13wq++pg51IMPDodyDP0Xbw==",
+      "sha256": "45511a5b15f1aa4e92ac5856474bc99b13b905bebac32a4d018a69c5807de631",
+      "shasum": "2eaa8568075540c49a7c842408b521d6b813f631"
+    },
+    {
+      "name": "@altopelago/aeon-typegen",
+      "version": "0.17.0-rc.3",
+      "integrity": "sha512-jP8qGrDpI0f+TBwo3Wq10ad9wJKNG5dNjykLr3NxIe5MS6jiWfeYbGGdnZj1S59F7HdL7iG47hFt9sKy80W09A==",
+      "sha256": "a6ab8b9c2e57d428bcf45588f9689ecb3a8ae70f3fcfb8c0ce960c39593d7f9c",
+      "shasum": "2be7b882bb2b51cd7ff8c85f14c680251cc9fa17"
+    },
+    {
+      "name": "@altopelago/aeon-tonic",
+      "version": "0.17.0-rc.3",
+      "integrity": "sha512-XGerUbiV7ysTrjpwk5AKihYHG/aXuFb327Biu2CCyDmbgQ5oSJgcvTShFlE31tP5WBNFWsJDlKvCxG0TkxO2vw==",
+      "sha256": "adb2ddf95cf7295ca3d8c055cfffab2e1b8b4f8d050939468df5f376396054cf",
+      "shasum": "a75354e19488ec638d0ea0949d0b1e5f574200e3"
+    },
+    {
+      "name": "@altopelago/aeon-aes",
+      "version": "0.17.0-rc.3",
+      "integrity": "sha512-Z51aK6a62bj1/T9qSRZyfLWrmzfmpxfGpahgqL12L+NIjjvfyprrMfVtn/fe1hvq1DllFirCzKPC1bSd9QDrIg==",
+      "sha256": "bd7fcf678f4f26314bf869dc521374091f1b717f7196ab475bf15c9ba200598e",
+      "shasum": "6605d14b6e969be0007b39bb37b5db5380191ae7"
+    },
+    {
+      "name": "@altopelago/aeon-sdk",
+      "version": "0.17.0-rc.3",
+      "integrity": "sha512-egXZ4mdnvBFjcuRKX3DeJueZxJk6qOaN44XgvyMEKm9fupFk44ubmsf0lIP5Ai/NDWA/erus5p29Q2J5dLIH9g==",
+      "sha256": "8b16594b6e328cd0a731f303388b645e62c17c166c31b0167a2989429a13fe5c",
+      "shasum": "fe18be6e04ff4e789488c229b69b09f1495f7948"
+    },
+    {
+      "name": "@altopelago/aeon-core",
+      "version": "0.17.0-rc.3",
+      "integrity": "sha512-UCZZLaXY6WhIQmk5IANQyLNHibBbWrufz9egqYwbEGc7SRPKkTJBzDhfatxqeY/+0BZgbA4lRrzDsEstwtv7sQ==",
+      "sha256": "ef6e52d55e43318c2814cdf50a0ba58e75ba43937fbc6176f2170acb1a6a71a6",
+      "shasum": "227c869a7ff09d6d246c25298a46ed4163bce77d"
+    },
+    {
+      "name": "@altopelago/aeon-annotation-stream",
+      "version": "0.17.0-rc.3",
+      "integrity": "sha512-ICT3+9ckjCf/Zv4w/a1nOwoJtLVwSF1g0dqCOZQmsI41I+SgL/cU2M57OngoQLIS4w/MhsXNO7zhOaQ4USApWg==",
+      "sha256": "fd932cd37bfc2ba7c55033c63eeeea119286ebec4d268f5401162407f521840d",
+      "shasum": "f56a4fcdf57f66e77929af92dd293c8e2889e76a"
+    },
+    {
+      "name": "@altopelago/aeon-lexer",
+      "version": "0.17.0-rc.3",
+      "integrity": "sha512-qb34TEOYgUYwr5b/kHy4cOqrce0sfL7RUJ4SL+t3s9Xq9yMe2UUTtV62akqGEUQGO33gK2X1TiQufrsfL0fUXg==",
+      "sha256": "83a8ca7c45f607aab9d6158c7362dc9e2d262c84fbe97d5fdcaacff50052505b",
+      "shasum": "743b4a904767f2c3ca7fab16ea4a27e6c1930671"
+    },
+    {
+      "name": "@altopelago/sansa",
+      "version": "0.15.0-rc.3",
+      "integrity": "sha512-8LOj7ZbIkxUJSzfLs+q/MYBWbu1k0gDYkX3jfpGMH6v/JXV80J63O+lknuI+PaM1VUcoxRaY+o4U0FlgPgheyQ==",
+      "sha256": "60aa675da4bb1ad76f542849332c7bad4d8f533477b30b4e0fbaa0f6582f873d",
+      "shasum": "4cf3564f5870a24f3f32abb0638ea30bc9178673"
+    }
+  ],
+  "aeon_npm_ci_provenance": true,
+  "acceptance": "Input inventory only; independent source/graph/consumer qualification remains separate.",
+  "active_tooling_dependencies": {
+    "root_highlighter": "@altopelago/aeon-highlight@0.17.0-rc.3",
+    "root_lexer": "@altopelago/aeon-lexer@0.17.0-rc.3",
+    "alog_compiler": "@altopelago/aeon-core@0.17.0-rc.3"
+  },
+  "aeon_npm_workflow": "https://github.com/AltoPelago/aeon/actions/runs/45377620257"
+}
