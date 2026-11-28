@@ -175,6 +175,8 @@ contexts:
       scope: punctuation.definition.attribute.end.aeon
       pop: true
     - include: comments
+    - include: attribute-generic-datatype
+    - include: typed-keys
     - include: node-literals
     - include: attributes
     - include: strings
@@ -209,6 +211,8 @@ contexts:
         3: storage.type.parameters.aeon
       pop: true
     - include: comments
+    - include: attribute-generic-datatype
+    - include: typed-keys
     - include: node-literals
     - include: attributes
     - include: strings
@@ -259,27 +263,45 @@ contexts:
     - include: comments
     - include: structural-identities
     - include: attributes
+    - match: '(:)[ \t]*([A-Za-z_][A-Za-z0-9_]*)[ \t]*(<)'
+      captures:
+        1: punctuation.separator.type-annotation.aeon
+        2: storage.type.aeon
+        3: punctuation.definition.type-parameters.begin.aeon
+      push: type-arguments
     - match: '(:)[ \t]*([A-Za-z_][A-Za-z0-9_]*)'
       captures:
         1: punctuation.separator.type-annotation.aeon
         2: storage.type.aeon
-    - include: node-type-parameters
     - include: node-type-clarifier
     - include: node-children-open
     - match: '(?=\S)'
       pop: true
 
-  node-type-parameters:
-    - match: '<'
-      push:
-        - meta_scope: storage.type.parameters.aeon
-        - match: '>'
-          pop: true
-        - include: node-type-parameters
-        - include: node-type-clarifier
-        - include: comments
-        - match: '[A-Za-z_][A-Za-z0-9_]*'
-          scope: storage.type.aeon
+  attribute-generic-datatype:
+    - match: '((?:[A-Za-z_][A-Za-z0-9_-]*|"(?:\\[^\r\n]|[^"\\\r\n])*"|''(?:\\[^\r\n]|[^''\\\r\n])*''))[ \t]*(:)[ \t]*([A-Za-z_][A-Za-z0-9_]*)[ \t]*(<)'
+      captures:
+        1: variable.other.key.aeon
+        2: punctuation.separator.type-annotation.aeon
+        3: storage.type.aeon
+        4: punctuation.definition.type-parameters.begin.aeon
+      push: type-arguments
+
+  type-arguments:
+    - meta_scope: storage.type.parameters.aeon
+    - match: '(>)|(?=[<=(){}])|(?=^[ \t]*(?:[A-Za-z_][A-Za-z0-9_-]*|"(?:\\[^\r\n]|[^"\\\r\n])*"|''(?:\\[^\r\n]|[^''\\\r\n])*'')[ \t]*(?::|=|@\{))'
+      captures:
+        1: punctuation.definition.type-parameters.end.aeon
+      pop: true
+    - include: node-type-clarifier
+    - include: comments
+    - match: '([A-Za-z_][A-Za-z0-9_]*)[ \t]*(<)'
+      captures:
+        1: storage.type.aeon
+        2: punctuation.definition.type-parameters.begin.aeon
+      push: type-arguments
+    - match: '[A-Za-z_][A-Za-z0-9_]*'
+      scope: storage.type.aeon
 
   node-type-clarifier:
     - match: '\['

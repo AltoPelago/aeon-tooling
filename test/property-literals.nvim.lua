@@ -61,16 +61,19 @@ for _, invalid in ipairs({'query:sansa = $&headTag("book")', 'copy = <legacy>',
                          'items = [\\wrap\\ = <legacy>]', '<"">'}) do
   assert(parse(invalid):has_error(), invalid)
 end
-local source = '<"?xml"@{<true>}:node>\nobj = {<member>, list = [<child>, <child()>]}'
+local source = '<"?xml"@{<true>, "space attr":string = "ok", bare = 1}:node>\nobj = {<member>, list = [<child>, <child()>]}'
 local root = parse(source)
 assert(not root:has_error(), root:sexpr())
-local tags = {}
+local tags, attributes = {}, {}
 for id, node in query:iter_captures(root, source, 0, -1) do
   if query.captures[id] == "tag" then
     tags[#tags + 1] = vim.treesitter.get_node_text(node, source)
+  elseif query.captures[id] == "attribute" then
+    attributes[#attributes + 1] = vim.treesitter.get_node_text(node, source)
   end
 end
 assert(vim.deep_equal(tags, {'"?xml"', 'true', 'member', 'child', 'child'}), vim.inspect(tags))
+assert(vim.deep_equal(attributes, {'"space attr"', 'bare'}), vim.inspect(attributes))
 for _, source in ipairs({"copy=~items[0].name", "copy=~>items[0].name", "copy=~a.@.meta"}) do
   assert(not parse(source):has_error(), source)
 end

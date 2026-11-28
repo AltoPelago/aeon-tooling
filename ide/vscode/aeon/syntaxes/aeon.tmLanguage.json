@@ -339,6 +339,7 @@
     },
     "attribute-body": {
       "patterns": [
+        { "include": "#attribute-generic-datatype" },
         { "include": "#node-literals" },
         { "include": "#attributes" },
         { "include": "#containers" },
@@ -347,12 +348,11 @@
         { "include": "#bindings" },
         { "include": "#comments" },
         { "include": "#structural-identities" },
-        { "include": "#literals" },
         { "include": "#sansa-addresses" },
         { "include": "#numbers" },
         {
           "name": "meta.attribute.binding.typed.aeon",
-          "match": "((?:[A-Za-z_][A-Za-z0-9_-]*|\"(?:\\\\.|[^\"])*\"|'(?:\\\\.|[^'])*'))\\s*(:)\\s*([A-Za-z_][A-Za-z0-9_]*)(?:\\s*(<[^>\\n]+>|(?:\\[[^\\]\\n]+\\])+))?(?=\\s*=)",
+          "match": "((?:[A-Za-z_][A-Za-z0-9_-]*|\"(?:\\\\[^\\r\\n]|[^\"\\\\\\r\\n])*\"|'(?:\\\\[^\\r\\n]|[^'\\\\\\r\\n])*'))\\s*(:)\\s*([A-Za-z_][A-Za-z0-9_]*)(?:\\s*(<[^>\\n]+>|(?:\\[[^\\]\\n]+\\])+))?(?=\\s*=)",
           "captures": {
             "1": { "name": "variable.other.key.aeon" },
             "2": { "name": "punctuation.separator.type-annotation.aeon" },
@@ -360,7 +360,8 @@
             "4": { "name": "storage.type.parameters.aeon" }
           }
         },
-        { "name": "variable.other.key.aeon", "match": "(?<![A-Za-z0-9_])(?:[A-Za-z_][A-Za-z0-9_:-]*|\"(?:\\\\.|[^\"])*\"|'(?:\\\\.|[^'])*')(?=\\s*=)" },
+        { "name": "variable.other.key.aeon", "match": "(?<![A-Za-z0-9_])(?:[A-Za-z_][A-Za-z0-9_-]*|\"(?:\\\\[^\\r\\n]|[^\"\\\\\\r\\n])*\"|'(?:\\\\[^\\r\\n]|[^'\\\\\\r\\n])*')(?=\\s*=)" },
+        { "include": "#literals" },
         { "include": "#strings" },
         { "name": "punctuation.separator.comma.aeon", "match": "," },
         { "name": "keyword.operator.assign.aeon", "match": "=" }
@@ -449,13 +450,13 @@
               "include": "#comments"
             },
             {
+              "include": "#node-datatype"
+            },
+            {
               "include": "#structural-identities"
             },
             {
               "include": "#attributes"
-            },
-            {
-              "include": "#node-datatype"
             },
             {
               "include": "#node-children"
@@ -466,6 +467,41 @@
     },
     "node-datatype": {
       "patterns": [
+        {
+          "name": "meta.node.datatype.aeon",
+          "begin": "(:)[ \\t]*([A-Za-z_][A-Za-z0-9_]*)[ \\t]*(<)",
+          "beginCaptures": {
+            "1": {
+              "name": "punctuation.separator.type-annotation.aeon"
+            },
+            "2": {
+              "name": "storage.type.aeon"
+            },
+            "3": {
+              "name": "punctuation.definition.type-parameters.begin.aeon"
+            }
+          },
+          "end": "(>)|(?=[<=(){}])|(?=^[ \\t]*(?:[A-Za-z_][A-Za-z0-9_-]*|\"(?:\\\\[^\\r\\n]|[^\"\\\\\\r\\n])*\"|'(?:\\\\[^\\r\\n]|[^'\\\\\\r\\n])*')[ \\t]*(?::|=|@\\{))",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.definition.type-parameters.end.aeon"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#comments"
+            },
+            {
+              "include": "#type-arguments"
+            },
+            {
+              "include": "#node-type-clarifier"
+            },
+            {
+              "include": "#node-type-name"
+            }
+          ]
+        },
         {
           "match": "(:)[ \\t]*([A-Za-z_][A-Za-z0-9_]*)",
           "captures": {
@@ -478,28 +514,80 @@
           }
         },
         {
-          "include": "#node-type-parameters"
-        },
-        {
           "include": "#node-type-clarifier"
         }
       ]
     },
-    "node-type-parameters": {
+    "type-arguments": {
       "patterns": [
         {
           "name": "storage.type.parameters.aeon",
-          "begin": "<",
-          "end": ">",
+          "begin": "([A-Za-z_][A-Za-z0-9_]*)[ \\t]*(<)",
+          "beginCaptures": {
+            "1": {
+              "name": "storage.type.aeon"
+            },
+            "2": {
+              "name": "punctuation.definition.type-parameters.begin.aeon"
+            }
+          },
+          "end": "(>)|(?=[<=(){}])|(?=^[ \\t]*(?:[A-Za-z_][A-Za-z0-9_-]*|\"(?:\\\\[^\\r\\n]|[^\"\\\\\\r\\n])*\"|'(?:\\\\[^\\r\\n]|[^'\\\\\\r\\n])*')[ \\t]*(?::|=|@\\{))",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.definition.type-parameters.end.aeon"
+            }
+          },
           "patterns": [
             {
-              "include": "#node-type-parameters"
+              "include": "#comments"
+            },
+            {
+              "include": "#type-arguments"
             },
             {
               "include": "#node-type-clarifier"
             },
             {
+              "include": "#node-type-name"
+            }
+          ]
+        }
+      ]
+    },
+    "attribute-generic-datatype": {
+      "patterns": [
+        {
+          "name": "meta.attribute.binding.typed.aeon",
+          "begin": "((?:[A-Za-z_][A-Za-z0-9_-]*|\"(?:\\\\[^\\r\\n]|[^\"\\\\\\r\\n])*\"|'(?:\\\\[^\\r\\n]|[^'\\\\\\r\\n])*'))[ \\t]*(:)[ \\t]*([A-Za-z_][A-Za-z0-9_]*)[ \\t]*(<)",
+          "beginCaptures": {
+            "1": {
+              "name": "variable.other.key.aeon"
+            },
+            "2": {
+              "name": "punctuation.separator.type-annotation.aeon"
+            },
+            "3": {
+              "name": "storage.type.aeon"
+            },
+            "4": {
+              "name": "punctuation.definition.type-parameters.begin.aeon"
+            }
+          },
+          "end": "(>)|(?=[<=(){}])|(?=^[ \\t]*(?:[A-Za-z_][A-Za-z0-9_-]*|\"(?:\\\\[^\\r\\n]|[^\"\\\\\\r\\n])*\"|'(?:\\\\[^\\r\\n]|[^'\\\\\\r\\n])*')[ \\t]*(?::|=|@\\{))",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.definition.type-parameters.end.aeon"
+            }
+          },
+          "patterns": [
+            {
               "include": "#comments"
+            },
+            {
+              "include": "#type-arguments"
+            },
+            {
+              "include": "#node-type-clarifier"
             },
             {
               "include": "#node-type-name"

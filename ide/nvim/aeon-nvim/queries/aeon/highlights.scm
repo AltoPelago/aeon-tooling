@@ -32,7 +32,7 @@
   datatype: (type_name) @type)
 
 (attribute_assignment
-  key: (attribute_key) @attribute)
+  key: [(attribute_key) (quoted_key)] @attribute)
 
 (attribute_map
   "@" @punctuation.special
