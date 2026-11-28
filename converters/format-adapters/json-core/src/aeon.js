@@ -167,12 +167,15 @@ function buildTreeFromAes(records, comments) {
     }
 
     let parent = root;
+    let insideStructuredAttribute = false;
     for (let i = 0; i < segments.length - 1; i += 1) {
       const segment = segments[i];
       parent = segment.type === 'member' ? parent.bindings?.get(segment.key)
         : segment.type === 'attr' ? parent.attributes?.get(segment.key)
           : parent.elements?.[segment.index];
       if (!parent) throw new Error(`Missing parent for path: ${record.path}`);
+      if (parent.kind === 'NodeLiteral') insideStructuredAttribute = false;
+      else if (segment.type === 'attr') insideStructuredAttribute = true;
     }
 
     const last = segments.at(-1);
@@ -181,8 +184,15 @@ function buildTreeFromAes(records, comments) {
       if (identities.has(entry.identity)) throw new Error(`Duplicate structural identity at ${record.path}`);
       identities.add(entry.identity);
     }
-    entry.semanticComment = comments.get(record.path);
-    entry.semanticCommentAfterValue = last.type === 'index' && parent.kind === 'NodeLiteral';
+    const annotations = comments.get(record.path);
+    // Core binds comments inside structured attributes to the attribute itself
+    // unless a descendant node supplies a distinct child path.
+    if (annotations && insideStructuredAttribute && last.type !== 'attr') {
+      throw new Error(`Cannot preserve an annotation on a nested attribute value at ${record.path}`);
+    }
+    entry.semanticComment = annotations?.join(' ');
+    entry.needsAnnotationHead = entry.semanticComment && last.type === 'index'
+      && (parent.kind === 'NodeLiteral' || last.index > 0);
     if (last.type === 'index') {
       if (!parent.elements || last.index !== parent.elements.length) {
         throw new Error(`Invalid or out-of-order child at ${record.path}`);
@@ -270,12 +280,7 @@ function isSimpleEntry(entry) {
 
 function renderScalar(entry) {
   const text = renderScalarValue(entry);
-  if (!entry.semanticComment) return text;
-  // A comment immediately after the node's opening parenthesis targets the
-  // node itself. Place the comment after its child value to retain its path.
-  return entry.semanticCommentAfterValue
-    ? `${text} ${entry.semanticComment}`
-    : `${entry.semanticComment} ${text}`;
+  return entry.semanticComment ? `${entry.semanticComment} ${text}` : text;
 }
 
 function renderScalarValue(entry) {
@@ -378,7 +383,9 @@ function renderValue(entry, indent, opts, sortKeys) {
   if (entry.kind === 'NodeLiteral') return renderNodeValue(entry, indent, opts, sortKeys);
 
   const prefix = ' '.repeat(indent);
-  const metadata = renderMetadata(entry, sortKeys);
+  // An explicit head binds comments to this value rather than an adjacent
+  // child or the parent node. An empty attribute head adds no portable records.
+  const metadata = renderMetadata(entry, sortKeys) || (entry.needsAnnotationHead ? '@{}' : '');
   const head = metadata ? `${metadata} = ` : '';
 
   if (entry.kind === 'ObjectNode') {
@@ -476,7 +483,9 @@ export function aesToAeon(records, options = {}) {
       || !stringPaths.has(path)) {
       throw new TypeError('Expected a safe block annotation targeting an existing string scalar');
     }
-    comments.set(path, [comments.get(path), raw].filter(Boolean).join(' '));
+    const group = comments.get(path);
+    if (group) group.push(raw);
+    else comments.set(path, [raw]);
   }
   const rootBindings = buildTreeFromAes(records, comments);
 

@@ -205,8 +205,11 @@ test('playground: authored tags do not select the XML rendering profile', option
 });
 
 test('playground: intrinsic tags and path annotations survive AEON re-rendering', options, () => {
+  const tags = '/@ yaml.tag("!title") @/ /@ yaml.tag("!display") @/';
   const source = '<catalog\\main\\@{<badge("new")>}:node('
-    + '"Title" /@ yaml.tag("!title") @/, <section>, <section>)>';
+    + '@{} = ' + tags + ' "Title", <section>, <section>)>\n'
+    + 'items = [<section>, @{} = ' + tags + ' "List title", <section>]\n'
+    + 'owner@{<part(@{} = ' + tags + ' "Attribute node title")>} = true';
   const input = core.compileToTelex(source);
   assert.deepEqual(input.compile.errors, []);
   const rendered = convert({from:'aeon', to:'aeon', source});
@@ -214,7 +217,14 @@ test('playground: intrinsic tags and path annotations survive AEON re-rendering'
   assert.deepEqual(replay.compile.errors, []);
   assert.deepEqual(replay.records, input.records);
   assert.deepEqual(rendered.annotations.map(({raw, target}) => [raw, target]),
-    [['/@ yaml.tag("!title") @/', {kind:'path', path:'$.catalog[0]'}]]);
+    [
+      ['/@ yaml.tag("!title") @/', {kind:'path', path:'$.catalog[0]'}],
+      ['/@ yaml.tag("!display") @/', {kind:'path', path:'$.catalog[0]'}],
+      ['/@ yaml.tag("!title") @/', {kind:'path', path:'$.items[1]'}],
+      ['/@ yaml.tag("!display") @/', {kind:'path', path:'$.items[1]'}],
+      ['/@ yaml.tag("!title") @/', {kind:'path', path:'$.owner.@.part[0]'}],
+      ['/@ yaml.tag("!display") @/', {kind:'path', path:'$.owner.@.part[0]'}],
+    ]);
   assert.deepEqual(replay.compile.annotations.map(({raw, target}) => [raw, target]),
     rendered.annotations.map(({raw, target}) => [raw, target]));
   assert.throws(() => convert({from:'aeon', to:'json', source:'<catalog(<item>)>'}),
