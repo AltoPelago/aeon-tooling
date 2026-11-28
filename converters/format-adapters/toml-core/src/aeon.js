@@ -191,13 +191,16 @@ function buildTreeFromAes(records, comments) {
       identities.add(entry.identity);
     }
     const annotations = comments?.get(record.path);
-    // Attribute-node bindables can anchor direct scalar children. Ordinary
-    // nested members and descendants of a typed value lack that same anchor.
-    if (annotations && withinAttribute && last.type !== 'attr'
-      && (insideStructuredAttribute || last.type === 'member')) {
+    // Descendants of an ordinary structured attribute, or of a typed
+    // container within an attribute node, lack an individual Core bindable.
+    if (annotations && insideStructuredAttribute && last.type !== 'attr') {
       throw new Error(`Cannot preserve an annotation on a nested attribute value at ${record.path}`);
     }
     entry.semanticComment = annotations?.join(' ');
+    if (annotations && withinAttribute && last.type === 'member') {
+      entry.attributeMemberAnnotations = annotations;
+      entry.path = record.path;
+    }
     entry.needsAnnotationHead = entry.semanticComment && last.type === 'index'
       && (parent.kind === 'NodeLiteral' || last.index > 0);
     if (last.type === 'index') {
@@ -342,8 +345,28 @@ function appendCompactBindings(chunks, bindings, sortKeys) {
       appendMetadata(chunks, entry, sortKeys);
       chunks.push(' = ');
     }
-    appendCompactValue(chunks, entry, sortKeys, true);
+    if (entry.attributeMemberAnnotations) {
+      appendAnnotatedAttributeMember(chunks, entry, index, entries.length);
+    } else {
+      appendCompactValue(chunks, entry, sortKeys, true);
+    }
   });
+}
+
+function appendAnnotatedAttributeMember(chunks, entry, index, count) {
+  const value = renderScalarValue(entry);
+  const annotations = entry.attributeMemberAnnotations;
+  // Core can retain an entire group at an object boundary. An interior
+  // scalar can bind one comment before the value and one after it.
+  if (index === count - 1 || annotations.length === 1) {
+    chunks.push(value, ' ', entry.semanticComment);
+  } else if (index === 0) {
+    chunks.push(entry.semanticComment, ' ', value);
+  } else if (annotations.length === 2) {
+    chunks.push(annotations[0], ' ', value, ' ', annotations[1]);
+  } else {
+    throw new Error(`Cannot preserve more than two annotations on an interior attribute-node field at ${entry.path}`);
+  }
 }
 
 function appendCompactItems(chunks, entries, sortKeys) {

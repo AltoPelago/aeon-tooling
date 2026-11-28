@@ -255,9 +255,11 @@ datatype and attribute heads are preserved, including `:cdata` on a string
 child.
 
 Path-targeted string annotations render on supported scalar bindings and indexed
-children. The renderer reports an error for annotation paths in attribute
-structures that Core cannot reliably reconstruct, including named fields below
-an attribute node and children of a typed container in an attribute scope.
+children. In objects below an attribute node, Core can reconstruct a group at
+the first or last field and up to two comments at an interior field. The renderer
+reports unsupported paths, including descendants of anonymous containers with
+explicit metadata in attribute scopes. Annotated AEON-to-AEON conversion
+retains authored member order.
 
 Generic datatypes, tuples and references require the full AEON canonicalizer.
 Each external exporter enforces its own representability restrictions above.

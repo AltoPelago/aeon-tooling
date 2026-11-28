@@ -377,7 +377,8 @@ export function createConverter(core) {
     if (to === 'aeon' && records.some(record => record.generics?.length)) throw new ConversionError('Canonical export of generic datatypes is not supported by this adapter renderer.');
     if (to === 'aeon') {
       const render = from === 'xml' ? xmlAesToAeon : aesToAeon;
-      return {output: render(records, {includeHeader: false, annotations}), annotations,
+      const sortKeys = from !== 'aeon' || annotations.length === 0;
+      return {output: render(records, {includeHeader: false, annotations, sortKeys}), annotations,
         events: records.length, notes: [], warnings, mode, stringifiedScalars: 0};
     }
     const document = tree(records);

@@ -231,13 +231,29 @@ test('playground: intrinsic tags and path annotations survive AEON re-rendering'
     error => error.code === 'UNREPRESENTABLE' && error.path === '$.catalog');
 });
 
-test('playground: refuses annotations on a named field inside an attribute node', options, () => {
-  const source = 'owner@{<cat({a="A", b="B" /@ yaml.tag("!one") @/ /@ yaml.tag("!two") @/})>} = true';
-  const parsed = core.compileToTelex(source);
-  assert.deepEqual(parsed.compile.errors, []);
-  assert.deepEqual(parsed.compile.annotations.map(comment => comment.target.path),
-    ['$.owner.@.cat[0].b', '$.owner.@.cat[0].b']);
-  assert.throws(() => convert({from:'aeon', to:'aeon', source}), /Cannot preserve an annotation on a nested attribute value/);
+test('playground: retains annotation paths on named fields in attribute nodes', options, () => {
+  const one = '/@ yaml.tag("!one") @/';
+  const two = '/@ yaml.tag("!two") @/';
+  const three = '/@ yaml.tag("!three") @/';
+  const fixtures = [
+    ['a="A", b="B" ' + one + ' ' + two, '$.owner.@.cat[0].b', 2],
+    ['y=' + one + ' ' + two + ' ' + three + ' "B", a="A", z="Z"', '$.owner.@.cat[0].y', 3],
+    ['<before>, b=' + one + ' "B" ' + two + ', <after>', '$.owner.@.cat[0].b', 2],
+    ['a="A", b="B" ' + one + ', c="C"', '$.owner.@.cat[0].b', 1],
+    ['x:list = [' + one + ' ' + two + ' "B"]', '$.owner.@.cat[0].x[0]', 2],
+  ];
+  for (const [fields, path, count] of fixtures) {
+    const source = 'owner@{<cat({' + fields + '})>} = true';
+    const parsed = core.compileToTelex(source);
+    assert.deepEqual(parsed.compile.errors, []);
+    assert.deepEqual(parsed.compile.annotations.map(comment => comment.target.path), Array(count).fill(path));
+    const output = convert({from:'aeon', to:'aeon', source}).output;
+    const replay = core.compileToTelex(output);
+    assert.deepEqual(replay.compile.errors, []);
+    assert.deepEqual(replay.records, parsed.records);
+    const sidecars = result => result.compile.annotations.map(({raw, target}) => [raw, target]);
+    assert.deepEqual(sidecars(replay), sidecars(parsed));
+  }
 });
 
 test('playground: predefined and custom null reasons survive the node conversion', options, () => {
