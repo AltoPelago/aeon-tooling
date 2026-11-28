@@ -68,7 +68,7 @@ test('playground: native AEON, wrapped arbitrary roots and exact numeric output'
 test('playground: cross-format exports and unsupported data fail explicitly', options, () => {
   assert.match(convert({from:'json',to:'toml',source:'{"a":[1,2]}' }).output,/"a" = \[1, 2\]/);
   assert.match(convert({from:'json',to:'yaml',source:'{"a":{"b":1}}'}).output,/"a":\n  "b": 1/);
-  for (const source of ['x=|active|','x=2026-11-09','x=on','x=<person>','x@{private=true}=1','x:string="hi"','x=!unknown']) {
+  for (const source of ['x=|active|','x=2026-11-09','x=on','<person>','x@{private=true}=1','x:string="hi"','x=!unknown']) {
     assert.throws(()=>convert({from:'aeon',to:'json',source}), undefined, source);
   }
   assert.throws(()=>convert({from:'json',to:'toml',source:'null'}),/object root/);
@@ -192,13 +192,33 @@ test('playground: authored backticks preserve CDATA, while prose is not a CDATA 
   assert.throws(() => convert({from:'aeon',to:'xml',source:'<xml(<p(@{x=1}:cdata = "hello")>)>'}), /CDATA markers/);
 });
 
-test('playground: re-rendering XML-shaped AEON rejects unsupported identities and datatype clarifiers', options, () => {
-  assert.throws(() => convert({from:'aeon', to:'aeon', source:'<xml(<element\\item\\>)>'}),
-    /renderer cannot preserve identity/);
+test('playground: authored tags do not select the XML rendering profile', options, () => {
+  const source = '<xml(<element\\item\\>)>';
+  const result = convert({from:'aeon', to:'aeon', source}).output;
+  assert.deepEqual(core.compileToTelex(result).records, core.compileToTelex(source).records);
+  assert.throws(() => convert({from:'aeon', to:'xml', source}), /cannot preserve AEON identity/);
   for (const value of ['"two words"', '"16"']) {
-    assert.throws(() => convert({from:'aeon', to:'aeon', source:`<xml:custom[${value}](<element>)>`}),
-      /renderer cannot preserve datatype generics or clarifiers/);
+    const annotated = `<xml:custom[${value}](<element>)>`;
+    const output = convert({from:'aeon', to:'aeon', source:annotated}).output;
+    assert.deepEqual(core.compileToTelex(output).records, core.compileToTelex(annotated).records);
   }
+});
+
+test('playground: intrinsic tags and path annotations survive AEON re-rendering', options, () => {
+  const source = '<catalog\\main\\@{<badge("new")>}:node('
+    + '"Title" /@ yaml.tag("!title") @/, <section>, <section>)>';
+  const input = core.compileToTelex(source);
+  assert.deepEqual(input.compile.errors, []);
+  const rendered = convert({from:'aeon', to:'aeon', source});
+  const replay = core.compileToTelex(rendered.output);
+  assert.deepEqual(replay.compile.errors, []);
+  assert.deepEqual(replay.records, input.records);
+  assert.deepEqual(rendered.annotations.map(({raw, target}) => [raw, target]),
+    [['/@ yaml.tag("!title") @/', {kind:'path', path:'$.catalog[0]'}]]);
+  assert.deepEqual(replay.compile.annotations.map(({raw, target}) => [raw, target]),
+    rendered.annotations.map(({raw, target}) => [raw, target]));
+  assert.throws(() => convert({from:'aeon', to:'json', source:'<catalog(<item>)>'}),
+    error => error.code === 'UNREPRESENTABLE' && error.path === '$.catalog');
 });
 
 test('playground: lossless remains the default and unknown conversion modes fail', options, () => {

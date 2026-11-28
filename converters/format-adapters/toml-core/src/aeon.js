@@ -82,7 +82,11 @@ export function parseAesPath(path) {
     if (path[i] === '[') {
       const closeIdx = path.indexOf(']', i);
       if (closeIdx === -1) throw new Error(`Unterminated index segment in path: ${path}`);
-      const idx = Number.parseInt(path.slice(i + 1, closeIdx), 10);
+      const digits = path.slice(i + 1, closeIdx);
+      const idx = Number(digits);
+      if (!/^(0|[1-9][0-9]*)$/u.test(digits) || !Number.isSafeInteger(idx)) {
+        throw new Error(`Invalid index segment in path: ${path}`);
+      }
       segments.push({ type: 'index', index: idx });
       i = closeIdx + 1;
       continue;
@@ -114,105 +118,81 @@ function findClosingBracket(path, openBracketIdx) {
   throw new Error(`Unterminated quoted key in path: ${path}`);
 }
 
-function createTreeEntry(record) {
-  let dt = record.datatype ?? null;
-  if (dt && Array.isArray(record.clarifiers) && record.clarifiers.length > 0 && !dt.includes('[')) {
-    const clar = record.clarifiers.map((c) => c.value).join(', ');
-    dt = `${dt}[${clar}]`;
+function createTreeEntry(record, segment) {
+  if (!isSimpleEntry(record) && !['ObjectNode', 'ListNode', 'NodeLiteral'].includes(record.kind)) {
+    throw new Error(`Unsupported AES kind in AEON renderer: ${record.kind} at ${record.path}`);
+  }
+  if (record.kind === 'NodeLiteral') {
+    if (typeof record.tag !== 'string' || !record.tag || /[\uD800-\uDFFF]/u.test(record.tag)
+      || (segment.type !== 'index' && segment.key !== record.tag) || record.value !== undefined) {
+      throw new Error(`Invalid intrinsic node record at ${record.path}`);
+    }
+  } else if (record.tag !== undefined) {
+    throw new Error(`Unexpected intrinsic tag at ${record.path}`);
+  }
+  if (record.identity !== undefined && (typeof record.identity !== 'string' || !/^[A-Za-z0-9_-]+$/u.test(record.identity))) {
+    throw new Error(`Invalid structural identity at ${record.path}`);
+  }
+  if (record.generics?.length) {
+    throw new Error(`The AEON renderer cannot preserve generic datatypes at ${record.path}`);
+  }
+
+  let datatype = record.datatype ?? null;
+  if (datatype && record.clarifiers?.length && !datatype.includes('[')) {
+    const clarifiers = record.clarifiers.map(({kind, value}) => kind === 'StringLiteral' ? formatString(value) : value);
+    datatype = `${datatype}[${clarifiers.join(', ')}]`;
   }
   return {
     kind: record.kind,
-    datatype: dt,
+    datatype,
     value: record.value,
+    tag: record.tag,
+    identity: record.identity,
     attributes: new Map(),
     bindings: record.kind === 'ObjectNode' ? new Map() : null,
-    elements: record.kind === 'ListNode' ? [] : null,
-    nodeHead: null,
+    elements: record.kind === 'ListNode' || record.kind === 'NodeLiteral' ? [] : null,
   };
 }
 
-/**
- * Reconstructs a hierarchical document tree from portable AES records.
- *
- * @param {Array<{path: string, kind: string, datatype?: string, value?: string}>} records
- */
+/** Reconstructs the document body from preorder portable AES records. */
 function buildTreeFromAes(records) {
-  const rootBindings = new Map();
+  const root = {bindings: new Map()};
+  const identities = new Set();
 
   for (const record of records) {
     const segments = parseAesPath(record.path);
-    if (segments.length === 0) {
-      throw new Error('Root path $ cannot be an event record');
+    if (segments[0]?.type !== 'member') {
+      throw new Error(`Top-level segment must be a member: ${record.path}`);
     }
 
-    if (segments.length === 1) {
-      const seg = segments[0];
-      if (seg.type !== 'member') {
-        throw new Error(`Top-level segment must be a member: ${record.path}`);
-      }
-      rootBindings.set(seg.key, createTreeEntry(record));
-      continue;
+    let parent = root;
+    for (let i = 0; i < segments.length - 1; i += 1) {
+      const segment = segments[i];
+      parent = segment.type === 'member' ? parent.bindings?.get(segment.key)
+        : segment.type === 'attr' ? parent.attributes?.get(segment.key)
+          : parent.elements?.[segment.index];
+      if (!parent) throw new Error(`Missing parent for path: ${record.path}`);
     }
 
-    // Navigate to the parent target
-    let current = rootBindings.get(segments[0].key);
-    if (!current) {
-      throw new Error(`Missing root parent for path: ${record.path}`);
+    const last = segments.at(-1);
+    const entry = createTreeEntry(record, last);
+    if (entry.identity !== undefined) {
+      if (identities.has(entry.identity)) throw new Error(`Duplicate structural identity at ${record.path}`);
+      identities.add(entry.identity);
     }
-
-    for (let s = 1; s < segments.length - 1; s += 1) {
-      const seg = segments[s];
-      if (seg.type === 'member') {
-        current = current.bindings.get(seg.key);
-      } else if (seg.type === 'attr') {
-        if (current.kind === 'NodeHead') {
-          current = current.attributes.get(seg.key);
-        } else {
-          current = current.attributes.get(seg.key);
-        }
-      } else if (seg.type === 'index') {
-        if (current.kind === 'NodeLiteral') {
-          if (seg.index !== 0 || !current.nodeHead) {
-            throw new Error(`Missing NodeHead at ${record.path}`);
-          }
-          current = current.nodeHead;
-        } else if (current.kind === 'NodeHead') {
-          current = current.children[seg.index];
-        } else {
-          current = current.elements[seg.index];
-        }
+    if (last.type === 'index') {
+      if (!parent.elements || last.index !== parent.elements.length) {
+        throw new Error(`Invalid or out-of-order child at ${record.path}`);
       }
-      if (!current) {
-        throw new Error(`Missing intermediate parent for path: ${record.path}`);
-      }
-    }
-
-    const last = segments[segments.length - 1];
-    if (last.type === 'member') {
-      current.bindings.set(last.key, createTreeEntry(record));
-    } else if (last.type === 'attr') {
-      current.attributes.set(last.key, createTreeEntry(record));
-    } else if (last.type === 'index') {
-      if (current.kind === 'NodeLiteral') {
-        if (record.kind !== 'NodeHead' || last.index !== 0) {
-          throw new Error(`Expected NodeHead at index 0 of NodeLiteral: ${record.path}`);
-        }
-        current.nodeHead = {
-          kind: 'NodeHead',
-          tag: record.value,
-          datatype: record.datatype ?? null,
-          attributes: new Map(),
-          children: [],
-        };
-      } else if (current.kind === 'NodeHead') {
-        current.children[last.index] = createTreeEntry(record);
-      } else {
-        current.elements[last.index] = createTreeEntry(record);
-      }
+      parent.elements.push(entry);
+    } else {
+      const members = last.type === 'member' ? parent.bindings : parent.attributes;
+      if (!members || members.has(last.key)) throw new Error(`Invalid or duplicate record at ${record.path}`);
+      members.set(last.key, entry);
     }
   }
 
-  return rootBindings;
+  return root.bindings;
 }
 
 function formatString(value) {
@@ -323,20 +303,19 @@ function renderAttributes(attrMap, sortKeys) {
   if (sortKeys) {
     entries.sort(([a], [b]) => compareScalarKeys(a, b));
   }
-  const parts = entries.map(([key, valEntry]) => {
-    const nestedAttrs = renderAttributes(valEntry.attributes, sortKeys);
-    const dt = formatDatatype(valEntry.datatype);
-    const formattedKey = formatKey(key, Boolean(valEntry.datatype), valEntry.attributes.size > 0);
-    return `${formattedKey}${nestedAttrs}${dt} = ${renderScalar(valEntry)}`;
-  });
+  const parts = entries.map(([key, entry]) => renderBinding(key, entry, 0, sortKeys).join('\n'));
   return `@{${parts.join(', ')}}`;
 }
 
 function renderBinding(key, entry, indent, sortKeys) {
   const prefix = ' '.repeat(indent);
-  const attrs = renderAttributes(entry.attributes, sortKeys);
-  const dt = formatDatatype(entry.datatype);
-  const head = `${formatKey(key, Boolean(entry.datatype), entry.attributes.size > 0)}${attrs}${dt}`;
+  if (entry.kind === 'NodeLiteral') {
+    const lines = renderNodeValue(entry, indent, {inlineOnly: true}, sortKeys);
+    if (lines.length === 1) lines[0] = prefix + lines[0];
+    return lines;
+  }
+
+  const head = formatKey(key, Boolean(entry.datatype), entry.attributes.size > 0) + renderMetadata(entry, sortKeys);
 
   if (entry.kind === 'ObjectNode') {
     const lines = [`${prefix}${head} = {`];
@@ -345,7 +324,7 @@ function renderBinding(key, entry, indent, sortKeys) {
       children.sort(([a], [b]) => compareScalarKeys(a, b));
     }
     for (const [childKey, childEntry] of children) {
-      lines.push(...renderBinding(childKey, childEntry, indent + 2, sortKeys));
+      for (const line of renderBinding(childKey, childEntry, indent + 2, sortKeys)) lines.push(line);
     }
     lines.push(`${prefix}}`);
     return lines;
@@ -368,35 +347,35 @@ function renderBinding(key, entry, indent, sortKeys) {
       if (idx < elements.length - 1 && itemLines.length > 0) {
         itemLines[itemLines.length - 1] = `${itemLines[itemLines.length - 1]},`;
       }
-      lines.push(...itemLines);
+      for (const line of itemLines) lines.push(line);
     });
     lines.push(`${prefix}]`);
     return lines;
   }
 
-  if (entry.kind === 'NodeLiteral') {
-    const renderedNode = renderNodeValue(entry, indent, { inlineOnly: false }, sortKeys);
-    if (renderedNode.length === 1) {
-      return [`${prefix}${head} = ${renderedNode[0].trimStart()}`];
-    }
-    const [first, ...rest] = renderedNode;
-    return [`${prefix}${head} = ${first.trimStart()}`, ...rest];
-  }
-
   return [`${prefix}${head} = ${renderScalar(entry)}`];
 }
 
+function renderMetadata(entry, sortKeys) {
+  const identity = entry.identity === undefined ? '' : `\\${entry.identity}\\`;
+  return identity + renderAttributes(entry.attributes, sortKeys) + formatDatatype(entry.datatype);
+}
+
 function renderValue(entry, indent, opts, sortKeys) {
+  if (entry.kind === 'NodeLiteral') return renderNodeValue(entry, indent, opts, sortKeys);
+
   const prefix = ' '.repeat(indent);
+  const metadata = renderMetadata(entry, sortKeys);
+  const head = metadata ? `${metadata} = ` : '';
 
   if (entry.kind === 'ObjectNode') {
-    const lines = [`${prefix}{`.trimEnd()];
+    const lines = [`${prefix}${head}{`];
     const children = Array.from(entry.bindings.entries());
     if (sortKeys) {
       children.sort(([a], [b]) => compareScalarKeys(a, b));
     }
     for (const [childKey, childEntry] of children) {
-      lines.push(...renderBinding(childKey, childEntry, indent + 2, sortKeys));
+      for (const line of renderBinding(childKey, childEntry, indent + 2, sortKeys)) lines.push(line);
     }
     lines.push(`${prefix}}`.trimEnd());
     return lines;
@@ -408,9 +387,9 @@ function renderValue(entry, indent, opts, sortKeys) {
       const rendered = elements
         .map((el) => renderValue(el, indent + 1, { inlineOnly: true }, sortKeys)[0])
         .join(', ');
-      return [`[${rendered}]`];
+      return [`${head}[${rendered}]`];
     }
-    const lines = [`${prefix}[`.trimEnd()];
+    const lines = [`${prefix}${head}[`];
     elements.forEach((el, idx) => {
       const itemLines = renderValue(el, indent + 2, { inlineOnly: false }, sortKeys);
       if (itemLines.length > 0 && !itemLines[0].startsWith(' '.repeat(indent + 2))) {
@@ -419,35 +398,20 @@ function renderValue(entry, indent, opts, sortKeys) {
       if (idx < elements.length - 1 && itemLines.length > 0) {
         itemLines[itemLines.length - 1] = `${itemLines[itemLines.length - 1]},`;
       }
-      lines.push(...itemLines);
+      for (const line of itemLines) lines.push(line);
     });
     lines.push(`${prefix}]`.trimEnd());
     return lines;
   }
 
-  if (entry.kind === 'NodeLiteral') {
-    return renderNodeValue(entry, indent, opts, sortKeys);
-  }
-
-  const anonymousHead = renderAttributes(entry.attributes, sortKeys) + formatDatatype(entry.datatype);
-  return [anonymousHead ? `${anonymousHead} = ${renderScalar(entry)}` : renderScalar(entry)];
+  return [head + renderScalar(entry)];
 }
 
 function renderNodeValue(entry, indent, opts, sortKeys) {
   const prefix = ' '.repeat(indent);
-  const headInfo = entry.nodeHead;
-  if (!headInfo) {
-    throw new Error('NodeLiteral is missing its NodeHead child');
-  }
-  const formattedTag = formatKey(
-    headInfo.tag,
-    Boolean(headInfo.datatype),
-    headInfo.attributes.size > 0,
-  );
-  const attrs = renderAttributes(headInfo.attributes, sortKeys);
-  const dt = formatDatatype(headInfo.datatype);
-  const head = `<${formattedTag}${attrs}${dt}`;
-  const children = headInfo.children;
+  const tag = formatKey(entry.tag, Boolean(entry.datatype), entry.attributes.size > 0);
+  const head = `<${tag}${renderMetadata(entry, sortKeys)}`;
+  const children = entry.elements;
 
   if (children.length === 0) {
     return [`${head}>`];
@@ -469,7 +433,7 @@ function renderNodeValue(entry, indent, opts, sortKeys) {
     if (idx < children.length - 1 && itemLines.length > 0) {
       itemLines[itemLines.length - 1] = `${itemLines[itemLines.length - 1]},`;
     }
-    lines.push(...itemLines);
+    for (const line of itemLines) lines.push(line);
   });
   lines.push(`${prefix})>`.trimEnd());
   return lines;
@@ -478,7 +442,7 @@ function renderNodeValue(entry, indent, opts, sortKeys) {
 /**
  * Renders portable AES records into canonical AEON source text.
  *
- * @param {Array<{path: string, kind: string, datatype?: string, value?: string}>} records
+ * @param {Array<{path: string, kind: string, tag?: string, identity?: string, datatype?: string, value?: string}>} records Valid preorder portable body records.
  * @param {{ includeHeader?: boolean, sortKeys?: boolean }} [options]
  * @returns {string}
  */
@@ -498,7 +462,7 @@ export function aesToAeon(records, options = {}) {
   }
 
   for (const [key, entry] of entries) {
-    lines.push(...renderBinding(key, entry, 0, sortKeys));
+    for (const line of renderBinding(key, entry, 0, sortKeys)) lines.push(line);
   }
 
   return `${lines.join('\n')}\n`;

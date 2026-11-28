@@ -376,10 +376,7 @@ export function createConverter(core) {
     }
     if (to === 'aeon' && records.some(record => record.generics?.length)) throw new ConversionError('Canonical export of generic datatypes is not supported by this adapter renderer.');
     if (to === 'aeon') {
-      const xmlDocument = from === 'xml' || records.some(({path, tag}) => path === '$.xml' && tag === XML_DOCUMENT_TAG);
-      if (xmlDocument && annotations.length) throw new ConversionError(
-        'XML document rendering cannot preserve YAML tag annotations.', undefined, 'YAML_ANNOTATIONS_REQUIRED');
-      const render = xmlDocument ? xmlAesToAeon : aesToAeon;
+      const render = from === 'xml' ? xmlAesToAeon : aesToAeon;
       return {output: render(records, {includeHeader: false, annotations}), annotations,
         events: records.length, notes: [], warnings, mode, stringifiedScalars: 0};
     }
