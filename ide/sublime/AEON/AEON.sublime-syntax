@@ -273,9 +273,14 @@ contexts:
       captures:
         1: punctuation.separator.type-annotation.aeon
         2: storage.type.aeon
+      push: node-after-datatype
+    - include: node-children-open
+    - match: '(?=\S)'
+      pop: true
+
+  node-after-datatype:
     - include: continued-type-arguments
     - include: node-type-clarifier
-    - include: node-children-open
     - match: '(?=\S)'
       pop: true
 
@@ -290,7 +295,7 @@ contexts:
 
   type-arguments:
     - meta_scope: storage.type.parameters.aeon
-    - match: '(>)|(?=[=(){}])|(?=<)(?!<(?=[ \t]*[A-Za-z_][A-Za-z0-9_]*[ \t]*(?:[<,\[]|>[ \t]*[>,\[])))|(?=^[ \t]*(?:[A-Za-z_][A-Za-z0-9_-]*|"(?:\\[^\r\n]|[^"\\\r\n])*"|''(?:\\[^\r\n]|[^''\\\r\n])*'')[ \t]*(?::|=|@\{))'
+    - match: '(>)|(?=[=(){}])|(?=<)(?!<(?=[ \t]*[A-Za-z_][A-Za-z0-9_]*[ \t]*(?:[<,\[]|>[ \t]*[>(\[])))|(?=^[ \t]*(?:[A-Za-z_][A-Za-z0-9_-]*|"(?:\\[^\r\n]|[^"\\\r\n])*"|''(?:\\[^\r\n]|[^''\\\r\n])*'')[ \t]*(?::|=|@\{))'
       captures:
         1: punctuation.definition.type-parameters.end.aeon
       pop: true
@@ -306,7 +311,7 @@ contexts:
       scope: storage.type.aeon
 
   continued-type-arguments:
-    - match: '<(?=[ \t]*[A-Za-z_][A-Za-z0-9_]*[ \t]*(?:[<,\[]|>[ \t]*[>,\[]))'
+    - match: '<(?=[ \t]*[A-Za-z_][A-Za-z0-9_]*[ \t]*(?:[<,\[]|>[ \t]*[>(\[]))'
       scope: punctuation.definition.type-parameters.begin.aeon
       push: type-arguments
 

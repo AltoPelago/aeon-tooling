@@ -177,6 +177,7 @@ not establish live editor/theme or marketplace qualification.
 Intrinsic node declarations colour the tag, identity, attributes and inline
 datatype separately when the tag starts on the opener line. Empty forms such as
 `<item>` and quoted tags such as `<"?xml">` use the same tag scope. Core
-supplies language diagnostics. When a line begins with an angle bracket after
-an unfinished datatype, another type delimiter on that line identifies it as
-a generic continuation. A standalone declaration starts a new node scope.
+supplies language diagnostics. After a datatype has started, adjacent type
+delimiters such as those in `<string>>` signal a generic continuation. The
+lookahead skips horizontal whitespace. A complete tag followed by a list comma
+starts a new node scope.

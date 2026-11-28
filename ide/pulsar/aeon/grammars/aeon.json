@@ -484,7 +484,7 @@
               "name": "punctuation.definition.type-parameters.begin.aeon"
             }
           },
-          "end": "(>)|(?=[=(){}])|(?=<)(?!<(?=[ \\t]*[A-Za-z_][A-Za-z0-9_]*[ \\t]*(?:[<,\\[]|>[ \\t]*[>,\\[])))|(?=^[ \\t]*(?:[A-Za-z_][A-Za-z0-9_-]*|\"(?:\\\\[^\\r\\n]|[^\"\\\\\\r\\n])*\"|'(?:\\\\[^\\r\\n]|[^'\\\\\\r\\n])*')[ \\t]*(?::|=|@\\{))",
+          "end": "(>)|(?=[=(){}])|(?=<)(?!<(?=[ \\t]*[A-Za-z_][A-Za-z0-9_]*[ \\t]*(?:[<,\\[]|>[ \\t]*[>(\\[])))|(?=^[ \\t]*(?:[A-Za-z_][A-Za-z0-9_-]*|\"(?:\\\\[^\\r\\n]|[^\"\\\\\\r\\n])*\"|'(?:\\\\[^\\r\\n]|[^'\\\\\\r\\n])*')[ \\t]*(?::|=|@\\{))",
           "endCaptures": {
             "1": {
               "name": "punctuation.definition.type-parameters.end.aeon"
@@ -509,21 +509,26 @@
           ]
         },
         {
-          "match": "(:)[ \\t]*([A-Za-z_][A-Za-z0-9_]*)",
-          "captures": {
+          "name": "meta.node.datatype.aeon",
+          "begin": "(:)[ \\t]*([A-Za-z_][A-Za-z0-9_]*)",
+          "beginCaptures": {
             "1": {
               "name": "punctuation.separator.type-annotation.aeon"
             },
             "2": {
               "name": "storage.type.aeon"
             }
-          }
-        },
-        {
-          "include": "#continued-type-arguments"
-        },
-        {
-          "include": "#node-type-clarifier"
+          },
+          "end": "(?=\\S)",
+          "applyEndPatternLast": true,
+          "patterns": [
+            {
+              "include": "#continued-type-arguments"
+            },
+            {
+              "include": "#node-type-clarifier"
+            }
+          ]
         }
       ]
     },
@@ -540,7 +545,7 @@
               "name": "punctuation.definition.type-parameters.begin.aeon"
             }
           },
-          "end": "(>)|(?=[=(){}])|(?=<)(?!<(?=[ \\t]*[A-Za-z_][A-Za-z0-9_]*[ \\t]*(?:[<,\\[]|>[ \\t]*[>,\\[])))|(?=^[ \\t]*(?:[A-Za-z_][A-Za-z0-9_-]*|\"(?:\\\\[^\\r\\n]|[^\"\\\\\\r\\n])*\"|'(?:\\\\[^\\r\\n]|[^'\\\\\\r\\n])*')[ \\t]*(?::|=|@\\{))",
+          "end": "(>)|(?=[=(){}])|(?=<)(?!<(?=[ \\t]*[A-Za-z_][A-Za-z0-9_]*[ \\t]*(?:[<,\\[]|>[ \\t]*[>(\\[])))|(?=^[ \\t]*(?:[A-Za-z_][A-Za-z0-9_-]*|\"(?:\\\\[^\\r\\n]|[^\"\\\\\\r\\n])*\"|'(?:\\\\[^\\r\\n]|[^'\\\\\\r\\n])*')[ \\t]*(?::|=|@\\{))",
           "endCaptures": {
             "1": {
               "name": "punctuation.definition.type-parameters.end.aeon"
@@ -585,7 +590,7 @@
               "name": "punctuation.definition.type-parameters.begin.aeon"
             }
           },
-          "end": "(>)|(?=[=(){}])|(?=<)(?!<(?=[ \\t]*[A-Za-z_][A-Za-z0-9_]*[ \\t]*(?:[<,\\[]|>[ \\t]*[>,\\[])))|(?=^[ \\t]*(?:[A-Za-z_][A-Za-z0-9_-]*|\"(?:\\\\[^\\r\\n]|[^\"\\\\\\r\\n])*\"|'(?:\\\\[^\\r\\n]|[^'\\\\\\r\\n])*')[ \\t]*(?::|=|@\\{))",
+          "end": "(>)|(?=[=(){}])|(?=<)(?!<(?=[ \\t]*[A-Za-z_][A-Za-z0-9_]*[ \\t]*(?:[<,\\[]|>[ \\t]*[>(\\[])))|(?=^[ \\t]*(?:[A-Za-z_][A-Za-z0-9_-]*|\"(?:\\\\[^\\r\\n]|[^\"\\\\\\r\\n])*\"|'(?:\\\\[^\\r\\n]|[^'\\\\\\r\\n])*')[ \\t]*(?::|=|@\\{))",
           "endCaptures": {
             "1": {
               "name": "punctuation.definition.type-parameters.end.aeon"
@@ -615,13 +620,13 @@
       "patterns": [
         {
           "name": "storage.type.parameters.aeon",
-          "begin": "<(?=[ \\t]*[A-Za-z_][A-Za-z0-9_]*[ \\t]*(?:[<,\\[]|>[ \\t]*[>,\\[]))",
+          "begin": "<(?=[ \\t]*[A-Za-z_][A-Za-z0-9_]*[ \\t]*(?:[<,\\[]|>[ \\t]*[>(\\[]))",
           "beginCaptures": {
             "0": {
               "name": "punctuation.definition.type-parameters.begin.aeon"
             }
           },
-          "end": "(>)|(?=[=(){}])|(?=<)(?!<(?=[ \\t]*[A-Za-z_][A-Za-z0-9_]*[ \\t]*(?:[<,\\[]|>[ \\t]*[>,\\[])))|(?=^[ \\t]*(?:[A-Za-z_][A-Za-z0-9_-]*|\"(?:\\\\[^\\r\\n]|[^\"\\\\\\r\\n])*\"|'(?:\\\\[^\\r\\n]|[^'\\\\\\r\\n])*')[ \\t]*(?::|=|@\\{))",
+          "end": "(>)|(?=[=(){}])|(?=<)(?!<(?=[ \\t]*[A-Za-z_][A-Za-z0-9_]*[ \\t]*(?:[<,\\[]|>[ \\t]*[>(\\[])))|(?=^[ \\t]*(?:[A-Za-z_][A-Za-z0-9_-]*|\"(?:\\\\[^\\r\\n]|[^\"\\\\\\r\\n])*\"|'(?:\\\\[^\\r\\n]|[^'\\\\\\r\\n])*')[ \\t]*(?::|=|@\\{))",
           "endCaptures": {
             "1": {
               "name": "punctuation.definition.type-parameters.end.aeon"
