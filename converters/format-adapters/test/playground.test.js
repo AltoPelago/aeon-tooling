@@ -68,7 +68,7 @@ test('playground: native AEON, wrapped arbitrary roots and exact numeric output'
 test('playground: cross-format exports and unsupported data fail explicitly', options, () => {
   assert.match(convert({from:'json',to:'toml',source:'{"a":[1,2]}' }).output,/"a" = \[1, 2\]/);
   assert.match(convert({from:'json',to:'yaml',source:'{"a":{"b":1}}'}).output,/"a":\n  "b": 1/);
-  for (const source of ['x=|active|','x=2026-11-09','x=on','x=<person>','x@{private=true}=1','x:string="hi"','x=!unknown']) {
+  for (const source of ['x=|active|','x=2026-11-09','x=on','<person>','x@{private=true}=1','x:string="hi"','x=!unknown']) {
     assert.throws(()=>convert({from:'aeon',to:'json',source}), undefined, source);
   }
   assert.throws(()=>convert({from:'json',to:'toml',source:'null'}),/object root/);
@@ -192,13 +192,94 @@ test('playground: authored backticks preserve CDATA, while prose is not a CDATA 
   assert.throws(() => convert({from:'aeon',to:'xml',source:'<xml(<p(@{x=1}:cdata = "hello")>)>'}), /CDATA markers/);
 });
 
-test('playground: re-rendering XML-shaped AEON rejects unsupported identities and datatype clarifiers', options, () => {
-  assert.throws(() => convert({from:'aeon', to:'aeon', source:'<xml(<element\\item\\>)>'}),
-    /renderer cannot preserve identity/);
+test('playground: authored tags do not select the XML rendering profile', options, () => {
+  const source = '<xml(<element\\item\\>)>';
+  const result = convert({from:'aeon', to:'aeon', source}).output;
+  assert.deepEqual(core.compileToTelex(result).records, core.compileToTelex(source).records);
+  assert.throws(() => convert({from:'aeon', to:'xml', source}), /cannot preserve AEON identity/);
   for (const value of ['"two words"', '"16"']) {
-    assert.throws(() => convert({from:'aeon', to:'aeon', source:`<xml:custom[${value}](<element>)>`}),
-      /renderer cannot preserve datatype generics or clarifiers/);
+    const annotated = `<xml:custom[${value}](<element>)>`;
+    const output = convert({from:'aeon', to:'aeon', source:annotated}).output;
+    assert.deepEqual(core.compileToTelex(output).records, core.compileToTelex(annotated).records);
   }
+});
+
+test('playground: intrinsic tags and path annotations survive AEON re-rendering', options, () => {
+  const tags = '/@ yaml.tag("!title") @/ /@ yaml.tag("!display") @/';
+  const source = '<catalog\\main\\@{<badge("new")>}:node('
+    + '@{} = ' + tags + ' "Title", <section>, <section>)>\n'
+    + 'items = [<section>, @{} = ' + tags + ' "List title", <section>]\n'
+    + 'owner@{<part(@{} = ' + tags + ' "Attribute node title")>} = true';
+  const input = core.compileToTelex(source);
+  assert.deepEqual(input.compile.errors, []);
+  const rendered = convert({from:'aeon', to:'aeon', source});
+  const replay = core.compileToTelex(rendered.output);
+  assert.deepEqual(replay.compile.errors, []);
+  assert.deepEqual(replay.records, input.records);
+  assert.deepEqual(rendered.annotations.map(({raw, target}) => [raw, target]),
+    [
+      ['/@ yaml.tag("!title") @/', {kind:'path', path:'$.catalog[0]'}],
+      ['/@ yaml.tag("!display") @/', {kind:'path', path:'$.catalog[0]'}],
+      ['/@ yaml.tag("!title") @/', {kind:'path', path:'$.items[1]'}],
+      ['/@ yaml.tag("!display") @/', {kind:'path', path:'$.items[1]'}],
+      ['/@ yaml.tag("!title") @/', {kind:'path', path:'$.owner.@.part[0]'}],
+      ['/@ yaml.tag("!display") @/', {kind:'path', path:'$.owner.@.part[0]'}],
+    ]);
+  assert.deepEqual(replay.compile.annotations.map(({raw, target}) => [raw, target]),
+    rendered.annotations.map(({raw, target}) => [raw, target]));
+  assert.throws(() => convert({from:'aeon', to:'json', source:'<catalog(<item>)>'}),
+    error => error.code === 'UNREPRESENTABLE' && error.path === '$.catalog');
+});
+
+test('playground: retains annotation paths on named fields in attribute nodes', options, () => {
+  const one = '/@ yaml.tag("!one") @/';
+  const two = '/@ yaml.tag("!two") @/';
+  const three = '/@ yaml.tag("!three") @/';
+  const fixtures = [
+    ['a="A", b="B" ' + one + ' ' + two, '$.owner.@.cat[0].b', 2],
+    ['y=' + one + ' ' + two + ' ' + three + ' "B", a="A", z="Z"', '$.owner.@.cat[0].y', 3],
+    ['<before>, b=' + one + ' "B" ' + two + ', <after>', '$.owner.@.cat[0].b', 2],
+    ['a="A", b="B" ' + one + ', c="C"', '$.owner.@.cat[0].b', 1],
+    ['x:list = [' + one + ' ' + two + ' "B"]', '$.owner.@.cat[0].x[0]', 2],
+  ];
+  for (const [fields, path, count] of fixtures) {
+    const source = 'owner@{<cat({' + fields + '})>} = true';
+    const parsed = core.compileToTelex(source);
+    assert.deepEqual(parsed.compile.errors, []);
+    assert.deepEqual(parsed.compile.annotations.map(comment => comment.target.path), Array(count).fill(path));
+    const output = convert({from:'aeon', to:'aeon', source}).output;
+    const replay = core.compileToTelex(output);
+    assert.deepEqual(replay.compile.errors, []);
+    assert.deepEqual(replay.records, parsed.records);
+    const sidecars = result => result.compile.annotations.map(({raw, target}) => [raw, target]);
+    assert.deepEqual(sidecars(replay), sidecars(parsed));
+  }
+
+  const interior = lastTag => 'owner@{<cat({a="A", b=' + one + ' ' + two + ' ' + three
+    + ' "B" /@ yaml.tag("!' + lastTag + '") @/, c="C"})>} = true';
+  const formatted = ['four', 'four' + '🍎'.repeat(256)].map(lastTag => {
+    const source = interior(lastTag);
+    const input = core.compileToTelex(source);
+    assert.deepEqual(input.compile.errors, []);
+    assert.deepEqual(input.compile.annotations.map(comment => comment.target.path),
+      ['$.owner.@.cat[0].a', ...Array(3).fill('$.owner.@.cat[0].b')]);
+    const output = convert({from:'aeon', to:'aeon', source}).output;
+    const replay = core.compileToTelex(output);
+    assert.deepEqual(replay.compile.errors, []);
+    assert.deepEqual(replay.records, input.records);
+    assert.deepEqual(replay.compile.annotations.map(({raw,target}) => [raw,target]),
+      input.compile.annotations.map(({raw,target}) => [raw,target]));
+    return output;
+  });
+  assert.equal(formatted[1].replace('🍎'.repeat(256), ''), formatted[0]);
+});
+
+test('playground: predefined and custom null reasons survive the node conversion', options, () => {
+  const source = '<catalog(!none, !notSet, !notApplicable, !tombstone, !"notset", !"custom reason")>';
+  const result = convert({from:'aeon', to:'aeon', source});
+  const replay = core.compileToTelex(result.output);
+  assert.deepEqual(replay.compile.errors, []);
+  assert.deepEqual(replay.records, core.compileToTelex(source).records);
 });
 
 test('playground: lossless remains the default and unknown conversion modes fail', options, () => {

@@ -247,12 +247,23 @@ until clean completion; cancellation and errors do not mean successful completio
 Parsing uses a local AEON compiler with empty-key bindings and intrinsic node
 tags. See [playground setup](../converters/format-adapters/playground/README.md).
 
-The adapter renderer covers its mapped object/list/node/scalar domain and preserves
-anonymous scalar datatype/attribute heads, including `:cdata`. It does not claim
-complete AEON canonicalizer parity: generic datatype rendering, tuples and other
-unsupported constructs produce errors. Each external exporter enforces its own
-representability restrictions above. A successful Core parse does not imply that
-every selected output format can represent the document.
+The adapter renderer covers its mapped object, list, node and scalar domain.
+A node uses its intrinsic tag as the key at the root, in objects and in attribute
+blocks. Indexed children retain their order and may repeat tags. Identity,
+attributes and supported datatypes render on the declaration. Anonymous
+datatype and attribute heads are preserved, including `:cdata` on a string
+child.
+
+The playground carries `yaml.tag(...)` block annotations on supported string
+bindings and indexed children. Annotation groups on fields below an attribute
+node retain their order and path, including interior fields. The renderer
+reports unsupported paths, including descendants of anonymous containers with
+explicit metadata in attribute scopes. AEON-to-AEON conversion retains authored
+member order when carrying these annotations.
+
+Generic datatypes, tuples and references require the full AEON canonicalizer.
+Each external exporter enforces its own representability restrictions above.
+Plain JSON, YAML and TOML output have no mapping for AEON nodes.
 
 ## Verification
 
