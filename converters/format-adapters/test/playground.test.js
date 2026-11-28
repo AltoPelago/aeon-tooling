@@ -254,6 +254,19 @@ test('playground: retains annotation paths on named fields in attribute nodes', 
     const sidecars = result => result.compile.annotations.map(({raw, target}) => [raw, target]);
     assert.deepEqual(sidecars(replay), sidecars(parsed));
   }
+
+  const interior = 'owner@{<cat({a="A", b=' + one + ' ' + two + ' ' + three + ' "B" '
+    + '/@ yaml.tag("!four") @/, c="C"})>} = true';
+  const input = core.compileToTelex(interior);
+  assert.deepEqual(input.compile.errors, []);
+  assert.deepEqual(input.compile.annotations.map(comment => comment.target.path),
+    ['$.owner.@.cat[0].a', ...Array(3).fill('$.owner.@.cat[0].b')]);
+  const output = convert({from:'aeon', to:'aeon', source:interior}).output;
+  const replay = core.compileToTelex(output);
+  assert.deepEqual(replay.compile.errors, []);
+  assert.deepEqual(replay.records, input.records);
+  assert.deepEqual(replay.compile.annotations.map(({raw,target}) => [raw,target]),
+    input.compile.annotations.map(({raw,target}) => [raw,target]));
 });
 
 test('playground: predefined and custom null reasons survive the node conversion', options, () => {

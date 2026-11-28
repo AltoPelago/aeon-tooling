@@ -199,7 +199,6 @@ function buildTreeFromAes(records, comments) {
     entry.semanticComment = annotations?.join(' ');
     if (annotations && withinAttribute && last.type === 'member') {
       entry.attributeMemberAnnotations = annotations;
-      entry.path = record.path;
     }
     entry.needsAnnotationHead = entry.semanticComment && last.type === 'index'
       && (parent.kind === 'NodeLiteral' || last.index > 0);
@@ -356,8 +355,8 @@ function appendCompactBindings(chunks, bindings, sortKeys) {
 function appendAnnotatedAttributeMember(chunks, entry, index, count) {
   const value = renderScalarValue(entry);
   const annotations = entry.attributeMemberAnnotations;
-  // Core can retain an entire group at an object boundary. An interior
-  // scalar can bind one comment before the value and one after it.
+  // At object edges Core can retain a group on the open side of the value.
+  // Two interior annotations can sit on opposite sides of the value.
   if (index === count - 1 || annotations.length === 1) {
     chunks.push(value, ' ', entry.semanticComment);
   } else if (index === 0) {
@@ -365,7 +364,9 @@ function appendAnnotatedAttributeMember(chunks, entry, index, count) {
   } else if (annotations.length === 2) {
     chunks.push(annotations[0], ' ', value, ' ', annotations[1]);
   } else {
-    throw new Error(`Cannot preserve more than two annotations on an interior attribute-node field at ${entry.path}`);
+    // Core associates comments with the nearest descendant span. Give the
+    // following binding enough separation to keep this whole group on value.
+    chunks.push(value, ' ', entry.semanticComment, ' '.repeat(entry.semanticComment.length));
   }
 }
 
