@@ -106,8 +106,14 @@ export function initPipeline() {
       }
       if (!result.query) { message('AES imported. AEOS validation passed.'); return; }
       const query = result.query;
-      showStatus('pipeline-query-status', query.ok ? `${query.count} ${query.count === 1 ? 'result' : 'results'}` : 'Query error', query.ok ? '' : 'error');
       $('pipeline-results').innerHTML = highlightQueryResults(query);
+      if (query.errors?.some(({code}) => code === 'XML_QUERY_RUNTIME_UNAVAILABLE')) {
+        showStatus('pipeline-query-status', 'Unavailable', 'error');
+        $('pipeline-result-note').textContent = 'Update the local SANSA Workbench to run XML queries.';
+        message('AEOS passed. XML querying is unavailable.', 'error');
+        return;
+      }
+      showStatus('pipeline-query-status', query.ok ? `${query.count} ${query.count === 1 ? 'result' : 'results'}` : 'Query error', query.ok ? '' : 'error');
       $('pipeline-result-note').textContent = query.ok ? 'Values and source bindings from the current query.' : 'Edit the SANSA query and run again. AES and AEOS results remain available.';
       message(query.ok ? 'AES imported. AEOS passed. SANSA query complete.' : 'AEOS passed. The SANSA query needs attention.', query.ok ? '' : 'error');
     } catch (error) {

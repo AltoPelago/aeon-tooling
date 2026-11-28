@@ -25,6 +25,7 @@ const aesPath = resolve(familyRoot, 'aes/src/telex.js');
 const corePath = resolve(familyRoot, 'aeon/implementations/typescript/packages/core/dist/index.js');
 const canonicalPath = resolve(familyRoot, 'aeon/implementations/typescript/packages/canonical/dist/index.js');
 const aeosPath = resolve(familyRoot, 'aeon/implementations/typescript/packages/aeos/dist/index.js');
+const sdkPath = resolve(familyRoot, 'aeon/implementations/typescript/packages/sdk/dist/sansa.js');
 const sansaIndexPath = resolve(familyRoot, 'sansa/src/index.js');
 const sansaRuntimePath = resolve(familyRoot, 'sansa/tools/query-web/runtime.mjs');
 
@@ -33,6 +34,7 @@ const aes = await load(aesPath);
 const core = await load(corePath);
 const canonical = await load(canonicalPath);
 const aeos = await load(aeosPath);
+const sdk = await load(sdkPath);
 const sansa = await load(sansaIndexPath);
 const sansaWorkbench = await load(sansaRuntimePath);
 
@@ -69,13 +71,16 @@ test(
   <purchase price="6.99">paper</purchase>
 </person>`;
 
-    const aeon61 = `xml@{version="1.0"} = <person @{id="123"} (
-  <"name:user" ("Alice")>
-  /* comments can be converted */
-  "mixed strings between nodes"
-  <age ("30")>
-  <purchase @{price="3.30"} ("cards")>
-  <purchase @{price="6.99"} ("paper")>
+    const aeon61 = `<"?xml"@{version="1.0"}>
+<xml(
+  <person@{id="123"}(
+    <"name:user"("Alice")>,
+    <"!--"(" comments can be converted ")>,
+    "mixed strings between nodes",
+    <age("30")>,
+    <purchase@{price="3.30"}("cards")>,
+    <purchase@{price="6.99"}("paper")>
+  )>
 )>`;
 
     const telexFromXml61 = xmlToTelex(xml61);
@@ -91,9 +96,7 @@ test(
   <name>Paper</name>
 </product>`;
 
-    const aeon63 = `xml = <product @{price="3.30", quantity="2"} (
-  <name ("Paper")>
-)>`;
+    const aeon63 = `<xml(<product@{price="3.30", quantity="2"}(<name("Paper")>)>)>`;
 
     const telexFromXml63 = xmlToTelex(xml63);
     const validated63 = aes.validateTelex(telexFromXml63);
@@ -102,7 +105,7 @@ test(
 
     // Section 6.5 namespace example
     const xml65 = `<user:name xmlns:user="urn:people">Alice</user:name>`;
-    const aeon65 = `xml = <"user:name" @{"xmlns:user"="urn:people"} ("Alice")>`;
+    const aeon65 = `<xml(<"user:name"@{"xmlns:user"="urn:people"}("Alice")>)>`;
     const telexFromXml65 = xmlToTelex(xml65);
     assert.deepEqual(aes.validateTelex(telexFromXml65).diagnostics, []);
     assert.equal(telexFromXml65, core.compileToTelex(aeon65, {}).telex);
@@ -125,13 +128,13 @@ test(
 
     const telex = xmlToTelex(xmlInput);
 
-    // 1. Validate with AEOS schema rules across NodeLiteral, NodeHead, and .@. StringLiteral attributes
+    // 1. Validate with AEOS schema rules across tagged nodes and their direct string attributes
     const schema = {
       rules: [
         { path: '$.xml', constraints: { required: true, type: 'NodeLiteral' } },
-        { path: '$.xml.@.version', constraints: { required: true, type: 'StringLiteral', pattern: '^1\\.0$' } },
-        { path: '$.xml.@.encoding', constraints: { required: true, type: 'StringLiteral', pattern: '^UTF-8$' } },
-        { path: '$.xml[0]', constraints: { required: true, type: 'NodeHead', pattern: '^person$' } },
+        { path: '$.["?xml"].@.version', constraints: { required: true, type: 'StringLiteral', pattern: '^1\\.0$' } },
+        { path: '$.["?xml"].@.encoding', constraints: { required: true, type: 'StringLiteral', pattern: '^UTF-8$' } },
+        { path: '$.xml[0]', constraints: { required: true, type: 'NodeLiteral' } },
         { path: '$.xml[0].@.id', constraints: { required: true, type: 'StringLiteral', pattern: '^[0-9]+$' } },
         { path: '$.xml[0].@.tier', constraints: { required: true, type: 'StringLiteral', pattern: '^(silver|gold|platinum)$' } },
       ],
@@ -141,15 +144,15 @@ test(
     assert.equal(validation.ok, true, `AEOS errors: ${JSON.stringify(validation.errors)}`);
     // Verify AEOS computed numeric representation guarantees on the uncoerced XML StringLiterals
     assert.ok(validation.guarantees['$.xml[0].@.id'].includes('integer-representable'));
-    assert.ok(validation.guarantees['$.xml[0][3][0].@.price'].includes('float-representable'));
+    assert.ok(validation.guarantees['$.xml[0][3].@.price'].includes('float-representable'));
 
     // 2. Load into SANSA and query across repeated <purchase> elements and attributes even with mixed string siblings
     const nsLoaded = await sansaWorkbench.namespaceFromTelexSource(telex);
     assert.equal(nsLoaded.ok, true);
 
     const audPurchasesQuery = `
-      from $.xml[0].*[0]
-      where . == "purchase" and .@.currency == "AUD"
+      from $.xml[0].*
+      where exists(.@.currency) and .@.currency == "AUD"
       select { item = .[0] price = .@.price }
     `;
     const queryResult = sansa.evaluateQuery(audPurchasesQuery, nsLoaded.namespace);
@@ -176,18 +179,49 @@ test('Examples: person.xml and inventory.xml match their canonical .telex.aes sn
   }
 });
 
+test('XML markup stays ordered and byte-compatible with the tagged-node providers', {
+  skip: (!aes || !core || !aeos || !sdk || !sansa || !sansaWorkbench) && 'Built AEON/AES/SANSA unavailable',
+}, async () => {
+  const source = '<?xml version="1.0"?><?task mode="debug"?><?task 1 + 2??>'
+    + '<person source="publisher">\u007f\u0085</person><?task?><!-- & ready -->';
+  const telex = xmlToTelex(source);
+  const authored = xmlToAeon(source, {includeHeader: false, sortKeys: false});
+  const compiled = core.compileToTelex(authored);
+  assert.deepEqual(compiled.compile.errors, []);
+  assert.equal(compiled.telex, telex);
+  assert.deepEqual(aes.validateTelex(telex).diagnostics, []);
+  assert.equal(aes.canonicalizeTelex(telex), telex);
+  const mounted = await sansaWorkbench.namespaceFromTelexSource(telex);
+  assert.equal(mounted.ok, true, JSON.stringify(mounted.errors));
+  const query = sansa.evaluateQuery('from $.xml[2] select .@.source', mounted.namespace);
+  assert.equal(query.ok, true, JSON.stringify(query.errors));
+  assert.deepEqual(query.results.map(row => row.value.bindings[0].value), ['publisher']);
+  const tagged = sansa.resolveAddress('$.xml.*&tag("?task")', sdk.readAeonNamespace(authored).namespace);
+  assert.equal(tagged.ok, true, JSON.stringify(tagged.errors));
+  assert.deepEqual(tagged.bindings.map(binding => binding.address), ['$.xml[0]', '$.xml[1]', '$.xml[3]']);
+  const mismatched = aeos.validateTelex(telex, {rules: [{
+    selector: '$.xml.*&tag("person").@.source',
+    constraints: {pattern: '^other$'},
+  }]});
+  assert.equal(mismatched.ok, false);
+  assert.deepEqual(mismatched.errors.map(error => error.path), ['$.xml[2].@.source']);
+});
+
 test(
   'XML -> AEON matches canonical AEON representation (@altopelago/aeon-canonical)',
   { skip: !canonical && 'aeon canonical dist not found' },
   () => {
     const xml61 = readFileSync(resolve(here, '..', 'examples', 'person.xml'), 'utf8');
-    const aeon61 = `xml@{version="1.0"} = <person @{id="123"} (
-  <"name:user" ("Alice")>
-  /* comments can be converted */
-  "mixed strings between nodes"
-  <age ("30")>
-  <purchase @{price="3.30"} ("cards")>
-  <purchase @{price="6.99"} ("paper")>
+    const aeon61 = `<"?xml"@{version="1.0"}>
+<xml(
+  <person@{id="123"}(
+    <"name:user"("Alice")>,
+    <"!--"("comments can be converted")>,
+    "mixed strings between nodes",
+    <age("30")>,
+    <purchase@{price="3.30"}("cards")>,
+    <purchase@{price="6.99"}("paper")>
+  )>
 )>`;
 
     const fromXml61 = xmlToAeon(xml61);
@@ -197,7 +231,8 @@ test(
     assert.equal(canonical.canonicalize(fromXml61).text, fromXml61);
 
     const xmlInv = readFileSync(resolve(here, '..', 'examples', 'inventory.xml'), 'utf8');
-    const aeonInv = `xml@{version="1.0", encoding="UTF-8"} = <inventory @{warehouse="Melbourne 2", "xmlns:inv"="urn:altopelago:inventory"} (
+    const aeonInv = `<"?xml"@{version="1.0", encoding="UTF-8"}>
+<xml(<inventory @{warehouse="Melbourne 2", "xmlns:inv"="urn:altopelago:inventory"} (
   <"inv:item" @{sku="A-100", qty="03", price="19.50", discontinued="false"} (
     <name ("Anchor")>
     <notes ("Heavy-duty <galvanized> steel & chain ready")>
@@ -208,7 +243,7 @@ test(
   <"inv:item" @{sku="B-210", qty="04", price="11.00", discontinued="true"} (
     <name ("Buoy (large)")>
   )>
-)>`;
+)>)>`;
 
     const fromXmlInv = xmlToAeon(xmlInv);
     const expectedCanonicalInv = canonical.canonicalize(aeonInv);

@@ -2,7 +2,8 @@ import { jsonToAes } from '../json-core/src/index.js';
 import { tomlToAes } from '../toml-core/src/index.js';
 import { isTomlIntegerInRange } from '../toml-core/src/number.js';
 import { quoteTomlString } from '../toml-core/src/string.js';
-import { xmlToAes } from '../xml-core/src/index.js';
+import { aesToAeon as xmlAesToAeon, xmlToAes } from '../xml-core/src/index.js';
+import { isXmlName, XML_COMMENT_TAG, XML_DECLARATION_TAG, XML_DOCUMENT_TAG } from '../xml-core/src/xml-aes.js';
 import { alogToAes } from '../alog-core/src/index.js';
 import { yamlToAes, yamlToAesWithAnnotations } from '../yaml-core/src/index.js';
 import { aesToAeon, parseAesPath } from '../json-core/src/aeon.js';
@@ -25,9 +26,14 @@ export async function loadCompiler() {
     const core = await import(url.href);
     const check = core.compileToTelex('"" = 1');
     if (check.compile.errors.length) throw new Error('Compiler lacks empty-key support');
+    const nodes = core.compileToTelex('<xml(<element>)>');
+    if (nodes.compile.errors.length || !nodes.records.some(record =>
+      record.path === '$.xml[0]' && record.kind === 'NodeLiteral' && record.tag === 'element')) {
+      throw new Error('Compiler lacks tagged-node support');
+    }
     return core;
   } catch (error) {
-    throw new Error(`An AEON compiler with empty-key support is required. Build the sibling aeon TypeScript packages, or set AEON_CORE_MODULE to its built core/dist/index.js. ${error.message}`);
+    throw new Error(`An AEON compiler with empty-key and tagged-node support is required. Build the sibling aeon TypeScript packages or set AEON_CORE_MODULE to its built core/dist/index.js. ${error.message}`);
   }
 }
 
@@ -146,39 +152,104 @@ function toml(node, resolveRadixBase) {
   return json(node, 0, 'TOML');
 }
 const escapeXml = value => value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll('\r', '&#13;').replaceAll('\n', '&#10;').replaceAll('\t', '&#9;');
-function xml(node, isRoot = true) {
-  plain(node, isRoot ? ['version', 'encoding', 'standalone'] : []);
-  if (node.kind !== 'NodeLiteral' || node.items.length !== 1 || node.items[0].kind !== 'NodeHead') reject(node, 'XML output requires one AEON node representing the document element.');
-  const head = node.items[0]; plain(head, [...head.attrs.keys()]);
+function xmlPlain(node, allowedAttrs = []) {
+  plain(node, allowedAttrs);
+  if (node.identity !== undefined || node.generics?.length || node.clarifiers?.length) {
+    reject(node, 'XML cannot preserve AEON identity or datatype metadata.');
+  }
+}
+function xmlString(node) {
+  xmlPlain(node);
+  if (node.kind !== 'StringLiteral') reject(node, 'XML data must be a string.');
+  return node.value;
+}
+function xmlSpecialTag(tag) {
+  return tag === XML_COMMENT_TAG || tag?.startsWith('?');
+}
+function xmlMisc(node) {
+  xmlPlain(node);
+  const comment = node.tag === XML_COMMENT_TAG;
+  if (node.items.length > 1 || (comment && node.items.length !== 1)) {
+    reject(node, comment ? 'An XML comment requires one string child.' : 'An XML processing instruction admits at most one string child.');
+  }
+  const data = node.items.length ? xmlString(node.items[0]) : '';
+  if (data.includes('\r')) reject(node, 'XML comments and processing instructions cannot preserve carriage returns.');
+  if (comment) {
+    if (data.includes('--') || data.endsWith('-')) reject(node, 'Invalid XML comment text.');
+    return `<!--${data}-->`;
+  }
+  const target = node.tag.slice(1);
+  if (!isXmlName(target, false) || target.toLowerCase() === 'xml') reject(node, 'Invalid or reserved XML processing instruction target.');
+  if (data.includes('?>') || /^[ \n\t]/u.test(data) || (node.items.length && !data)) {
+    reject(node, 'Processing instruction data must be non-empty, cannot start with whitespace, and cannot contain ?>.');
+  }
+  return data ? `<?${target} ${data}?>` : `<?${target}?>`;
+}
+function xmlNode(node) {
+  if (node.kind !== 'NodeLiteral') reject(node, 'XML requires a tagged node.');
+  if (xmlSpecialTag(node.tag)) return xmlMisc(node);
+  xmlPlain(node, [...node.attrs.keys()]);
+  if (!isXmlName(node.tag)) reject(node, 'Invalid XML element name.');
   let attrs = '';
-  for (const [key, value] of head.attrs) {
-    plain(value);
-    if (value.kind !== 'StringLiteral') reject(value, 'XML attribute values must be strings.');
-    attrs += ` ${key}="${escapeXml(value.value)}"`;
+  for (const [key, value] of node.attrs) {
+    if (!isXmlName(key)) reject(value, 'Invalid XML attribute name.');
+    attrs += ` ${key}="${escapeXml(xmlString(value))}"`;
   }
   let content = '';
-  for (const child of head.items) {
-    if (child.kind === 'NodeLiteral') content += xml(child, false);
-    else if (child.kind === 'StringLiteral' && child.datatype === 'cdata') {
-      if (child.attrs.size || child.generics?.length || child.clarifiers?.length) reject(child, 'CDATA markers cannot carry attributes, generics or clarifiers.');
+  for (const child of node.items) {
+    if (child.kind === 'NodeLiteral') {
+      content += xmlNode(child);
+    } else if (child.kind === 'StringLiteral' && child.datatype === 'cdata') {
+      if (child.attrs.size || child.identity !== undefined || child.generics?.length || child.clarifiers?.length) reject(child, 'CDATA markers cannot carry attributes, identity, generics or clarifiers.');
       if (child.value.includes('\r')) reject(child, 'CDATA cannot preserve carriage returns: XML normalizes them to newlines. Use ordinary text for character references.');
       content += '<![CDATA[' + child.value.replaceAll(']]>', ']]]]><![CDATA[>') + ']]>';
-    } else { plain(child); if (child.kind !== 'StringLiteral') reject(child, 'XML content must be text or child nodes.'); content += escapeXml(child.value); }
-  }
-  let declaration = '';
-  if (isRoot && node.attrs.size) {
-    declaration = '<?xml';
-    for (const key of ['version', 'encoding', 'standalone']) {
-      const attr = node.attrs.get(key);
-      if (!attr) continue;
-      plain(attr);
-      if (attr.kind !== 'StringLiteral') reject(attr, 'XML declaration metadata must be strings.');
-      if (key === 'encoding' && !/^utf-?8$/iu.test(attr.value)) reject(attr, 'Text export uses UTF-8; a different XML encoding cannot be preserved.');
-      declaration += ` ${key}="${escapeXml(attr.value)}"`;
+    } else {
+      content += escapeXml(xmlString(child));
     }
-    declaration += '?>\n';
   }
-  return declaration + `<${head.value}${attrs}${content ? `>${content}</${head.value}>` : '/>'}`;
+  return `<${node.tag}${attrs}${content ? `>${content}</${node.tag}>` : '/>'}`;
+}
+function xmlDeclaration(node) {
+  if (node.kind !== 'NodeLiteral' || node.tag !== XML_DECLARATION_TAG || node.items.length) {
+    reject(node, 'The XML declaration must be a tagged node with attributes and no children.');
+  }
+  const order = ['version', 'encoding', 'standalone'];
+  xmlPlain(node, order);
+  if (!node.attrs.has('version')) reject(node, 'The XML declaration requires a version attribute.');
+  let output = '<?xml';
+  for (const key of order) {
+    const attr = node.attrs.get(key);
+    if (!attr) continue;
+    const value = xmlString(attr);
+    if (key === 'encoding' && !/^utf-?8$/iu.test(value)) reject(attr, 'Text export uses UTF-8.');
+    if (key === 'version' && value !== '1.0') reject(attr, 'Expected XML version 1.0.');
+    if (key === 'standalone' && value !== 'yes' && value !== 'no') reject(attr, 'Expected XML standalone yes or no.');
+    output += ` ${key}="${value}"`;
+  }
+  return output + '?>\n';
+}
+function xml(document, notes) {
+  const wrapper = document.members.get(XML_DOCUMENT_TAG);
+  const declaration = document.members.get(XML_DECLARATION_TAG);
+  if (wrapper?.kind !== 'NodeLiteral' || wrapper.tag !== XML_DOCUMENT_TAG
+    || document.members.size !== 1 + Number(Boolean(declaration))) {
+    reject(document, 'XML output requires an xml document wrapper and an optional ?xml declaration.');
+  }
+  xmlPlain(wrapper, ['source']);
+  const provenance = wrapper.attrs.get('source');
+  if (provenance) {
+    xmlPlain(provenance);
+    if (provenance.kind !== 'SymbolicLiteral' || provenance.value !== 'XML') reject(provenance, 'The XML document wrapper only admits symbolic XML provenance.');
+    notes.push('Source provenance is omitted from the exported document.');
+  }
+  let elementCount = 0;
+  for (const child of wrapper.items) {
+    if (child.kind !== 'NodeLiteral') reject(child, 'XML document children must be tagged nodes.');
+    if (!xmlSpecialTag(child.tag)) elementCount++;
+    if (elementCount > 1) reject(child, 'XML output requires exactly one document element.');
+  }
+  if (elementCount !== 1) reject(wrapper, 'XML output requires exactly one document element.');
+  return (declaration ? xmlDeclaration(declaration) : '') + wrapper.items.map(xmlNode).join('');
 }
 function alog(node) {
   plain(node);
@@ -207,6 +278,7 @@ function scalarSpelling(node) {
 function stringifyUnsupportedScalars(root, target, resolveRadixBase) {
   const losses = new Map();
   function visit(node, role = 'value') {
+    if (target === 'xml' && node.kind === 'NodeLiteral' && xmlSpecialTag(node.tag)) return;
     if (SCALAR_KINDS.has(node.kind)) {
       const cdata = target === 'xml' && role === 'child' && node.kind === 'StringLiteral'
         && node.datatype === 'cdata' && !node.generics?.length && !node.clarifiers?.length
@@ -252,11 +324,13 @@ function stringifyUnsupportedScalars(root, target, resolveRadixBase) {
         delete node.datatype; delete node.generics; delete node.clarifiers;
       }
     }
-    for (const child of node.members.values()) visit(child);
-    for (const child of node.items) visit(child, node.kind === 'NodeHead' ? 'child' : 'value');
+    for (const [key, child] of node.members) {
+      visit(child, target === 'xml' && node === root && key === XML_DOCUMENT_TAG ? 'document' : 'value');
+    }
+    for (const child of node.items) visit(child, node.kind === 'NodeLiteral' && role !== 'document' ? 'child' : 'value');
     // XML element attributes carry source scalar values. Other AEON attributes
     // remain governed by the exporter's existing checks, never silently dropped.
-    if (target === 'xml' && node.kind === 'NodeHead') {
+    if (target === 'xml' && node.kind === 'NodeLiteral' && role !== 'document') {
       for (const attribute of node.attrs.values()) visit(attribute, 'attribute');
     }
   }
@@ -301,12 +375,18 @@ export function createConverter(core) {
         message: 'Lossy mode: unsupported scalar values become strings. Round-trip preservation is not guaranteed; reverse conversion does not infer their original types.'});
     }
     if (to === 'aeon' && records.some(record => record.generics?.length)) throw new ConversionError('Canonical export of generic datatypes is not supported by this adapter renderer.');
-    if (to === 'aeon') return {output: aesToAeon(records, {includeHeader: false, annotations}), annotations,
-      events: records.length, notes: [], warnings, mode, stringifiedScalars: 0};
+    if (to === 'aeon') {
+      const xmlDocument = from === 'xml' || records.some(({path, tag}) => path === '$.xml' && tag === XML_DOCUMENT_TAG);
+      if (xmlDocument && annotations.length) throw new ConversionError(
+        'XML document rendering cannot preserve YAML tag annotations.', undefined, 'YAML_ANNOTATIONS_REQUIRED');
+      const render = xmlDocument ? xmlAesToAeon : aesToAeon;
+      return {output: render(records, {includeHeader: false, annotations}), annotations,
+        events: records.length, notes: [], warnings, mode, stringifiedScalars: 0};
+    }
     const document = tree(records);
     let root = document;
     const notes = [];
-    if (document.members.size === 1 && document.members.has('')) {
+    if (to !== 'xml' && document.members.size === 1 && document.members.has('')) {
       root = document.members.get('');
       const provenance = root.attrs.get('source');
       if (provenance?.kind === 'SymbolicLiteral' && ['JSON', 'XML', 'TOML', 'YAML', 'ALOG'].includes(provenance.value) && !provenance.attrs.size && !provenance.datatype) {
@@ -331,7 +411,7 @@ export function createConverter(core) {
     let output;
     if (to === 'json') output = json(root) + '\n';
     if (to === 'yaml') output = yaml(root) + '\n';
-    if (to === 'xml') { output = xml(root) + '\n'; xmlToAes(output, {preserveWhitespace: true}); }
+    if (to === 'xml') { output = xml(document, notes) + '\n'; xmlToAes(output, {preserveWhitespace: true}); }
     if (to === 'toml') {
       plain(root);
       if (root.kind !== 'ObjectNode') reject(root, 'TOML requires an object root.');

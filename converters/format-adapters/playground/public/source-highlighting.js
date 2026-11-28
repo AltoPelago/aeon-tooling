@@ -120,11 +120,12 @@ export function highlightTelex(source) {
     let payload;
     if (key === 'path') payload = highlightSansa(value);
     else if (key === 'kind' || key === 'datatype') payload = span('type', value);
+    else if (key === 'tag') payload = span('tag', value);
     else if (key === 'value') payload = span(
       kind === 'NumberLiteral' || kind === 'RadixLiteral' ? 'number' :
       /^(?:Date|Time|DateTime|WTCDateTime)Literal$/.test(kind) ? 'temporal' :
       /^(?:Boolean|Null|Toggle|Infinity|NaN)Literal$/.test(kind) ? 'literal' :
-      kind === 'SymbolicLiteral' ? 'symbol' : kind === 'NodeHead' ? 'tag' : 'string', value);
+      kind === 'SymbolicLiteral' ? 'symbol' : 'string', value);
     else payload = escape(value);
     return span(key === 'telex.aes' ? 'directive' : 'key', key) + span('operator', '=') + payload;
   }).join('');

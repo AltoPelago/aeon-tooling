@@ -47,7 +47,7 @@ results and exits unsuccessfully if an assertion or runtime operation fails.
 | TOML 1.0 | Arrays of tables, date, hexadecimal integer | `A1`; `2026-11-18` as `DateLiteral`; `FF` as `RadixLiteral` | Date replaced with a string |
 | YAML 1.2 Core subset | Mappings, sequences, boolean and numeric resolution; `yes` and date-shaped text remain strings | `A1`; `yes`; `2026-11-18` as `StringLiteral` | Boolean replaced with a quoted string |
 | ALOG v1 | Positional record lists, numbers, booleans and native dates | `A1`; its date as `DateLiteral` | Price replaced with `"cheap"` |
-| XML 1.0 | Node heads, attributes, text and `:cdata` strings | Active item's `sku` → `A1`; price text → `"9.5"`; original CDATA payload | Empty SKU |
+| XML 1.0 | Tagged nodes, attributes, text and `:cdata` strings | Active item's `sku` → `A1`; price text → `"9.5"`; original CDATA payload | Empty SKU |
 
 The schemas demonstrate selected type, range, length and datatype constraints;
 they are not complete application schemas for every possible inventory document.
@@ -89,13 +89,15 @@ AEON. Exact numeric lexemes and distinct scalar kinds survive. Query results
 retain binding addresses and representation kinds; the display keeps number
 lexemes as strings instead of converting them to JavaScript numbers.
 
-The wrapper is an ordinary empty-key binding, so source data starts at `$.[""]`.
-For JSON/TOML/YAML inventory examples, item bindings are at
-`$.[""].items[0]`, and `.*` expands the list. ALOG uses `$.[""][0][1]` for
-the first record's price field. XML preserves structure instead of creating
-named object properties: `[0]` enters a node head, whose indexed children are
-content. Its first item's attributes live at `$.[""][0][0][0].@`; CDATA
-is selected by `$.[""].**#cdata`.
+JSON, TOML and YAML item bindings are at `$.[""].items[0]`, and `.*` expands
+that list. ALOG uses `$.[""][0][1]` for the first record's price field. The XML
+inventory element is at `$.xml[0]`. Its first item's attributes are at
+`$.xml[0][0].@`, and `$.xml.**#cdata` selects CDATA. In a namespace that
+exposes intrinsic tag selectors, `$.xml[0].*&tag("item")` selects those item
+nodes by tag.
+
+XML queries require a SANSA Workbench that carries intrinsic tags into portable
+query bindings. The pipeline verifies this capability before running a query.
 
 XML price and active values are strings; the XML query compares `"true"` rather
 than a boolean. YAML date-shaped text is also a string under this profile.

@@ -1,15 +1,20 @@
 telex.aes=1
 
-path=$.xml
+path=$.["?xml"]
 kind=NodeLiteral
+tag=?xml
 
-path=$.xml.@.version
+path=$.["?xml"].@.version
 kind=StringLiteral
 value=1.0
 
+path=$.xml
+kind=NodeLiteral
+tag=xml
+
 path=$.xml[0]
-kind=NodeHead
-value=person
+kind=NodeLiteral
+tag=person
 
 path=$.xml[0].@.id
 kind=StringLiteral
@@ -17,56 +22,52 @@ value=123
 
 path=$.xml[0][0]
 kind=NodeLiteral
+tag=name:user
 
 path=$.xml[0][0][0]
-kind=NodeHead
-value=name:user
-
-path=$.xml[0][0][0][0]
 kind=StringLiteral
 value=Alice
 
 path=$.xml[0][1]
+kind=NodeLiteral
+tag=!--
+
+path=$.xml[0][1][0]
+kind=StringLiteral
+value=comments can be converted
+
+path=$.xml[0][2]
 kind=StringLiteral
 value=mixed strings between nodes
 
-path=$.xml[0][2]
+path=$.xml[0][3]
 kind=NodeLiteral
+tag=age
 
-path=$.xml[0][2][0]
-kind=NodeHead
-value=age
-
-path=$.xml[0][2][0][0]
+path=$.xml[0][3][0]
 kind=StringLiteral
 value=30
 
-path=$.xml[0][3]
+path=$.xml[0][4]
 kind=NodeLiteral
+tag=purchase
 
-path=$.xml[0][3][0]
-kind=NodeHead
-value=purchase
-
-path=$.xml[0][3][0].@.price
+path=$.xml[0][4].@.price
 kind=StringLiteral
 value=3.30
 
-path=$.xml[0][3][0][0]
+path=$.xml[0][4][0]
 kind=StringLiteral
 value=cards
 
-path=$.xml[0][4]
+path=$.xml[0][5]
 kind=NodeLiteral
+tag=purchase
 
-path=$.xml[0][4][0]
-kind=NodeHead
-value=purchase
-
-path=$.xml[0][4][0].@.price
+path=$.xml[0][5].@.price
 kind=StringLiteral
 value=6.99
 
-path=$.xml[0][4][0][0]
+path=$.xml[0][5][0]
 kind=StringLiteral
 value=paper

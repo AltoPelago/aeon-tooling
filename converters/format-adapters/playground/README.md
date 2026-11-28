@@ -90,12 +90,9 @@ binding/candidate/result budgets (10,000/10,000/1,000). No query mutates source.
 
 ## Local AEON compiler
 
-AEON input needs a built compiler with empty-key support. In the documented
-family workspace layout, the server loads the sibling
-`aeon/implementations/typescript/packages/core/dist/index.js`. It checks that
-empty keys compile before starting. This is an explicit local-development
-integration: the adapter dependency on the published 0.16 compiler cannot parse
-empty-key AEON and is not used as the playground's compiler.
+The server requires a built AEON compiler with empty-key bindings and intrinsic
+node tags. It checks both before starting. In the documented workspace layout,
+it loads the sibling `aeon/implementations/typescript/packages/core/dist/index.js`.
 
 Build that sibling's TypeScript packages using its build instructions, or point
 to another built compatible Core module:
@@ -135,13 +132,12 @@ including literal markers but without datatype annotations. For example, a radix
 containing `%` and its digits; its radix annotation is lost. TOML supports
 explicit unsigned integer radix bases 2/8/16, so those remain integers when in range. Large supported numbers are never rounded through a host Number.
 
-Support depends on the target exporter: TOML retains its native temporal and
-special-float values (partial dates/times outside TOML syntax become strings)
-but turns null into `"!none"`; XML turns non-string scalar
-children and element-attribute values into text; ALOG retains its native scalar
-families. XML's supported `:cdata` marker remains intact. A CDATA payload with a
-carriage return becomes ordinary text in lossy XML so a character reference can
-preserve the character.
+TOML retains supported temporal and special-float values and turns null into
+`"!none"`. ALOG retains its native scalar families. Lossy XML can stringify
+element attributes and ordinary element text. Declarations, comments and
+processing instructions require their defined string fields in both modes.
+XML preserves supported `:cdata` markers. A CDATA payload with a carriage return
+becomes ordinary text in lossy XML so a character reference can preserve it.
 
 Diagnostics always identify lossy mode and list the paths/types actually
 stringified. Reverse conversion never infers original scalar types from those
@@ -180,9 +176,10 @@ playground export policies; the forward adapter library APIs are unchanged.
   Binary/octal/hex export uses `0b`/`0o`/`0x` and preserves the radix base and
   leading zeros. Signed 64-bit integer limits apply on import/export. Other
   explicit datatype claims remain outside the lossless export profile.
-- XML requires the adapter's node mapping. Element attributes and text stay
-  strings. Declaration metadata is supported for UTF-8 XML. CDATA boundaries are preserved as `:cdata` string children. Formatting
-  and comments are not preserved.
+- XML requires an `xml` wrapper containing exactly one document element and
+  optional ordered processing instructions and comments. A separate `"?xml"` root
+  node supplies the declaration, which is emitted first. Element attributes and
+  text are strings. Each CDATA section is a `:cdata` string child.
 - ALOG requires nonempty scalar record lists. It preserves scalar values accepted
   by the existing ALOG adapter and rejects nested containers or annotations.
 - AEON output uses the adapters' renderer. Unsupported constructs, including

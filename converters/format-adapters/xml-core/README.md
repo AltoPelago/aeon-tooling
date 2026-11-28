@@ -1,94 +1,80 @@
-See the [current language feature support matrix](../../../docs/format-adapter-support.md) for import/export coverage and limitations.
+# XML adapter
 
-# Current XML adapter mapping
+`@altopelago/xml-core` imports XML 1.0 strings as tagged AEON nodes, portable AES
+records and canonical `telex.aes=1`. A document always has an `xml` wrapper with
+ordered children. The optional declaration is a separate `"?xml"` root node.
 
-The default mapping now places the source root under `""` with
-`source = |XML|` as a binding attribute. Pass `{ mapping: 'native' }`
-(or CLI `--native`) for the previous mapping. Root mode accepts empty source keys;
-JSON also accepts arrays and scalar roots. Set `sourceMetadata: false` to omit
-provenance. See the [migration proposal](../../../docs/format-adapters.md).
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<?application mode="debug"?>
+<person source="publisher"><name>Alice</name></person>
+<?application done?>
+```
 
-CDATA boundaries are now preserved as separate `:cdata` string children by
-default, including in native mapping. Set `preserveCdata: false` or CLI
-`--semantic-cdata` for the former merged-text mapping. Canonical AEON uses quoted
-strings; untrimmed backticks can also be authored without losing whitespace.
+```aeon
+<"?xml"@{encoding = "UTF-8", version = "1.0"}>
+<xml@{source = |XML|}(
+  <"?application"("mode=\"debug\"")>,
+  <person@{source = "publisher"}(<name("Alice")>)>,
+  <"?application"("done")>
+)>
+```
 
-The reference below describes the **legacy native profile** and its original
-pipeline evidence. Unqualified API calls now use the root mapping above.
-
----
-
-# `@altopelago/xml-core`
-
-Dependency-free strict XML 1.0 to AES (`aes.events.v1` / `aes.complete.v1`) and canonical `telex.aes=1` source-format adapter.
-
-## Structural Mapping
-
-XML's node-oriented model maps directly onto AEON/AES nodes (`NodeLiteral` + `NodeHead`), attributes (`.@.`), and ordered indexed children without artificial array wrapping or lossy object flattening:
-
-| XML Construct | AES Representation |
+| XML construct | AEON and portable AES |
 | --- | --- |
-| Document element | `NodeLiteral` bound to root member (`$.xml` by default) |
-| XML declaration (`<?xml version="1.0" ...?>`) | `StringLiteral` attributes on root binding (`$.xml.@.version`, `$.xml.@.encoding`, `$.xml.@.standalone`) |
-| Element name (`<person>`, `<user:name>`) | `NodeHead` at `<nodePath>[0]` with `value=<tagName>` |
-| Element attributes (`id="123"`, `xmlns:user="..."`) | `StringLiteral` attributes on `NodeHead` (`<headPath>.@.id`, `<headPath>.@.["xmlns:user"]`) |
-| Child elements | Ordered `NodeLiteral` children under `NodeHead` (`<headPath>[i]`) |
-| Character data & `<![CDATA[...]]>` | Ordered `StringLiteral` children under `NodeHead` (`<headPath>[i]`) |
-| Mixed content & repeated elements | Ordered indexed children under `NodeHead` (`<headPath>[0]`, `<headPath>[1]`, ...) |
+| Document | Named `NodeLiteral` at `$.xml`, with one element and any surrounding comments and processing instructions as indexed children. |
+| Declaration | Named `NodeLiteral` at `$.["?xml"]` with string attributes `version`, `encoding`, and `standalone` as authored. XML export places it first regardless of AEON binding order. |
+| Element | `NodeLiteral` with its XML name in `tag`. Attributes and indexed children are directly below the node path. |
+| Processing instruction | Indexed node tagged `?` followed by the XML target, with one string child for non-empty data. Target names may repeat before, after or inside the document element. |
+| Comment | Indexed node tagged `!--`, with one string child. Empty comments retain an empty string. |
+| Character data and CDATA | Ordered strings, with a `:cdata` datatype for each CDATA section by default. |
 
-## Core Adapter Principles
+In the example, the person is at `$.xml[1]`, its `source` attribute is at
+`$.xml[1].@.source`, and Alice is at `$.xml[1][0][0]`. A tag-aware SANSA
+namespace, such as the AEON SDK namespace, can find the processing instructions
+with `$.xml.*&tag("?application")` regardless of their indices. Repeated
+elements remain separate indexed children.
 
-1. **No coercion:** XML attribute values and element character data are always emitted as `StringLiteral` (`"3.30"`, `"03"`, and `"2"` are never coerced into `NumberLiteral`).
-2. **No repair:** Duplicate attributes, mismatched closing tags, invalid XML names, and unknown entity references are rejected with exact byte/line/column diagnostics.
-3. **No silent data loss:** Significant character data, CDATA content, and exact lexical attribute strings are preserved without loss.
-4. **No invented semantics:** XML element and attribute names never trigger hidden AEON header/directive semantics.
-5. **No structural reinterpretation:** Repeated child elements and mixed text/element content remain ordered children under `NodeHead`.
+Processing instruction data stays opaque. The adapter removes the XML whitespace
+separator before the data and normalizes physical line endings. Element and
+attribute names retain their qualified spelling. The adapter uses XML 1.0
+character, comment and declaration rules and accepts predefined and numeric
+character references. DTD and entity declarations are rejected with
+`XML_DTD_FORBIDDEN`. [XML 1.0](https://www.w3.org/TR/xml/)
 
-## Security Controls
+Attribute values and text remain strings after XML reference and whitespace
+normalization. `preserveWhitespace: true` preserves inter-element whitespace
+and `xml:space` controls it within the document. `preserveCdata: false` or CLI
+`--semantic-cdata` coalesces CDATA with adjacent character data. The adapter
+reports invalid syntax and resource limits with source locations and paths.
+Source offsets count UTF-16 code units. Columns count Unicode scalar values.
 
-- **No XXE / Entity Expansion:** `<!DOCTYPE>` and `<!ENTITY>` declarations are strictly rejected (`XML_DTD_FORBIDDEN`).
-- **Predefined & Numeric References Only:** Supports `&lt;`, `&gt;`, `&amp;`, `&apos;`, `&quot;`, decimal `&#...;`, and hexadecimal `&#x...;` (validated against XML 1.0 `Char` production). Unknown named entities are rejected (`XML_UNKNOWN_ENTITY`).
-- **Aeonic Resource Limits:** Enforces `maxInputBytes`, `maxEvents`, `maxValueNestingDepth`, `maxPathDepth`, `maxPathCharacters`, `maxStringCodepoints`, `maxKeySegmentCodepoints`, and `maxNodeChildren`.
-
-## Usage
-
-```js
-import { xmlToAes, xmlToTelex } from '@altopelago/xml-core';
-
-const records = xmlToAes('<product price="3.30" quantity="2"><name>Paper</name></product>');
-const telex = xmlToTelex('<product price="3.30" quantity="2"><name>Paper</name></product>');
-```
-
-### CLI
-
-```bash
-node bin/xml-aes.js examples/person.xml > examples/person.telex.aes
-node bin/xml-aes.js examples/inventory.xml > examples/inventory.telex.aes
-node bin/xml-aes.js --json < examples/person.xml
-```
-
-### With the Aeonite ecosystem
-
-```bash
-# SANSA query over repeated XML child nodes & attributes (from the sansa checkout)
-npm run query -- --fixture ../format-adapters/xml-core/examples/person.telex.aes \
-  --query 'from $.xml[0].*[0] where . == "purchase" select { item = .[0] price = .@.price }'
-```
+## Import and export
 
 ```js
-// AEOS schema validation
-import { validateTelex } from '@altopelago/aeon-aeos';
-validateTelex(xmlToTelex(xmlText), {
-  rules: [
-    { path: '$.xml', constraints: { required: true, type: 'NodeLiteral' } },
-    { path: '$.xml[0]', constraints: { required: true, type: 'NodeHead', pattern: '^person$' } },
-    { path: '$.xml[0].@.id', constraints: { required: true, type: 'StringLiteral', pattern: '^[0-9]+$' } },
-  ],
-});
+import { xmlToAes, xmlToAeon, xmlToTelex } from '@altopelago/xml-core';
+
+const source = '<person source="publisher"/>';
+const records = xmlToAes(source);
+const aeon = xmlToAeon(source, { includeHeader: false });
+const telex = xmlToTelex(source);
 ```
 
-## Tests
+Default provenance is a symbolic `|XML|` attribute at `$.xml.@.source`.
+`sourceMetadata: false` and `mapping: 'native'` omit it while keeping the
+same node layout. `rootName` changes the import wrapper tag. The standard
+playground XML export uses `xml`, removes wrapper provenance, and retains any
+`source` attribute on an actual document element. Set `includeDeclarationMetadata` to
+`false` to omit the declaration node during import. XML export writes UTF-8 text.
 
-```bash
-npm test
+```sh
+node bin/xml-aes.js --records examples/person.xml
+node bin/xml-aes.js --aeon examples/person.xml
+node bin/xml-aes.js examples/person.xml
+node bin/xml-aes.js --native --semantic-cdata examples/person.xml
 ```
+
+Use the [adapter playground](../playground/README.md) for AEON-to-XML export
+and the [validation and query example](../examples/validate-and-query/README.md)
+for AEOS and SANSA integration. The [feature support matrix](../../../docs/format-adapter-support.md)
+describes the other formats.

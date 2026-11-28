@@ -1,12 +1,32 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { createConverter, loadCompiler } from '../playground/convert.mjs';
 import { createPlaygroundServer } from '../playground/server.mjs';
 import { sampleFor } from '../playground/public/examples.js';
 let core;
 try {core = await loadCompiler();} catch {}
 const convert = core ? createConverter(core) : null;
-const options = {skip: !core && 'Built empty-key-capable AEON compiler unavailable'};
+const options = {skip: !core && 'Built tagged-node AEON compiler unavailable'};
+
+test('playground: startup rejects an empty-key-only compiler before XML conversion', t => {
+  const temp = mkdtempSync(join(tmpdir(), 'aeon-old-core-'));
+  t.after(() => rmSync(temp, {recursive: true, force: true}));
+  const compiler = join(temp, 'core.mjs');
+  writeFileSync(compiler, `export function compileToTelex(source) {
+    return { compile: { errors: source.startsWith('<') ? [{code:'SYNTAX_ERROR'}] : [] }, records: [] };
+  }`);
+  const converter = new URL('../playground/convert.mjs', import.meta.url).href;
+  const result = spawnSync(process.execPath, ['--input-type=module', '-e',
+    `import { loadCompiler } from ${JSON.stringify(converter)}; await loadCompiler();`],
+    {env: {...process.env, AEON_CORE_MODULE: compiler}, encoding: 'utf8'});
+  assert.ifError(result.error);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Compiler lacks tagged-node support/);
+});
 
 test('playground: YAML tags survive annotated AEON routes and cannot silently vanish in other exports', options, () => {
   const source = 'created: !CustomDate 2026-11-16\nlist: [!custom-tag "001", !app/value true]';
@@ -53,7 +73,7 @@ test('playground: cross-format exports and unsupported data fail explicitly', op
   }
   assert.throws(()=>convert({from:'json',to:'toml',source:'null'}),/object root/);
   assert.throws(()=>convert({from:'json',to:'toml',source:'{"a":null}'}),/no null/);
-  assert.throws(()=>convert({from:'json',to:'xml',source:'{}'}),/one AEON node/);
+  assert.throws(()=>convert({from:'json',to:'xml',source:'{}'}),/xml document wrapper/);
   assert.throws(()=>convert({from:'json',to:'alog',source:'[[]]'}),/nonempty/);
   assert.throws(()=>convert({from:'json',to:'aeon',source:'{"a":1,"a":2}'}),/Duplicate/);
 });
@@ -122,15 +142,63 @@ test('playground: XML CDATA boundaries and whitespace survive XML -> AEON -> XML
     assert.equal(convert({from:'xml',to:'xml',source}).output, source+'\n');
   }
 });
+
+test('playground: ordered XML markup, declaration and source attributes round trip', options, () => {
+  const xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+    + '<?application mode="debug"?><?application 1 + 2??><?application?>'
+    + '<!--prolog--><person source="publisher">a<?application validate?><!---->b</person>'
+    + '<?application done?><!--epilog-->';
+  const result = convert({from:'xml', to:'aeon', source:xml});
+  assert.match(result.output, /<"\?xml"@\{/);
+  assert.match(result.output, /<xml@\{source = \|XML\|\}/);
+  assert.match(result.output, /<person@\{source = "publisher"\}/);
+  assert.equal(convert({from:'aeon', to:'aeon', source:result.output}).output, result.output);
+  assert.equal(convert({from:'aeon', to:'xml', source:result.output}).output, xml + '\n');
+  const reordered = '<xml(<person@{version="2", source="publisher"}>)>\n<"?xml"@{version="1.0"}>';
+  assert.equal(convert({from:'aeon', to:'xml', source:reordered}).output,
+    '<?xml version="1.0"?>\n<person version="2" source="publisher"/>\n');
+  const undeclared = convert({from:'xml', to:'aeon', source:'<person source="publisher"/>'}).output;
+  assert.equal(convert({from:'aeon', to:'xml', source:undeclared}).output, '<person source="publisher"/>\n');
+});
+
+test('playground: XML exporter rejects invalid document shapes and markup data', options, () => {
+  for (const [source, expected] of [
+    ['<person>', /document wrapper/],
+    ['<xml(<"?app">)>', /exactly one document element/],
+    ['<xml(<a>, <b>)>', /exactly one document element/],
+    ['<xml("text", <a>)>', /document children/],
+    ['<xml(<a>, <"?XML">)>', /reserved XML processing instruction/],
+    ['<xml(<a>, <"?app"("bad?>data")>)>', /Processing instruction data/],
+    ['<xml(<a>, <"!--"("bad--data")>)>', /Invalid XML comment/],
+    ['<xml(<"!DOCTYPE"("a")>)>', /Invalid XML element name/],
+    ['<xml(<"a x">)>', /Invalid XML element name/],
+    ['<xml(<a@{"x y"="v"}>)>', /Invalid XML attribute name/],
+    ['<xml(<a\\id\\>)>', /cannot preserve AEON identity/],
+    ['<xml@{source="publisher"}(<a>)>', /symbolic XML provenance/],
+    ['<"?xml"@{encoding="UTF-8"}>\n<xml(<a>)>', /requires a version/],
+    ['<"?xml"@{version="1.0"}("text")>\n<xml(<a>)>', /no children/],
+  ]) {
+    assert.throws(() => convert({from:'aeon', to:'xml', source}), expected, source);
+  }
+});
 test('playground: authored backticks preserve CDATA, while prose is not a CDATA marker', options, () => {
   const payload = '\n\n    if (a < b) {\n      return "ok";\n    }\n';
-  const source = '"" = <p(:cdata = `'+payload+'`)> ';
+  const source = '<xml(<p(:cdata = `'+payload+'`)>)> ';
   assert.equal(convert({from:'aeon',to:'xml',source}).output, '<p><![CDATA['+payload+']]></p>\n');
-  const special = convert({from:'aeon', to:'xml', source:'"" = <p(:cdata = "a]]>b")>'}).output;
+  const special = convert({from:'aeon', to:'xml', source:'<xml(<p(:cdata = "a]]>b")>)>'}).output;
   assert.equal(special,'<p><![CDATA[a]]]]><![CDATA[>b]]></p>\n');
-  assert.throws(() => convert({from:'aeon',to:'xml',source:'"" = <p(:cdata = "a\\rb")>'}), /carriage returns/);
-  assert.throws(() => convert({from:'aeon',to:'xml',source:'"" = <p(:prose = >`hello`)>'}), /datatypes/);
-  assert.throws(() => convert({from:'aeon',to:'xml',source:'"" = <p(@{x=1}:cdata = "hello")>'}), /CDATA markers/);
+  assert.throws(() => convert({from:'aeon',to:'xml',source:'<xml(<p(:cdata = "a\\rb")>)>'}), /carriage returns/);
+  assert.throws(() => convert({from:'aeon',to:'xml',source:'<xml(<p(:prose = >`hello`)>)>'}), /datatypes/);
+  assert.throws(() => convert({from:'aeon',to:'xml',source:'<xml(<p(@{x=1}:cdata = "hello")>)>'}), /CDATA markers/);
+});
+
+test('playground: re-rendering XML-shaped AEON rejects unsupported identities and datatype clarifiers', options, () => {
+  assert.throws(() => convert({from:'aeon', to:'aeon', source:'<xml(<element\\item\\>)>'}),
+    /renderer cannot preserve identity/);
+  for (const value of ['"two words"', '"16"']) {
+    assert.throws(() => convert({from:'aeon', to:'aeon', source:`<xml:custom[${value}](<element>)>`}),
+      /renderer cannot preserve datatype generics or clarifiers/);
+  }
 });
 
 test('playground: lossless remains the default and unknown conversion modes fail', options, () => {
@@ -169,10 +237,10 @@ test('playground: lossy TOML converts unsupported nulls/types and retains native
   assert.equal(partial.stringifiedScalars,3);
 });
 test('playground: lossy XML converts scalar children/attributes while retaining CDATA', options, () => {
-  const result = convert({from:'aeon',to:'xml',source:'"" = <p@{age=42}(true, |active|, :cdata = "<code>")>',mode:'lossy'});
+  const result = convert({from:'aeon',to:'xml',source:'<xml(<p@{age=42}(true, |active|, :cdata = "<code>")>)>',mode:'lossy'});
   assert.equal(result.output,'<p age="42">true|active|<![CDATA[<code>]]></p>\n');
   assert.equal(result.stringifiedScalars,3);
-  assert.equal(convert({from:'aeon',to:'xml',source:'"" = <p(:cdata = "a\\rb")>',mode:'lossy'}).output,'<p>a&#13;b</p>\n');
+  assert.equal(convert({from:'aeon',to:'xml',source:'<xml(<p(:cdata = "a\\rb")>)>',mode:'lossy'}).output,'<p>a&#13;b</p>\n');
   const cdataToJson = convert({from:'aeon',to:'json',source:'"" = [:cdata = "<code>"]',mode:'lossy'});
   assert.deepEqual(JSON.parse(cdataToJson.output),['<code>']);
 });
@@ -180,7 +248,7 @@ test('playground: lossy annotations become strings, but structure, metadata and 
   const result = convert({from:'aeon',to:'json',source:'n:int=42\ns:string="hello"',mode:'lossy'});
   assert.deepEqual(JSON.parse(result.output),{n:'42',s:'hello'});
   assert.equal(result.stringifiedScalars,2);
-  assert.throws(() => convert({from:'aeon',to:'json',source:'x=<p>',mode:'lossy'}), /NodeLiteral/);
+  assert.throws(() => convert({from:'aeon',to:'json',source:'<p>',mode:'lossy'}), /NodeLiteral/);
   assert.throws(() => convert({from:'aeon',to:'json',source:'x@{keep=true}=on',mode:'lossy'}), /Attribute/);
   assert.throws(() => convert({from:'json',to:'aeon',source:'{"x":1,"x":2}',mode:'lossy'}), /Duplicate/);
   assert.throws(() => convert({from:'json',to:'toml',source:'[]',mode:'lossy'}), /object root/);

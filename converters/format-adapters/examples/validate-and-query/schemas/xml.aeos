@@ -2,34 +2,34 @@
 aeos:schema = {
   rules:list<object> = [
     {
-      path:sansa = $.[""]
+      path:sansa = $.xml
       constraints:object = {
         required:boolean = true
         type:string = "NodeLiteral"
       }
     }
     {
-      selector:sansa = $.[""][0].*[0].@.sku
+      selector:sansa = $.xml[0].*.@.sku
       constraints:object = {
         type:string = "StringLiteral"
         min_length:number = 2
       }
     }
     {
-      selector:sansa = $.[""][0].*[0].@.active
+      selector:sansa = $.xml[0].*.@.active
       constraints:object = {
         type:string = "StringLiteral"
       }
     }
     {
-      path:sansa = $.[""][0][0][0][0][0][0]
+      path:sansa = $.xml[0][0][0][0]
       constraints:object = {
         required:boolean = true
         type:string = "StringLiteral"
       }
     }
     {
-      path:sansa = $.[""][0][0][0][1]
+      path:sansa = $.xml[0][0][1]
       constraints:object = {
         required:boolean = true
         type:string = "StringLiteral"

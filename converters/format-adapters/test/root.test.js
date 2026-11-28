@@ -22,11 +22,14 @@ const cases = [
 for (const [format, input, toAes, toAeon, toTelex] of cases) {
   test(`${format}: wrapper metadata and descendant paths (${input.slice(0, 20)})`, () => {
     const records = toAes(input);
-    assert.equal(records[0].path, '$.[""]');
-    assert.deepEqual(records[1], { path: '$.[""].@.source', kind: 'SymbolicLiteral', value: format });
-    assert.ok(records.every(r => r.path.startsWith('$.[""]')));
+    const root = format === 'XML' ? '$.xml' : '$.[""]';
+    assert.ok(records.some(record => record.path === root));
+    assert.deepEqual(records.find(record => record.path === root + '.@.source'),
+      { path: root + '.@.source', kind: 'SymbolicLiteral', value: format });
+    assert.ok(records.every(record => record.path.startsWith(root)
+      || (format === 'XML' && record.path.startsWith('$.["?xml"]'))));
     assert.match(toAeon(input), new RegExp(`source = \\|${format}\\|`));
-    assert.equal(toAes(input, { sourceMetadata: false }).some(r => r.path === '$.[""].@.source'), false);
+    assert.equal(toAes(input, { sourceMetadata: false }).some(r => r.path === root + '.@.source'), false);
   });
   test(`${format}: portable Telex and AEON round trip (${input.slice(0, 20)})`, { skip: !core && 'Sibling built AEON core unavailable' }, () => {
     const result = core.compileToTelex(toAeon(input, {includeHeader: false, sortKeys: false}));
@@ -53,7 +56,7 @@ test('CLIs use the new wrapper by default and expose explicit legacy selection',
     const bin = fileURLToPath(new URL(`../${fmt}-core/bin/${fmt}-aes.js`, import.meta.url));
     const result = spawnSync(process.execPath, [bin, '--records'], {input, encoding: 'utf8'});
     assert.equal(result.status, 0, result.stderr);
-    assert.equal(JSON.parse(result.stdout)[0].path, '$.[""]');
+    assert.equal(JSON.parse(result.stdout)[0].path, fmt === 'xml' ? '$.xml' : '$.[""]');
     if (['json', 'toml', 'xml'].includes(fmt)) {
       const legacy = spawnSync(process.execPath, [bin, '--native', '--records'], {input: fmt === 'json' ? '{"a":1}' : input, encoding: 'utf8'});
       assert.equal(legacy.status, 0, legacy.stderr);

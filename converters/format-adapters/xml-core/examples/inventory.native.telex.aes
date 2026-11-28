@@ -1,19 +1,24 @@
 telex.aes=1
 
-path=$.xml
+path=$.["?xml"]
 kind=NodeLiteral
+tag=?xml
 
-path=$.xml.@.version
+path=$.["?xml"].@.version
 kind=StringLiteral
 value=1.0
 
-path=$.xml.@.encoding
+path=$.["?xml"].@.encoding
 kind=StringLiteral
 value=UTF-8
 
+path=$.xml
+kind=NodeLiteral
+tag=xml
+
 path=$.xml[0]
-kind=NodeHead
-value=inventory
+kind=NodeLiteral
+tag=inventory
 
 path=$.xml[0].@.warehouse
 kind=StringLiteral
@@ -25,113 +30,92 @@ value=urn:altopelago:inventory
 
 path=$.xml[0][0]
 kind=NodeLiteral
+tag=inv:item
 
-path=$.xml[0][0][0]
-kind=NodeHead
-value=inv:item
-
-path=$.xml[0][0][0].@.sku
+path=$.xml[0][0].@.sku
 kind=StringLiteral
 value=A-100
 
-path=$.xml[0][0][0].@.qty
+path=$.xml[0][0].@.qty
 kind=StringLiteral
 value=03
 
-path=$.xml[0][0][0].@.price
+path=$.xml[0][0].@.price
 kind=StringLiteral
 value=19.50
 
-path=$.xml[0][0][0].@.discontinued
+path=$.xml[0][0].@.discontinued
 kind=StringLiteral
 value=false
 
-path=$.xml[0][0][0][0]
+path=$.xml[0][0][0]
 kind=NodeLiteral
+tag=name
 
-path=$.xml[0][0][0][0][0]
-kind=NodeHead
-value=name
-
-path=$.xml[0][0][0][0][0][0]
+path=$.xml[0][0][0][0]
 kind=StringLiteral
 value=Anchor
 
-path=$.xml[0][0][0][1]
+path=$.xml[0][0][1]
 kind=NodeLiteral
+tag=notes
 
-path=$.xml[0][0][0][1][0]
-kind=NodeHead
-value=notes
-
-path=$.xml[0][0][0][1][0][0]
+path=$.xml[0][0][1][0]
 kind=StringLiteral
 value=Heavy-duty <galvanized> steel & chain ready
 
 path=$.xml[0][1]
 kind=NodeLiteral
+tag=inv:item
 
-path=$.xml[0][1][0]
-kind=NodeHead
-value=inv:item
-
-path=$.xml[0][1][0].@.sku
+path=$.xml[0][1].@.sku
 kind=StringLiteral
 value=B-200
 
-path=$.xml[0][1][0].@.qty
+path=$.xml[0][1].@.qty
 kind=StringLiteral
 value=12
 
-path=$.xml[0][1][0].@.price
+path=$.xml[0][1].@.price
 kind=StringLiteral
 value=7.25
 
-path=$.xml[0][1][0].@.discontinued
+path=$.xml[0][1].@.discontinued
 kind=StringLiteral
 value=false
 
-path=$.xml[0][1][0][0]
+path=$.xml[0][1][0]
 kind=NodeLiteral
+tag=name
 
-path=$.xml[0][1][0][0][0]
-kind=NodeHead
-value=name
-
-path=$.xml[0][1][0][0][0][0]
+path=$.xml[0][1][0][0]
 kind=StringLiteral
 value=Buoy
 
 path=$.xml[0][2]
 kind=NodeLiteral
+tag=inv:item
 
-path=$.xml[0][2][0]
-kind=NodeHead
-value=inv:item
-
-path=$.xml[0][2][0].@.sku
+path=$.xml[0][2].@.sku
 kind=StringLiteral
 value=B-210
 
-path=$.xml[0][2][0].@.qty
+path=$.xml[0][2].@.qty
 kind=StringLiteral
 value=04
 
-path=$.xml[0][2][0].@.price
+path=$.xml[0][2].@.price
 kind=StringLiteral
 value=11.00
 
-path=$.xml[0][2][0].@.discontinued
+path=$.xml[0][2].@.discontinued
 kind=StringLiteral
 value=true
 
-path=$.xml[0][2][0][0]
+path=$.xml[0][2][0]
 kind=NodeLiteral
+tag=name
 
-path=$.xml[0][2][0][0][0]
-kind=NodeHead
-value=name
-
-path=$.xml[0][2][0][0][0][0]
+path=$.xml[0][2][0][0]
 kind=StringLiteral
 value=Buoy (large)

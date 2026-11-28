@@ -58,7 +58,7 @@ export function escapeQuotedPathKey(key) {
       out += '\\f';
     } else if (code === 0x0d) {
       out += '\\r';
-    } else if (code < 0x20 || (code >= 0x7f && code <= 0x9f)) {
+    } else if (code < 0x20) {
       out += `\\u${code.toString(16).padStart(4, '0')}`;
     } else {
       out += key[i];
@@ -98,12 +98,10 @@ export function encodeTelexPayload(value) {
       out += '\\r';
     } else if (code === 0x09) {
       out += '\\t';
-    } else if (code === 0x08) {
-      out += '\\b';
-    } else if (code === 0x0c) {
-      out += '\\f';
-    } else if (code < 0x20 || (code >= 0x7f && code <= 0x9f)) {
-      out += `\\u{${code.toString(16)}}`;
+    } else if (code === 0) {
+      out += '\\0';
+    } else if (code < 0x20 || code === 0x7f) {
+      out += `\\u{${code.toString(16).toUpperCase()}}`;
     } else {
       out += value[i];
     }
@@ -114,7 +112,7 @@ export function encodeTelexPayload(value) {
 /**
  * Formats an array of portable AES event records into a canonical `telex.aes=1` text stream.
  *
- * @param {Array<{path: string, kind: string, datatype?: string, value?: string}>} records
+ * @param {Array<{path: string, kind: string, tag?: string, datatype?: string, value?: string}>} records
  * @returns {string}
  */
 export function formatTelex(records) {
@@ -131,6 +129,9 @@ export function formatTelex(records) {
       `path=${encodeTelexPayload(rec.path)}`,
       `kind=${encodeTelexPayload(rec.kind)}`,
     ];
+    if (rec.tag !== undefined) {
+      lines.push(`tag=${encodeTelexPayload(rec.tag)}`);
+    }
     if (rec.datatype !== undefined) {
       lines.push(`datatype=${encodeTelexPayload(rec.datatype)}`);
     }

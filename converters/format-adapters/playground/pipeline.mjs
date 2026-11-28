@@ -1,5 +1,4 @@
-import { importToAes, loadRuntimes } from '../examples/validate-and-query/pipeline.mjs';
-import { encodeTelex } from '../json-core/src/index.js';
+import { encodeAdapterTelex, importToAes, loadRuntimes } from '../examples/validate-and-query/pipeline.mjs';
 
 const diagnostic = (error, code) => ({ code, message: error.message });
 export function createPipelineRunner(load = loadRuntimes) {
@@ -17,7 +16,7 @@ export function createPipelineRunner(load = loadRuntimes) {
       throw Object.assign(new Error('runQuery must be a boolean.'), { code: 'INVALID_INPUT' });
     }
     const records = importToAes(input.format, input.source);
-    const output = { records, telex: encodeTelex(records), validation: null, query: null };
+    const output = { records, telex: encodeAdapterTelex(input.format, records), validation: null, query: null };
     let runtime;
     try {
       // Failed setup can be retried after a local build without restarting.
@@ -29,6 +28,12 @@ export function createPipelineRunner(load = loadRuntimes) {
     catch (error) { return { ...output, schemaError: diagnostic(error, 'INVALID_SCHEMA') }; }
     output.validation = runtime.validate(records, schema);
     if (!output.validation.ok || !input.runQuery) return output;
+    if (input.format === 'xml') {
+      try { await runtime.requireXmlQuerySupport(); }
+      catch (error) {
+        return { ...output, query: {ok: false, errors: [diagnostic(error, 'XML_QUERY_RUNTIME_UNAVAILABLE')]} };
+      }
+    }
     // The bridge returns JSON-safe scalar/object/binding projections as well as
     // addresses and kind metadata. It does not materialize records through JSON.
     output.query = await runtime.evaluateTelexQuery({
