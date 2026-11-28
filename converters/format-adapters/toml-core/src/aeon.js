@@ -4,6 +4,7 @@
  */
 
 const BARE_KEY = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+const RESERVED_NULL_REASONS = new Set(['none', 'notSet', 'notApplicable', 'tombstone']);
 
 const CANONICAL_HEADER_LINES = [
   'aeon:header = {',
@@ -287,7 +288,7 @@ function renderScalar(entry) {
     case 'SymbolicLiteral':
       return `|${formatString(entry.value).slice(1, -1).replaceAll('\\"', '"').replaceAll('|', '\\|')}|`;
     case 'NullLiteral':
-      return entry.value === 'none' ? '!none' : `!${formatString(entry.value)}`;
+      return `!${RESERVED_NULL_REASONS.has(entry.value) ? entry.value : formatString(entry.value)}`;
     case 'RadixLiteral':
       return `%${entry.value}`;
     case 'HexLiteral':

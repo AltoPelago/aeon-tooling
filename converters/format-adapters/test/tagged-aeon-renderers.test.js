@@ -41,6 +41,14 @@ for (const [format, render] of renderers) {
     ].join('\n'));
   });
 
+  test(format + ' AEON renderer preserves the spelling of node null reasons', () => {
+    const reasons = ['none', 'notSet', 'notApplicable', 'tombstone', 'notset', 'other reason'];
+    const records = [tagged('$.node', 'node'), ...reasons.map((value, index) =>
+      record('$.node[' + index + ']', 'NullLiteral', {value}))];
+    assert.equal(render(records, {includeHeader:false}),
+      '<node(!none, !notSet, !notApplicable, !tombstone, !"notset", !"other reason")>\n');
+  });
+
   test(format + ' AEON renderer rejects invalid tagged records without coercion', () => {
     for (const [records, match] of [
       [[tagged('$.a', 'a'), record('$.a[0]', 'NodeHead', {value:'a'})], /Unsupported.*NodeHead/],

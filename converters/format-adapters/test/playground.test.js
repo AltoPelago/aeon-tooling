@@ -221,6 +221,14 @@ test('playground: intrinsic tags and path annotations survive AEON re-rendering'
     error => error.code === 'UNREPRESENTABLE' && error.path === '$.catalog');
 });
 
+test('playground: predefined and custom null reasons survive the node conversion', options, () => {
+  const source = '<catalog(!none, !notSet, !notApplicable, !tombstone, !"notset", !"custom reason")>';
+  const result = convert({from:'aeon', to:'aeon', source});
+  const replay = core.compileToTelex(result.output);
+  assert.deepEqual(replay.compile.errors, []);
+  assert.deepEqual(replay.records, core.compileToTelex(source).records);
+});
+
 test('playground: lossless remains the default and unknown conversion modes fail', options, () => {
   assert.equal(convert({from:'json',to:'aeon',source:'42'}).mode,'lossless');
   assert.throws(() => convert({from:'aeon',to:'json',source:'x=|active|'}), /cannot be represented/);
