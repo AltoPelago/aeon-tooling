@@ -17,7 +17,7 @@ local contexts = {
   function(a) return "holder@{selected:sansa = " .. a .. "} = 1\n" end,
   function(a) return "list = [ " .. a .. " ]\n" end,
   function(a) return "tuple = ( " .. a .. " )\n" end,
-  function(a) return "node = <tag( " .. a .. " )>\n" end,
+  function(a) return "<tag( " .. a .. " )>\n" end,
 }
 for _, address in ipairs(fixture.valid) do
   for _, context in ipairs(contexts) do
@@ -57,6 +57,20 @@ for _, prefix in ipairs(fixture.referencePrefixes) do
     rejected = rejected + 1
   end
 end
+for _, invalid in ipairs({'query:sansa = $&headTag("book")', 'copy = <legacy>',
+                         'items = [\\wrap\\ = <legacy>]', '<"">'}) do
+  assert(parse(invalid):has_error(), invalid)
+end
+local source = '<"?xml"@{<true>}:node>\nobj = {<member>, list = [<child>, <child()>]}'
+local root = parse(source)
+assert(not root:has_error(), root:sexpr())
+local tags = {}
+for id, node in query:iter_captures(root, source, 0, -1) do
+  if query.captures[id] == "tag" then
+    tags[#tags + 1] = vim.treesitter.get_node_text(node, source)
+  end
+end
+assert(vim.deep_equal(tags, {'"?xml"', 'true', 'member', 'child', 'child'}), vim.inspect(tags))
 for _, source in ipairs({"copy=~items[0].name", "copy=~>items[0].name", "copy=~a.@.meta"}) do
   assert(not parse(source):has_error(), source)
 end

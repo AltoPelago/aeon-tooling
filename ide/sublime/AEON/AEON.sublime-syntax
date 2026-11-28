@@ -9,7 +9,6 @@ contexts:
   main:
     - include: comments
     - include: directives
-    - include: node-literals-annotated
     - include: node-literals
     - include: attributes
     - include: typed-keys-annotated
@@ -176,6 +175,8 @@ contexts:
       scope: punctuation.definition.attribute.end.aeon
       pop: true
     - include: comments
+    - include: node-literals
+    - include: attributes
     - include: strings
     - include: literals
     - include: sansa-addresses
@@ -208,6 +209,8 @@ contexts:
         3: storage.type.parameters.aeon
       pop: true
     - include: comments
+    - include: node-literals
+    - include: attributes
     - include: strings
     - include: literals
     - include: sansa-addresses
@@ -241,37 +244,66 @@ contexts:
     - match: '='
       scope: keyword.operator.assign.aeon
 
-  node-literals-annotated:
-    - match: '(<)([A-Za-z_][A-Za-z0-9_:-]*)(@\{)'
+  node-literals:
+    - match: '(<)[ \t]*([A-Za-z_][A-Za-z0-9_-]*|"(?:\\[^\r\n]|[^"\\\r\n])+"|''(?:\\[^\r\n]|[^''\\\r\n])+'')'
       captures:
         1: punctuation.definition.node.begin.aeon
         2: entity.name.tag.aeon
-        3: punctuation.definition.attribute.begin.aeon
-      push: node-attribute-tail
+      push: node-body
 
-  node-attribute-tail:
-    - meta_scope: meta.node.literal.annotated.aeon
-    - match: '\}(?=\s*[\(\[\{])'
-      scope: punctuation.definition.attribute.end.aeon
+  node-body:
+    - meta_scope: meta.node.literal.aeon
+    - match: '>'
+      scope: punctuation.definition.node.end.aeon
       pop: true
     - include: comments
-    - include: strings
-    - include: literals
-    - include: sansa-addresses
     - include: structural-identities
-    - include: numbers
-    - match: '(?<![A-Za-z0-9_])[A-Za-z_][A-Za-z0-9_:-]*\b(?=\s*(?::[A-Za-z_][A-Za-z0-9_]*(?:<[^>\n]+>|\[[^\]\n]+\])?)?\s*=)'
-      scope: variable.other.key.aeon
-    - match: '='
-      scope: keyword.operator.assign.aeon
-    - match: ','
-      scope: punctuation.separator.comma.aeon
-
-  node-literals:
-    - match: '(<)([A-Za-z_][A-Za-z0-9_:-]*)'
+    - include: attributes
+    - match: '(:)[ \t]*([A-Za-z_][A-Za-z0-9_]*)'
       captures:
-        1: punctuation.definition.node.begin.aeon
-        2: entity.name.tag.aeon
+        1: punctuation.separator.type-annotation.aeon
+        2: storage.type.aeon
+    - include: node-type-parameters
+    - include: node-type-clarifier
+    - include: node-children-open
+    - match: '(?=\S)'
+      pop: true
+
+  node-type-parameters:
+    - match: '<'
+      push:
+        - meta_scope: storage.type.parameters.aeon
+        - match: '>'
+          pop: true
+        - include: node-type-parameters
+        - include: node-type-clarifier
+        - include: comments
+        - match: '[A-Za-z_][A-Za-z0-9_]*'
+          scope: storage.type.aeon
+
+  node-type-clarifier:
+    - match: '\['
+      push:
+        - meta_scope: storage.type.parameters.aeon
+        - match: '\]'
+          pop: true
+        - include: strings
+        - include: literals
+        - include: numbers
+        - include: comments
+
+  node-children-open:
+    - match: '\('
+      scope: punctuation.section.tuple.begin.aeon
+      push: node-children
+
+  node-children:
+    - meta_scope: meta.node.children.aeon
+    - match: '\)'
+      scope: punctuation.section.tuple.end.aeon
+      pop: true
+    - include: node-children-open
+    - include: main
 
   strings:
     - match: '"'
@@ -365,7 +397,7 @@ contexts:
       scope: punctuation.separator.type-annotation.aeon
 
   sansa-addresses:
-    - match: '(?<![~A-Za-z0-9_$?])[$?](?:\.(?:\\[A-Za-z0-9_-]+\\|[A-Za-z_][A-Za-z0-9_]*|\*{1,2}|@|\["(?:\\.|[^"\\])*"\]|<"(?:\\.|[^"\\])*">)|\[(?:0|[1-9][0-9]*)\]|&(?:key|tag|headTag)\("(?:\\[^\r\n]|[^"\\\r\n])*"\))*(&(?:key|tag|headTag)\((?:[ \t]*|"(?:\\[^\r\n]|[^"\\\r\n])*(?:"[ \t]*|\\)?)\r?$)?'
+    - match: '(?<![~A-Za-z0-9_$?])[$?](?:\.(?:\\[A-Za-z0-9_-]+\\|[A-Za-z_][A-Za-z0-9_]*|\*{1,2}|@|\["(?:\\.|[^"\\])*"\]|<"(?:\\.|[^"\\])*">)|\[(?:0|[1-9][0-9]*)\]|&(?:key|tag)\("(?:\\[^\r\n]|[^"\\\r\n])*"\))*(&(?:key|tag)\((?:[ \t]*|"(?:\\[^\r\n]|[^"\\\r\n])*(?:"[ \t]*|\\)?)\r?$)?'
       scope: meta.address.sansa.aeon
       captures:
         1: invalid.illegal.sansa.incomplete.aeon

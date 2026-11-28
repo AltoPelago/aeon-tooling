@@ -96,8 +96,8 @@ published by this preparation.
 
 ## Property literals (unreleased source candidate)
 
-The grammar recognises SANSA `&key("name")`, `&tag("book")` and
-`&headTag("book")` suffixes, including quoted payloads and chained navigation.
+The grammar recognises SANSA `&key("name")` and `&tag("book")` suffixes,
+including quoted payloads and chained navigation.
 Incomplete known arguments recover at the line boundary. These are presentation
 rules; the compiler owns validation and reference restrictions remain unchanged.
 See the [source checks and host boundaries](https://github.com/AltoPelago/aeon-tooling/blob/main/docs/property-selector-support.md).
@@ -173,3 +173,8 @@ controls are explicitly skipped. No VS Code installation is required.
 Use the explicit build-root argument documented above to select the server
 graph. This archive check does not install or activate an extension, and does
 not establish live editor/theme or marketplace qualification.
+
+Intrinsic node declarations colour the tag, identity, attributes and inline
+datatype separately when the tag starts on the opener line. Empty forms such as
+`<item>` and quoted tags such as `<"?xml">` use the same tag scope. Core
+supplies language diagnostics.

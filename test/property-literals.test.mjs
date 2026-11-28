@@ -32,7 +32,7 @@ for (const [host, relative] of [
       a => 'holder@{selected:sansa = '+a+', other = 1} = 1',
       a => 'list = [ '+a+' ]',
       a => 'tuple = ( '+a+' )',
-      a => 'node = <tag( '+a+' )>',
+      a => '<tag( '+a+' )>',
       a => 'obj = { selected:sansa = '+a+' next = 1 }',
     ];
     for (const address of fixture.valid) for (const context of contexts) {
@@ -91,6 +91,49 @@ for (const [host, relative] of [
     }
   });
 
+  test(host + ': retired head selectors keep only their address prefix', () => {
+    for (const suffix of ['&headTag("book")', '&headTag("unfinished']) {
+      const address = '$.items[0]' + suffix;
+      const {tokens} = grammar.tokenizeLine(address);
+      assert(at(tokens, 0, 'meta.address.sansa.aeon'), address);
+      assert(!at(tokens, address.indexOf('&'), 'meta.address.sansa.aeon'), address);
+      assert(!tokens.some(t => t.scopes.includes('invalid.illegal.sansa.incomplete.aeon')), address);
+    }
+  });
+
+  test(host + ': intrinsic tags, attributes, datatypes and children retain their own scopes', () => {
+    const lines = [
+      ['<"aeon:header"@{<true>, <"badge⚑"@{mark:string = "ok"}>}:node<list<string>>>',
+        [['"aeon:header"', 'entity.name.tag'], ['true', 'entity.name.tag'],
+          ['"badge⚑"', 'entity.name.tag'], ['mark', 'variable.other.key'],
+          ['node', 'storage.type'], ['list', 'storage.type']]],
+      ['owner@{<glyph>} = {<entry>, items=[<leaf>, <leaf()>]}',
+        [['glyph', 'entity.name.tag'], ['entry', 'entity.name.tag'], ['leaf', 'entity.name.tag']]],
+      ['<scene:node(',
+        [['scene', 'entity.name.tag'], ['node', 'storage.type']]],
+      ['  "leaf", <child>, (~>ref[0])',
+        [['"leaf"', 'string.quoted.double'], ['child', 'entity.name.tag'], ['~>', 'keyword.other.binding.alias']]],
+      [')>', [['>', 'punctuation.definition.node.end']]],
+      ['<unfinished', [['unfinished', 'entity.name.tag']]],
+      ['next = 1', [['next', 'variable.other.key']]],
+    ];
+    let stack;
+    for (const [line, spans] of lines) {
+      const {tokens, ruleStack} = grammar.tokenizeLine(line, stack);
+      stack = ruleStack;
+      for (const [text, scope] of spans) {
+        const start = line.indexOf(text);
+        assert(start >= 0, text);
+        for (let offset = start; offset < start + text.length; offset++) {
+          assert(at(tokens, offset, scope + '.aeon'), host + ' ' + text + ' ' + scope + ' ' + line);
+        }
+      }
+      if (line.startsWith('next')) {
+        assert(!tokens.some(t => t.scopes.includes('meta.node.literal.aeon')));
+      }
+    }
+  });
+
   test(host+': structural reference rules do not admit property expressions', () => {
     for (const entry of raw.repository.bindings.patterns.filter(p => p.name?.startsWith('meta.binding.') && p.match)) {
       const pattern = new RegExp('^(?:'+entry.match+')$');
@@ -134,6 +177,26 @@ test('Sublime: same address rule and real Oniguruma complete/recovery matches', 
       const result = scanner.findNextMatchSync('$&key("'+' '.repeat(count)+'"junk', 0);
       assert.equal(result.captureIndices[0].end, 1);
       assert.equal(result.captureIndices[1].length, 0);
+    }
+  } finally { scanner.dispose(); }
+});
+
+test('Sublime uses the same quoted and bare node tag opener as TextMate', () => {
+  const source = readFileSync(new URL('ide/sublime/AEON/AEON.sublime-syntax', root), 'utf8');
+  const rule = /  node-literals:\n    - match: '([^\n]+)'/.exec(source);
+  assert(rule, 'missing node introducer');
+  const vscode = JSON.parse(readFileSync(new URL('ide/vscode/aeon/syntaxes/aeon.tmLanguage.json', root)));
+  const opener = rule[1].replaceAll("''", "'");
+  assert.equal(opener, vscode.repository['node-literals'].patterns[0].begin);
+  const scanner = new oniguruma.OnigScanner([opener]);
+  try {
+    for (const tag of ['bare', 'on', '"?xml"', "'display name'", '"é😀"']) {
+      const line = '<' + tag + '>';
+      const {captureIndices} = scanner.findNextMatchSync(line, 0);
+      assert.equal(line.slice(captureIndices[2].start, captureIndices[2].end), tag);
+    }
+    for (const line of ['<"">', "<''>", '<`tag`>']) {
+      assert.equal(scanner.findNextMatchSync(line, 0), null);
     }
   } finally { scanner.dispose(); }
 });

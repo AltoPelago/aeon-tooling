@@ -49,9 +49,12 @@
 
 (node_literal
   "<" @punctuation.special
-  tag: (identifier) @tag
-  "(" @punctuation.bracket
-  ")" @punctuation.bracket)
+  tag: [(identifier) (quoted_tag)] @tag
+  ">" @punctuation.special)
+
+(node_literal
+  ":" @punctuation.delimiter
+  datatype: (type_name) @type)
 
 ; Containers
 

@@ -1,14 +1,15 @@
 # Property selectors: editor and host support
 
-Unreleased source candidate, 22 November 2026. Editor property-literal rules are
+Unreleased revised-v1 source candidate. Editor property-literal rules are
 implemented in this candidate; installed extensions, parsers and vendor bundles
 retain their separate qualification gate. No provider, evaluator, LSP validation
 representation or runtime dependency is admitted by an editor grammar.
 
 ## Presentation and validation are separate
 
-VS Code, Pulsar and Sublime recognise complete `&key("name")`, `&tag("book")`
-and `&headTag("book")` suffixes inside the existing lexical address subset.
+VS Code, Pulsar and Sublime recognise complete `&key("name")` and `&tag("book")`
+suffixes inside the existing lexical address subset. Revised v1 retires
+`&headTag()`.
 Quoted spaces, escaped quotes/backslashes/controls, Unicode payloads, chained
 properties, child identities and attribute navigation stay inside the address
 scope. These are lexical rules; the implementation remains authoritative for

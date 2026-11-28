@@ -21,7 +21,7 @@ introduced. Clone/pointer references remain constrained structural paths;
 | --- | --- | --- |
 | VS Code / Pulsar | `entity.name.label.identity.aeon` annotation and `meta.address.sansa.aeon` literal scopes | Existing reference regexes unchanged |
 | Sublime | Same lexical categories and theme colors | Highlighting, not source validation |
-| Tree-sitter / Neovim | Identity-bearing member, attribute, anonymous value and node-head grammar nodes; `@label` / `@string.special.path` captures | Starter grammar remains incomplete |
+| Tree-sitter / Neovim | Identity-bearing member, attribute, anonymous value and intrinsic tagged nodes; `@label` / `@string.special.path` captures | Starter grammar remains incomplete |
 | Web component / Quick Look source | `tok-identity` and `tok-sansa` spans | Quick Look picks up this source when rebuilt; no app installed |
 | Website / SANSA source playground | Same annotation/literal categories in their maintained highlighter copies | Website deployment remains held |
 | AEON language service | Compiler diagnostics, token-derived descriptive hovers, existing structural-only reference completion; trusted AEOS selector validation with original source spans | Requires a coordinated candidate server graph |
@@ -40,7 +40,7 @@ references. Existing trusted-contract hash checks and compiler/schema errors
 remain active. Identity selectors in schema `path` fields remain rejected.
 
 Property literals have a separate [editor/host support boundary](property-selector-support.md).
-The source candidate grammars cover key/tag/headTag suffixes and explicit
+The source candidate grammars cover key and tag suffixes and explicit
 incomplete-argument recovery. Regenerate and rebuild Tree-sitter before using
 those source changes; installed extensions, parsers and vendor bundles retain
 separate qualification requirements. The starter grammar remains a subset of the
