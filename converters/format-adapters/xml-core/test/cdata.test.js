@@ -5,6 +5,14 @@ import { xmlToAes, xmlToAeon, xmlToTelex } from '../src/index.js';
 const url = new URL('../../../../../aeon/implementations/typescript/packages/core/dist/index.js', import.meta.url);
 const core = existsSync(url) ? await import(url.href) : null;
 
+test('XML-to-AEON renders a wide shallow document within default limits', () => {
+  const groups = 45_000;
+  const source = '<doc>' + '<group><item/></group>'.repeat(groups) + '</doc>';
+  const aeon = xmlToAeon(source, {includeHeader: false});
+  assert.equal(aeon.split('<item>').length - 1, groups);
+  assert.match(aeon, /^<xml@\{source = \|XML\|\}\(/);
+});
+
 test('CDATA sections remain separate typed strings among ordinary text and nodes', () => {
   const records = xmlToAes('<p>before<![CDATA[<first>]]><![CDATA[]]><b/><![CDATA[\n  last\n]]>after</p>');
   const children = records.filter(r => /^\$\.xml\[0\]\[\d+\]$/u.test(r.path));

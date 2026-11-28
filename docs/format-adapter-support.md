@@ -17,8 +17,10 @@ target exporter cannot preserve become strings. Existing string payloads remain
 unchanged; other scalars use their canonical AEON value spelling without datatype
 annotations (`|active|` becomes `"|active|"`, `on` becomes `"on"`). Supported scalar
 types, exact numeric text and object/list/node structure are retained. TOML
-retains native temporal/special-float types; XML can stringify non-string element
-attributes and scalar children; ALOG retains its supported scalar families.
+retains native temporal and special-float types. XML can stringify element
+attributes and ordinary element text. Declarations, comments and processing
+instructions require their defined string fields in both modes. ALOG retains
+its supported scalar families.
 
 Diagnostics identify lossy mode and report affected paths/types. Reverse
 conversion does not reconstruct original scalar types from strings. Unsupported
@@ -242,8 +244,8 @@ until clean completion; cancellation and errors do not mean successful completio
 
 ## AEON in the playground
 
-Parsing uses a configured local AEON compiler with empty-key support, not a new
-parser in tooling. See [playground setup](../converters/format-adapters/playground/README.md).
+Parsing uses a local AEON compiler with empty-key bindings and intrinsic node
+tags. See [playground setup](../converters/format-adapters/playground/README.md).
 
 The adapter renderer covers its mapped object/list/node/scalar domain and preserves
 anonymous scalar datatype/attribute heads, including `:cdata`. It does not claim

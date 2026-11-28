@@ -124,14 +124,15 @@ function createTreeEntry(record, segment) {
     || (segment.type !== 'index' && segment.key !== record.tag))) {
     throw new Error(`Invalid intrinsic node tag at ${record.path}`);
   }
-  let dt = record.datatype ?? null;
-  if (dt && Array.isArray(record.clarifiers) && record.clarifiers.length > 0 && !dt.includes('[')) {
-    const clar = record.clarifiers.map((c) => c.value).join(', ');
-    dt = `${dt}[${clar}]`;
+  if (record.identity !== undefined) {
+    throw new Error(`The XML adapter's AEON renderer cannot preserve identity at ${record.path}`);
+  }
+  if (record.generics?.length || record.clarifiers?.length) {
+    throw new Error(`The XML adapter's AEON renderer cannot preserve datatype generics or clarifiers at ${record.path}`);
   }
   return {
     kind: record.kind,
-    datatype: dt,
+    datatype: record.datatype ?? null,
     value: record.value,
     tag: record.tag,
     attributes: new Map(),
@@ -311,7 +312,7 @@ function renderBinding(key, entry, indent, sortKeys) {
       children.sort(([a], [b]) => compareScalarKeys(a, b));
     }
     for (const [childKey, childEntry] of children) {
-      lines.push(...renderBinding(childKey, childEntry, indent + 2, sortKeys));
+      for (const line of renderBinding(childKey, childEntry, indent + 2, sortKeys)) lines.push(line);
     }
     lines.push(`${prefix}}`);
     return lines;
@@ -334,7 +335,7 @@ function renderBinding(key, entry, indent, sortKeys) {
       if (idx < elements.length - 1 && itemLines.length > 0) {
         itemLines[itemLines.length - 1] = `${itemLines[itemLines.length - 1]},`;
       }
-      lines.push(...itemLines);
+      for (const line of itemLines) lines.push(line);
     });
     lines.push(`${prefix}]`);
     return lines;
@@ -359,7 +360,7 @@ function renderValue(entry, indent, opts, sortKeys) {
       children.sort(([a], [b]) => compareScalarKeys(a, b));
     }
     for (const [childKey, childEntry] of children) {
-      lines.push(...renderBinding(childKey, childEntry, indent + 2, sortKeys));
+      for (const line of renderBinding(childKey, childEntry, indent + 2, sortKeys)) lines.push(line);
     }
     lines.push(`${prefix}}`.trimEnd());
     return lines;
@@ -382,7 +383,7 @@ function renderValue(entry, indent, opts, sortKeys) {
       if (idx < elements.length - 1 && itemLines.length > 0) {
         itemLines[itemLines.length - 1] = `${itemLines[itemLines.length - 1]},`;
       }
-      lines.push(...itemLines);
+      for (const line of itemLines) lines.push(line);
     });
     lines.push(`${prefix}]`.trimEnd());
     return lines;
@@ -424,7 +425,7 @@ function renderNodeValue(entry, indent, opts, sortKeys) {
     if (idx < children.length - 1 && itemLines.length > 0) {
       itemLines[itemLines.length - 1] = `${itemLines[itemLines.length - 1]},`;
     }
-    lines.push(...itemLines);
+    for (const line of itemLines) lines.push(line);
   });
   lines.push(`${prefix})>`.trimEnd());
   return lines;
@@ -453,7 +454,7 @@ export function aesToAeon(records, options = {}) {
   }
 
   for (const [key, entry] of entries) {
-    lines.push(...renderBinding(key, entry, 0, sortKeys));
+    for (const line of renderBinding(key, entry, 0, sortKeys)) lines.push(line);
   }
 
   return `${lines.join('\n')}\n`;

@@ -53,4 +53,4 @@ Run `npm run playground:adapters` from the tooling repository root to open the
 [local playground](http://127.0.0.1:4317). Choose input/output formats or swap
 directions, including AEON to JSON. Lossless mode is the default; lossy mode
 turns unsupported scalar values into strings and reports the affected paths. See [setup and conversion limits](playground/README.md)
-for the required empty-key-capable local compiler and reverse export profiles.
+for the local compiler requirements and reverse export profiles.

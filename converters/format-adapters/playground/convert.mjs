@@ -26,9 +26,14 @@ export async function loadCompiler() {
     const core = await import(url.href);
     const check = core.compileToTelex('"" = 1');
     if (check.compile.errors.length) throw new Error('Compiler lacks empty-key support');
+    const nodes = core.compileToTelex('<xml(<element>)>');
+    if (nodes.compile.errors.length || !nodes.records.some(record =>
+      record.path === '$.xml[0]' && record.kind === 'NodeLiteral' && record.tag === 'element')) {
+      throw new Error('Compiler lacks tagged-node support');
+    }
     return core;
   } catch (error) {
-    throw new Error(`An AEON compiler with empty-key support is required. Build the sibling aeon TypeScript packages, or set AEON_CORE_MODULE to its built core/dist/index.js. ${error.message}`);
+    throw new Error(`An AEON compiler with empty-key and tagged-node support is required. Build the sibling aeon TypeScript packages or set AEON_CORE_MODULE to its built core/dist/index.js. ${error.message}`);
   }
 }
 

@@ -215,21 +215,11 @@ function isXmlWhitespace(code) {
   return code === 0x20 || code === 0x09 || code === 0x0a || code === 0x0d;
 }
 
-function isAllXmlWhitespace(str) {
-  for (let i = 0; i < str.length; i += 1) {
-    if (!isXmlWhitespace(str.charCodeAt(i))) return false;
-  }
-  return true;
-}
-
 /**
- * Trims leading and trailing newline+indentation runs on inter-element mixed
- * text while preserving inline spaces (e.g. `<p>Hello <b>world</b>!</p>`).
- *
- * @param {string} text
- * @returns {string}
+ * Finds the retained range of a text run between elements. A run can contain
+ * several text children when comments and instructions occur within it.
  */
-function normalizeInterElementMixedText(text) {
+function interElementTextRange(text) {
   let start = 0;
   let end = text.length;
 
@@ -240,6 +230,7 @@ function normalizeInterElementMixedText(text) {
     if (text.charCodeAt(firstNonWs) === 0x0a) leadingHasNewline = true;
     firstNonWs += 1;
   }
+  if (firstNonWs === end) return [0, 0];
   if (leadingHasNewline) {
     start = firstNonWs;
   }
@@ -255,7 +246,46 @@ function normalizeInterElementMixedText(text) {
     end = lastNonWs;
   }
 
-  return text.slice(start, end);
+  return [start, end];
+}
+
+function normalizeElementChildren(element, preserveWhitespace) {
+  if (!element.hasElementChildren || preserveWhitespace) return element.children;
+
+  const children = [];
+  let runStart = 0;
+  function appendRun(end) {
+    if (runStart === end) return;
+    const run = element.children.slice(runStart, end);
+    const textItems = run.filter(item => item.type === 'text');
+    if (textItems.some(item => item.hasCdata || item.hasNonWsCharRef)) {
+      for (const item of run) children.push(item);
+      return;
+    }
+
+    const [start, finish] = interElementTextRange(textItems.map(item => item.value).join(''));
+    let offset = 0;
+    for (const item of run) {
+      if (item.type !== 'text') {
+        children.push(item);
+        continue;
+      }
+      const from = Math.max(0, start - offset);
+      const to = Math.min(item.value.length, finish - offset);
+      if (from < to) children.push({ ...item, value: item.value.slice(from, to) });
+      offset += item.value.length;
+    }
+  }
+
+  for (const [index, item] of element.children.entries()) {
+    if (item.type === 'element' || item.isCdata) {
+      appendRun(index);
+      children.push(item);
+      runStart = index + 1;
+    }
+  }
+  appendRun(element.children.length);
+  return children;
 }
 
 function countCodepoints(str) {
@@ -438,14 +468,12 @@ export function xmlToAes(input, options = {}) {
   }
 
   function advanceRawCodeUnits(units) {
-    for (let k = 0; k < units && pos < len; k += 1) {
+    const end = Math.min(pos + units, len);
+    while (pos < end) {
       const ch = input.charCodeAt(pos);
       if (ch === 0x0d) {
         pos += 1;
-        if (k + 1 < units && pos < len && input.charCodeAt(pos) === 0x0a) {
-          pos += 1;
-          k += 1;
-        }
+        if (pos < end && input.charCodeAt(pos) === 0x0a) pos += 1;
         line += 1;
         column = 1;
       } else if (ch === 0x0a) {
@@ -453,7 +481,7 @@ export function xmlToAes(input, options = {}) {
         line += 1;
         column = 1;
       } else {
-        pos += 1;
+        pos += ch >= 0xd800 && ch <= 0xdbff && pos + 1 < end ? 2 : 1;
         column += 1;
       }
     }
@@ -782,7 +810,6 @@ export function xmlToAes(input, options = {}) {
     let currentTextHasNonWsCharRef = false;
     let currentTextLoc = currentLoc();
     let hasElementChildren = false;
-    let structuralChildren = 0;
 
     function flushText() {
       if (currentText.length > 0 || currentTextHasCdata) {
@@ -828,15 +855,13 @@ export function xmlToAes(input, options = {}) {
       }
 
       if (startsWith('<!--') || startsWith('<?')) {
-        checkChildCount(++structuralChildren, parentPath, currentLoc());
         flushText();
         const element = readMiscNode(parentPath, valueDepth + 1);
-        rawItems.push({ type: 'element', element });
+        rawItems.push({ type: 'markup', element });
         continue;
       }
 
       if (startsWith('<![CDATA[')) {
-        if (preserveCdata) checkChildCount(++structuralChildren, parentPath, currentLoc());
         if (preserveCdata) flushText();
         if (currentText.length === 0 && !currentTextHasCdata) {
           currentTextLoc = currentLoc();
@@ -871,7 +896,6 @@ export function xmlToAes(input, options = {}) {
       }
 
       if (input[pos] === '<') {
-        checkChildCount(++structuralChildren, parentPath, currentLoc());
         flushText();
         hasElementChildren = true;
         const childElem = parseElement(parentPath, valueDepth + 1);
@@ -1075,16 +1099,7 @@ export function xmlToAes(input, options = {}) {
       emitAttribute(attr.name, attr.value, nodePath, nodePathDepth + 1, attr.loc);
     }
 
-    const normalizedChildren = [];
-    for (const item of elem.children) {
-      if (item.type === 'element' || !elem.hasElementChildren || localPreserveWs
-        || item.hasCdata || item.hasNonWsCharRef) {
-        normalizedChildren.push(item);
-      } else if (!isAllXmlWhitespace(item.value)) {
-        const cleaned = normalizeInterElementMixedText(item.value);
-        if (cleaned.length > 0) normalizedChildren.push({ ...item, value: cleaned });
-      }
-    }
+    const normalizedChildren = normalizeElementChildren(elem, localPreserveWs);
     checkChildCount(normalizedChildren.length, nodePath, elem.loc);
 
     for (let i = 0; i < normalizedChildren.length; i += 1) {

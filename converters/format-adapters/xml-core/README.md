@@ -47,6 +47,7 @@ normalization. `preserveWhitespace: true` preserves inter-element whitespace
 and `xml:space` controls it within the document. `preserveCdata: false` or CLI
 `--semantic-cdata` coalesces CDATA with adjacent character data. The adapter
 reports invalid syntax and resource limits with source locations and paths.
+Source offsets count UTF-16 code units. Columns count Unicode scalar values.
 
 ## Import and export
 

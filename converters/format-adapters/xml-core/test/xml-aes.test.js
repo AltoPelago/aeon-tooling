@@ -143,6 +143,32 @@ test('handles inline mixed content and xml:space="preserve"', () => {
   ]);
 });
 
+test('comments and instructions keep spaces inside a mixed-text run', () => {
+  for (const [markup, tag] of [['<!--note-->', '!--'], ['<?note data?>', '?note']]) {
+    for (const separator of [' ', '\n  ']) {
+      const records = xmlToAes(`<p>Hello${markup}${separator}<b>world</b>!</p>`);
+      const tail = separator === ' ' ? [' ', 'b', '!'] : ['b', '!'];
+      assert.deepEqual(records.filter(({path}) => /^\$\.xml\[0\]\[\d+\]$/u.test(path))
+        .map(record => record.tag ?? record.value), ['Hello', tag, ...tail]);
+    }
+    const records = xmlToAes(`<p>A\n ${markup}B<b/></p>`);
+    assert.equal(records.find(record => record.path === '$.xml[0][0]').value, 'A\n ');
+  }
+});
+
+test('diagnostic columns count one scalar for supplementary PI, comment and CDATA data', () => {
+  for (const [source, expectedPath] of [
+    ['<?note 😀?><a x="1" x="2"/>', '$.xml[1]'],
+    ['<!--😀--><a x="1" x="2"/>', '$.xml[1]'],
+    ['<p><![CDATA[😀]]><a x="1" x="2"/></p>', '$.xml[0]'],
+  ]) {
+    const offset = source.lastIndexOf('x=');
+    const column = Array.from(source.slice(0, offset)).length + 1;
+    assert.throws(() => xmlToAes(source),
+      {code: 'XML_DUPLICATE_ATTRIBUTE', path: expectedPath, line: 1, column, offset});
+  }
+});
+
 test('supports self-closing tags and empty elements with 0 children', () => {
   const xml = `<root><br/><empty></empty></root>`;
   assert.deepEqual(xmlToAes(xml), [
@@ -205,6 +231,8 @@ test('counts wrapper and markup nodes against XML document limits', () => {
   assert.equal(xmlToAes('<?p?><a/>', {limits: {maxNodeChildren: 2, maxValueNestingDepth: 2}}).length, 3);
   assert.throws(() => xmlToAes('<?p?><a/><?p?>', {limits: {maxNodeChildren: 2}}),
     { code: 'XML_LIMIT_EXCEEDED', counter: 'max_node_children', path: '$.xml', observed: 3 });
+  assert.throws(() => xmlToAes('<r><b><l/><l/></b></r>', {limits: {maxNodeChildren: 1}}),
+    { code: 'XML_LIMIT_EXCEEDED', counter: 'max_node_children', path: '$.xml[0][0]', observed: 2 });
   assert.throws(() => xmlToAes('<p><?p?></p>', {limits: {maxValueNestingDepth: 2}}),
     { code: 'XML_LIMIT_EXCEEDED', counter: 'max_value_nesting_depth', path: '$.xml[0]' });
   assert.throws(() => xmlToAes('<p><?long data?></p>', {rootName: 'doc', limits: {maxKeySegmentCodepoints: 4}}),

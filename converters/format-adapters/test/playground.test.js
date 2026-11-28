@@ -1,12 +1,32 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { createConverter, loadCompiler } from '../playground/convert.mjs';
 import { createPlaygroundServer } from '../playground/server.mjs';
 import { sampleFor } from '../playground/public/examples.js';
 let core;
 try {core = await loadCompiler();} catch {}
 const convert = core ? createConverter(core) : null;
-const options = {skip: !core && 'Built empty-key-capable AEON compiler unavailable'};
+const options = {skip: !core && 'Built tagged-node AEON compiler unavailable'};
+
+test('playground: startup rejects an empty-key-only compiler before XML conversion', t => {
+  const temp = mkdtempSync(join(tmpdir(), 'aeon-old-core-'));
+  t.after(() => rmSync(temp, {recursive: true, force: true}));
+  const compiler = join(temp, 'core.mjs');
+  writeFileSync(compiler, `export function compileToTelex(source) {
+    return { compile: { errors: source.startsWith('<') ? [{code:'SYNTAX_ERROR'}] : [] }, records: [] };
+  }`);
+  const converter = new URL('../playground/convert.mjs', import.meta.url).href;
+  const result = spawnSync(process.execPath, ['--input-type=module', '-e',
+    `import { loadCompiler } from ${JSON.stringify(converter)}; await loadCompiler();`],
+    {env: {...process.env, AEON_CORE_MODULE: compiler}, encoding: 'utf8'});
+  assert.ifError(result.error);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Compiler lacks tagged-node support/);
+});
 
 test('playground: YAML tags survive annotated AEON routes and cannot silently vanish in other exports', options, () => {
   const source = 'created: !CustomDate 2026-11-16\nlist: [!custom-tag "001", !app/value true]';
@@ -170,6 +190,15 @@ test('playground: authored backticks preserve CDATA, while prose is not a CDATA 
   assert.throws(() => convert({from:'aeon',to:'xml',source:'<xml(<p(:cdata = "a\\rb")>)>'}), /carriage returns/);
   assert.throws(() => convert({from:'aeon',to:'xml',source:'<xml(<p(:prose = >`hello`)>)>'}), /datatypes/);
   assert.throws(() => convert({from:'aeon',to:'xml',source:'<xml(<p(@{x=1}:cdata = "hello")>)>'}), /CDATA markers/);
+});
+
+test('playground: re-rendering XML-shaped AEON rejects unsupported identities and datatype clarifiers', options, () => {
+  assert.throws(() => convert({from:'aeon', to:'aeon', source:'<xml(<element\\item\\>)>'}),
+    /renderer cannot preserve identity/);
+  for (const value of ['"two words"', '"16"']) {
+    assert.throws(() => convert({from:'aeon', to:'aeon', source:`<xml:custom[${value}](<element>)>`}),
+      /renderer cannot preserve datatype generics or clarifiers/);
+  }
 });
 
 test('playground: lossless remains the default and unknown conversion modes fail', options, () => {
