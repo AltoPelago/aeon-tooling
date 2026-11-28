@@ -481,7 +481,7 @@
               "name": "punctuation.definition.type-parameters.begin.aeon"
             }
           },
-          "end": "(>)|(?=[<=(){}])|(?=^[ \\t]*(?:[A-Za-z_][A-Za-z0-9_-]*|\"(?:\\\\[^\\r\\n]|[^\"\\\\\\r\\n])*\"|'(?:\\\\[^\\r\\n]|[^'\\\\\\r\\n])*')[ \\t]*(?::|=|@\\{))",
+          "end": "(>)|(?=[=(){}])|(?=<)(?!<(?=[ \\t]*[A-Za-z_][A-Za-z0-9_]*[ \\t]*(?:[<,\\[]|>[ \\t]*[>,\\[])))|(?=^[ \\t]*(?:[A-Za-z_][A-Za-z0-9_-]*|\"(?:\\\\[^\\r\\n]|[^\"\\\\\\r\\n])*\"|'(?:\\\\[^\\r\\n]|[^'\\\\\\r\\n])*')[ \\t]*(?::|=|@\\{))",
           "endCaptures": {
             "1": {
               "name": "punctuation.definition.type-parameters.end.aeon"
@@ -490,6 +490,9 @@
           "patterns": [
             {
               "include": "#comments"
+            },
+            {
+              "include": "#continued-type-arguments"
             },
             {
               "include": "#type-arguments"
@@ -514,6 +517,9 @@
           }
         },
         {
+          "include": "#continued-type-arguments"
+        },
+        {
           "include": "#node-type-clarifier"
         }
       ]
@@ -531,7 +537,7 @@
               "name": "punctuation.definition.type-parameters.begin.aeon"
             }
           },
-          "end": "(>)|(?=[<=(){}])|(?=^[ \\t]*(?:[A-Za-z_][A-Za-z0-9_-]*|\"(?:\\\\[^\\r\\n]|[^\"\\\\\\r\\n])*\"|'(?:\\\\[^\\r\\n]|[^'\\\\\\r\\n])*')[ \\t]*(?::|=|@\\{))",
+          "end": "(>)|(?=[=(){}])|(?=<)(?!<(?=[ \\t]*[A-Za-z_][A-Za-z0-9_]*[ \\t]*(?:[<,\\[]|>[ \\t]*[>,\\[])))|(?=^[ \\t]*(?:[A-Za-z_][A-Za-z0-9_-]*|\"(?:\\\\[^\\r\\n]|[^\"\\\\\\r\\n])*\"|'(?:\\\\[^\\r\\n]|[^'\\\\\\r\\n])*')[ \\t]*(?::|=|@\\{))",
           "endCaptures": {
             "1": {
               "name": "punctuation.definition.type-parameters.end.aeon"
@@ -540,6 +546,9 @@
           "patterns": [
             {
               "include": "#comments"
+            },
+            {
+              "include": "#continued-type-arguments"
             },
             {
               "include": "#type-arguments"
@@ -573,7 +582,7 @@
               "name": "punctuation.definition.type-parameters.begin.aeon"
             }
           },
-          "end": "(>)|(?=[<=(){}])|(?=^[ \\t]*(?:[A-Za-z_][A-Za-z0-9_-]*|\"(?:\\\\[^\\r\\n]|[^\"\\\\\\r\\n])*\"|'(?:\\\\[^\\r\\n]|[^'\\\\\\r\\n])*')[ \\t]*(?::|=|@\\{))",
+          "end": "(>)|(?=[=(){}])|(?=<)(?!<(?=[ \\t]*[A-Za-z_][A-Za-z0-9_]*[ \\t]*(?:[<,\\[]|>[ \\t]*[>,\\[])))|(?=^[ \\t]*(?:[A-Za-z_][A-Za-z0-9_-]*|\"(?:\\\\[^\\r\\n]|[^\"\\\\\\r\\n])*\"|'(?:\\\\[^\\r\\n]|[^'\\\\\\r\\n])*')[ \\t]*(?::|=|@\\{))",
           "endCaptures": {
             "1": {
               "name": "punctuation.definition.type-parameters.end.aeon"
@@ -582,6 +591,45 @@
           "patterns": [
             {
               "include": "#comments"
+            },
+            {
+              "include": "#continued-type-arguments"
+            },
+            {
+              "include": "#type-arguments"
+            },
+            {
+              "include": "#node-type-clarifier"
+            },
+            {
+              "include": "#node-type-name"
+            }
+          ]
+        }
+      ]
+    },
+    "continued-type-arguments": {
+      "patterns": [
+        {
+          "name": "storage.type.parameters.aeon",
+          "begin": "<(?=[ \\t]*[A-Za-z_][A-Za-z0-9_]*[ \\t]*(?:[<,\\[]|>[ \\t]*[>,\\[]))",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.type-parameters.begin.aeon"
+            }
+          },
+          "end": "(>)|(?=[=(){}])|(?=<)(?!<(?=[ \\t]*[A-Za-z_][A-Za-z0-9_]*[ \\t]*(?:[<,\\[]|>[ \\t]*[>,\\[])))|(?=^[ \\t]*(?:[A-Za-z_][A-Za-z0-9_-]*|\"(?:\\\\[^\\r\\n]|[^\"\\\\\\r\\n])*\"|'(?:\\\\[^\\r\\n]|[^'\\\\\\r\\n])*')[ \\t]*(?::|=|@\\{))",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.definition.type-parameters.end.aeon"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#comments"
+            },
+            {
+              "include": "#continued-type-arguments"
             },
             {
               "include": "#type-arguments"
@@ -609,7 +657,7 @@
         {
           "name": "storage.type.parameters.aeon",
           "begin": "\\[",
-          "end": "\\]",
+          "end": "(\\])|(?=[=(){}<>])|(?=^[ \\t]*(?:[A-Za-z_][A-Za-z0-9_-]*|\"(?:\\\\[^\\r\\n]|[^\"\\\\\\r\\n])*\"|'(?:\\\\[^\\r\\n]|[^'\\\\\\r\\n])*')[ \\t]*(?::|=|@\\{))",
           "patterns": [
             {
               "include": "#strings"

@@ -117,6 +117,14 @@ for (const [host, relative] of [
           ['boolean', 'storage.type'], ['"lit"', 'string.quoted.double']]],
       ['<item@{field:list<list<string>> = [["a"]]}:node>',
         [['field', 'variable.other.key'], ['list', 'storage.type'], ['string', 'storage.type']]],
+      ['<split:node<list',
+        [['list', 'storage.type']]],
+      ['  <string>>(["child"])>',
+        [['string', 'storage.type'], ['["child"]', 'meta.node.children']]],
+      ['<outer:node',
+        [['node', 'storage.type']]],
+      ['  <string>>',
+        [['string', 'storage.type']]],
       ['<broken:node<list',
         [['list', 'storage.type']]],
       ['<recovered>',
@@ -131,6 +139,10 @@ for (const [host, relative] of [
       ['<also_broken:node<list',
         [['list', 'storage.type']]],
       ['next = 1', [['next', 'variable.other.key']]],
+      ['<unclosed@{field:list<string[',
+        [['field', 'variable.other.key'], ['string', 'storage.type']]],
+      ['}>', [['>', 'punctuation.definition.node.end']]],
+      ['next = 2', [['next', 'variable.other.key']]],
     ];
     let stack;
     for (const [line, spans] of lines) {

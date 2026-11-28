@@ -228,7 +228,7 @@ contexts:
       scope: punctuation.separator.comma.aeon
 
   typed-keys:
-    - match: '((?:[A-Za-z_][A-Za-z0-9_:-]*|"(?:\\.|[^"])*"|''(?:\\.|[^''])*''))\s*(:)\s*([A-Za-z_][A-Za-z0-9_]*)(?:\s*(<[^>\n]+>|\[[^\]\n]+\]))?(?=\s*=)'
+    - match: '((?:[A-Za-z_][A-Za-z0-9_-]*|"(?:\\[^\r\n]|[^"\\\r\n])*"|''(?:\\[^\r\n]|[^''\\\r\n])*''))\s*(:)\s*([A-Za-z_][A-Za-z0-9_]*)(?:\s*(<[^>\r\n]+>|\[[^\]\r\n]+\]))?(?=\s*=)'
       captures:
         1: variable.other.key.aeon
         2: punctuation.separator.type-annotation.aeon
@@ -273,6 +273,7 @@ contexts:
       captures:
         1: punctuation.separator.type-annotation.aeon
         2: storage.type.aeon
+    - include: continued-type-arguments
     - include: node-type-clarifier
     - include: node-children-open
     - match: '(?=\S)'
@@ -289,10 +290,11 @@ contexts:
 
   type-arguments:
     - meta_scope: storage.type.parameters.aeon
-    - match: '(>)|(?=[<=(){}])|(?=^[ \t]*(?:[A-Za-z_][A-Za-z0-9_-]*|"(?:\\[^\r\n]|[^"\\\r\n])*"|''(?:\\[^\r\n]|[^''\\\r\n])*'')[ \t]*(?::|=|@\{))'
+    - match: '(>)|(?=[=(){}])|(?=<)(?!<(?=[ \t]*[A-Za-z_][A-Za-z0-9_]*[ \t]*(?:[<,\[]|>[ \t]*[>,\[])))|(?=^[ \t]*(?:[A-Za-z_][A-Za-z0-9_-]*|"(?:\\[^\r\n]|[^"\\\r\n])*"|''(?:\\[^\r\n]|[^''\\\r\n])*'')[ \t]*(?::|=|@\{))'
       captures:
         1: punctuation.definition.type-parameters.end.aeon
       pop: true
+    - include: continued-type-arguments
     - include: node-type-clarifier
     - include: comments
     - match: '([A-Za-z_][A-Za-z0-9_]*)[ \t]*(<)'
@@ -303,11 +305,16 @@ contexts:
     - match: '[A-Za-z_][A-Za-z0-9_]*'
       scope: storage.type.aeon
 
+  continued-type-arguments:
+    - match: '<(?=[ \t]*[A-Za-z_][A-Za-z0-9_]*[ \t]*(?:[<,\[]|>[ \t]*[>,\[]))'
+      scope: punctuation.definition.type-parameters.begin.aeon
+      push: type-arguments
+
   node-type-clarifier:
     - match: '\['
       push:
         - meta_scope: storage.type.parameters.aeon
-        - match: '\]'
+        - match: '(\])|(?=[=(){}<>])|(?=^[ \t]*(?:[A-Za-z_][A-Za-z0-9_-]*|"(?:\\[^\r\n]|[^"\\\r\n])*"|''(?:\\[^\r\n]|[^''\\\r\n])*'')[ \t]*(?::|=|@\{))'
           pop: true
         - include: strings
         - include: literals
