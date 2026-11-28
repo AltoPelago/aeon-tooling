@@ -49,36 +49,34 @@ title@{role="headline", audience="executive"} = "Quarterly operations report"
 annotated node literal
 ==================
 
-world =
-  <scene (
-    <entity@{id="player_1", type="hero"} (
-      {hp:int32 = 100}
-    )>
+<scene (
+  <entity@{id="player_1", type="hero"} (
+    {hp:int32 = 100}
   )>
+)>
 
 
 ---
 
 (source_file
-  (binding
-    key: (identifier)
-    value: (node_literal
+  (node_literal
+    tag: (identifier)
+    (node_literal
       tag: (identifier)
-      (node_literal
-        tag: (identifier)
-        attributes: (attribute_map
-          (attribute_assignment
-            key: (attribute_key)
-            value: (string))
-          (attribute_assignment
-            key: (attribute_key)
-            value: (string)))
-        (object
-          (binding
-            key: (typed_key
-              name: (identifier)
-              datatype: (type_name))
-            value: (number)))))))
+      attributes: (attribute_map
+        (attribute_assignment
+          key: (attribute_key)
+          value: (string))
+        (attribute_assignment
+          key: (attribute_key)
+          value: (string)))
+      (object
+        (binding
+          key: (typed_key
+            name: (identifier)
+            datatype: (type_name))
+          value: (number))))))
+
 
 ==================
 references with attribute-space paths

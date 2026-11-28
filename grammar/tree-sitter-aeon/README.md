@@ -129,9 +129,19 @@ adds occurrence identity nodes and a lexical SANSA literal subset. Generate the
 parser before use; this starter grammar remains incomplete and does not replace
 AEON/SANSA validation. Reference paths do not admit identity selectors.
 
+## Intrinsic node declarations
+
+A node declares its own tag in named scopes and occupies one value slot in an
+indexed scope. The grammar accepts bare and quoted tags, empty declarations,
+identity, attributes and inline datatypes. Parentheses on a node hold its
+children. A tuple child has its own pair of parentheses. Legacy keyed wrappers
+such as `page = <page(...)>` produce a syntax error in the generated parser.
+Core remains the authority for separators, duplicate bindings and datatype
+admission.
+
 ## Property literals (unreleased source candidate)
 
-Complete `&key`, `&tag` and `&headTag` forms remain `sansa_address` nodes and use
+Complete `&key` and `&tag` forms produce `sansa_address` nodes and use
 the existing Neovim path capture. Unfinished known arguments use a separate
 `incomplete_sansa_address` recovery node with an `@error` capture; subsequent
 bindings remain parseable. This recovery node is editor syntax, not compiler

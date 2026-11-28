@@ -6,14 +6,12 @@ function commaSep1(rule) {
 function sansaPrefix() {
   return seq(/[$?]/, repeat(choice(
     /\.(?:\\[A-Za-z0-9_-]+\\|[A-Za-z_][A-Za-z0-9_]*|\*{1,2}|@|\["(?:\\.|[^"\\])*"\]|<"(?:\\.|[^"\\])*">)|\[(?:0|[1-9][0-9]*)\]/,
-    /&(?:key|tag|headTag)\("(?:\\[^\r\n]|[^"\\\r\n])*"\)/
+    /&(?:key|tag)\("(?:\\[^\r\n]|[^"\\\r\n])*"\)/
   )));
 }
 
 module.exports = grammar({
   name: 'aeon',
-
-  conflicts: ($) => [[$.quoted_key, $.string], [$._key_name, $._node_child]],
 
   extras: ($) => [
     /[ \t\r\n]+/
@@ -29,7 +27,9 @@ module.exports = grammar({
   rules: {
     source_file: ($) => repeat($._item),
 
-    _item: ($) => choice(
+    _item: ($) => choice($._comment, $.node_literal, $.binding),
+
+    _comment: ($) => choice(
       $.line_doc_comment,
       $.line_annotation_comment,
       $.line_hint_comment,
@@ -37,15 +37,13 @@ module.exports = grammar({
       $.block_doc_comment,
       $.block_annotation_comment,
       $.block_hint_comment,
-      $.block_comment,
-      $.node_literal,
-      $.binding
+      $.block_comment
     ),
 
     binding: ($) => seq(
       field('key', $._key),
       '=',
-      field('value', $._value)
+      field('value', $._assigned_value)
     ),
 
     _key: ($) => choice(
@@ -70,7 +68,7 @@ module.exports = grammar({
       optional(field('attributes', $.attribute_map)),
       optional(seq(':', field('datatype', $.type_name), optional($.type_parameters))),
       '=',
-      field('value', $._value)
+      field('value', $._assigned_value)
     ),
 
     typed_key: ($) => seq(
@@ -104,37 +102,42 @@ module.exports = grammar({
     attribute_map: ($) => seq(
       '@',
       '{',
-      optional(commaSep1($.attribute_assignment)),
+      repeat(seq(choice($._comment, $.attribute_assignment, $.node_literal), optional(','))),
       '}'
     ),
 
     attribute_assignment: ($) => seq(
-      field('key', $.attribute_key),
+      field('key', choice($.attribute_key, $.quoted_key)),
       optional(field('identity', $.structural_identity)),
+      optional(field('attributes', $.attribute_map)),
       optional(seq(':', field('datatype', $.type_name), optional($.type_parameters))),
       '=',
-      field('value', $._value)
+      field('value', $._assigned_value)
     ),
 
-    attribute_key: () => token(/[A-Za-z_][A-Za-z0-9_:-]*/),
+    attribute_key: () => token(/[A-Za-z_][A-Za-z0-9_-]*/),
 
     type_name: () => token(/[A-Za-z_][A-Za-z0-9_]*/),
 
     type_parameters: ($) => choice(
-      seq('<', commaSep1($.type_parameter), '>'),
-      repeat1(seq('[', $.type_parameter, ']'))
+      seq('<', commaSep1($.type_parameter), '>', optional($._clarifier)),
+      $._clarifier
     ),
 
-    type_parameter: ($) => choice(
-      $.type_name,
+    type_parameter: ($) => seq($.type_name, optional($.type_parameters)),
+
+    _clarifier: ($) => seq('[', commaSep1(choice(
+      $.quoted_key,
+      $.float,
       $.number,
-      $.identifier,
-      $.quoted_key
-    ),
+      $.boolean,
+      $.switch_literal,
+      $.identifier
+    )), ']'),
 
     node_literal: ($) => seq(
       '<',
-      field('tag', $.identifier),
+      field('tag', choice($.identifier, $.quoted_tag)),
       optional(field('identity', $.structural_identity)),
       optional(field('attributes', $.attribute_map)),
       optional(seq(
@@ -142,61 +145,26 @@ module.exports = grammar({
         field('datatype', $.type_name),
         optional(field('parameters', $.type_parameters))
       )),
-      '(',
-      optional(seq(
-        $._node_child,
-        repeat(seq(optional(','), $._node_child)),
-        optional(',')
-      )),
-      ')',
+      optional(seq('(', optional($._positions), ')')),
       '>'
     ),
 
-    _node_child: ($) => choice(
-      $._item,
-      $.object,
-      $.list,
-      $.tuple,
-      $.clone_reference,
-      $.pointer_reference,
-      $.string,
-      $.template_string,
-      $.hex_literal,
-      $.radix_literal,
-      $.sansa_address,
-      $.incomplete_sansa_address,
-      $.identified_value,
-      $.encoding_literal,
-      $.separator_literal,
-      $.zoned_datetime,
-      $.utc_datetime,
-      $.local_datetime,
-      $.time_literal,
-      $.date_literal,
-      $.float,
-      $.number,
-      $.boolean,
-      $.switch_literal,
-      $.identifier
-    ),
+    quoted_tag: () => token(choice(
+      seq('"', repeat1(choice(/[^"\\\r\n]+/, /\\./)), '"'),
+      seq("'", repeat1(choice(/[^'\\\r\n]+/, /\\./)), "'")
+    )),
 
     object: ($) => seq(
       '{',
-      repeat($._item),
+      repeat(seq($._item, optional(','))),
       '}'
     ),
 
-    list: ($) => seq(
-      '[',
-      repeat($._value),
-      ']'
-    ),
+    list: ($) => seq('[', optional($._positions), ']'),
 
-    tuple: ($) => seq(
-      '(',
-      repeat($._value),
-      ')'
-    ),
+    tuple: ($) => seq('(', optional($._positions), ')'),
+
+    _positions: ($) => repeat1(seq(choice($._value, $._comment), optional(','))),
 
     clone_reference: ($) => seq(
       '~',
@@ -212,16 +180,17 @@ module.exports = grammar({
 
     // Recovery is explicit, not a claim that an unfinished address is valid.
     incomplete_sansa_address: () => token(seq(sansaPrefix(),
-      /&(?:key|tag|headTag)\((?:"(?:\\[^\r\n]|[^"\\\r\n])*(?:\\|")?)?/
+      /&(?:key|tag)\((?:"(?:\\[^\r\n]|[^"\\\r\n])*(?:\\|")?)?/
     )),
 
     reference_path: () => token(/\$?(?:\.?[A-Za-z_][A-Za-z0-9_]*|\[\d+\]|\["(?:\\.|[^"])*"\]|\.@(?:\.[A-Za-z_][A-Za-z0-9_]*|\.\["(?:\\.|[^"])*"\]))+/),
 
-    _value: ($) => choice(
+    _value: ($) => choice($.node_literal, $.identified_value, $._assigned_value),
+
+    _assigned_value: ($) => choice(
       $.object,
       $.list,
       $.tuple,
-      $.node_literal,
       $.clone_reference,
       $.pointer_reference,
       $.string,
@@ -230,7 +199,6 @@ module.exports = grammar({
       $.radix_literal,
       $.sansa_address,
       $.incomplete_sansa_address,
-      $.identified_value,
       $.encoding_literal,
       $.separator_literal,
       $.zoned_datetime,

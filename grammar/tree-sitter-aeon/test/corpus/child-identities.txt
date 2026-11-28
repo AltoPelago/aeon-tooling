@@ -44,14 +44,14 @@ pointer = ~> items[0].name
   (binding (identifier) (pointer_reference (reference_path))))
 
 ==================
-identified node head and typed identified binding
+identified node and typed identified binding
 ==================
 
 reading\r1\:number = 42
-head = <thing\h1\ ( "hello" )>
+<thing\h1\ ( "hello" )>
 
 ---
 
 (source_file
   (binding (identified_key (identifier) (structural_identity) (type_name)) (number))
-  (binding (identifier) (node_literal (identifier) (structural_identity) (string))))
+  (node_literal (identifier) (structural_identity) (string)))

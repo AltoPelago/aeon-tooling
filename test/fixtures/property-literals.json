@@ -2,7 +2,7 @@
   "valid": [
     "$&key(\"\")",
     "$.inventory.n&tag(\"book\")",
-    "$.inventory.n.*&headTag(\"book\")",
+    "$.inventory.n.*&tag(\"book\")",
     "$&key(\"é😀\")",
     "$&key(\"\\u{1F600}\")",
     "$&key(\"quote\\\"slash\\\\\")",
@@ -11,8 +11,8 @@
     "$&tag(\"a b\")",
     "$&key(\"x// /* */ @{} [ ] , = : < > ( )\")",
     "$&key(\"select from where and or\")",
-    "$.inventory&key(\"inventory\")&tag(\"catalog\")[0].*&headTag(\"book\")",
-    "$.inventory.n&tag(\"book\").*&headTag(\"book\").*",
+    "$.inventory&key(\"inventory\")&tag(\"catalog\")[0].*&tag(\"book\")",
+    "$.inventory.n&tag(\"book\").*&tag(\"book\").*",
     "$.reading.@.*&key(\"unit\")",
     "$.reading&key(\"reading\").@.unit&key(\"unit\")",
     "$.\\group1\\.@.\\unit1\\&key(\"unit\")",
@@ -23,17 +23,18 @@
     "$.[\"x\\\"y\"]&key(\"x\\\"y\")",
     "?&key(\"row\")",
     "?.items[0]&tag(\"book\")",
-    "$&headTag(\"book\").@.*&key(\"lang\")"
+    "$&tag(\"book\").@.*&key(\"lang\")"
   ],
   "unfinished": [
     "$&key(",
     "$&tag(\"unfinished",
-    "$.n&headTag(\"escape\\",
+    "$.n&tag(\"escape\\",
     "$&key(\"closed quote\"",
     "$&key(\"x\")&tag(\"next"
   ],
   "invalid": [
     "$&unknown(\"x\")",
+    "$&headTag(\"book\")",
     "$&key(\"x\",\"y\")",
     "$&key(x)",
     "$&key( \"x\")",

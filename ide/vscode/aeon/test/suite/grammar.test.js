@@ -320,16 +320,11 @@ suite('AEON grammar regex tests', () => {
     assert(re.test('title@{role="headline"} ='));
   });
 
-  test('attribute map opener captures immediate first typed attribute', () => {
-    const entry = repo['attributes'];
-    assert(entry, 'attributes repo entry not found');
-    const pat = entry.patterns && entry.patterns[0] && entry.patterns[0].begin;
-    assert(pat, 'attribute map begin pattern not found');
-    const match = '@{href:string = "#document-shape", primary:boolean = true}'.match(makeRegExp(pat));
-    assert(match, 'tight first attribute should match opener');
-    assert.equal(match[3], 'href');
-    assert.equal(match[4], ':');
-    assert.equal(match[5], 'string');
+  test('attribute map enters the shared attribute body at the opening brace', () => {
+    const rule = repo.attributes.patterns[0];
+    assert.equal(makeRegExp(rule.begin).exec('@{href:string = "#"')[0], '@{');
+    assert.equal(rule.beginCaptures['0'].name, 'punctuation.definition.attribute.begin.aeon');
+    assert(rule.patterns.some(p => p.include === '#attribute-body'));
   });
 
   test('attribute body separates typed attribute key and datatype', () => {
@@ -351,31 +346,16 @@ suite('AEON grammar regex tests', () => {
     assert(stringsEntry.patterns.some(p => p.name === 'string.quoted.template.aeon'));
   });
 
-  test('node introducer syntax is recognized', () => {
-    const pat = findMatchByName(repo, 'entity.name.tag.aeon');
-    assert(pat, 'node tag pattern not found');
-    assert(makeRegExp(pat).test('<div('));
-  });
-
-  test('node closing delimiter is recognized', () => {
-    const punctuationEntry = repo['punctuation'];
-    assert(punctuationEntry, 'punctuation repo entry not found');
-    const pat = punctuationEntry.patterns.find(p => p.name === 'punctuation.definition.node.end.aeon');
-    assert(pat && pat.match, 'node end punctuation pattern not found');
-    assert(makeRegExp(pat.match).test('>'));
-  });
-
-  test('annotated node introducer syntax is recognized', () => {
-    const entry = repo['node-literals-annotated'];
-    assert(entry, 'node-literals-annotated repo entry not found');
-    const pat = entry.patterns && entry.patterns[0] && entry.patterns[0].begin;
-    assert(pat, 'annotated node begin pattern not found');
-    assert(makeRegExp(pat).test('<entity@{id="player_1"} ('));
-    const match = '<action@{href:string = "#document-shape"}>'.match(makeRegExp(pat));
-    assert(match, 'tight annotated node first attribute should match');
-    assert.equal(match[5], 'href');
-    assert.equal(match[6], ':');
-    assert.equal(match[7], 'string');
+  test('node introducer captures the bare or quoted tag and scopes its metadata', () => {
+    const rule = repo['node-literals'].patterns[0];
+    const opener = makeRegExp(rule.begin);
+    assert.equal(opener.exec('<div(')[2], 'div');
+    assert.equal(opener.exec('<"?xml"@{id="declaration"}>')[2], '"?xml"');
+    assert.equal(rule.beginCaptures['2'].name, 'entity.name.tag.aeon');
+    assert.equal(rule.endCaptures['0'].name, 'punctuation.definition.node.end.aeon');
+    for (const include of ['#attributes', '#node-datatype', '#node-children']) {
+      assert(rule.patterns.some(p => p.include === include));
+    }
   });
 
   test('quoted keys match', () => {
@@ -410,7 +390,8 @@ suite('AEON grammar regex tests', () => {
   test('nested editor regions include identity metadata and SANSA literal rules', () => {
     const visit = node => {
       if (!node || typeof node !== 'object') return;
-      if (Array.isArray(node.patterns) && node.patterns.some(p => p.include === '#strings')) {
+      if (node.name !== 'storage.type.parameters.aeon' &&
+          Array.isArray(node.patterns) && node.patterns.some(p => p.include === '#strings')) {
         assert(node.patterns.some(p => p.include === '#structural-identities'));
         assert(node.patterns.some(p => p.include === '#sansa-addresses'));
       }

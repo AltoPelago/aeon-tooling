@@ -1,0 +1,52 @@
+==================
+intrinsic tags, nested metadata, and indexed children
+==================
+
+<"aeon:header">
+host@{<glyph@{size:int32 = 1}>} = {<inside>}
+<plain:node<list<string>>>
+<"more tags"\card\(
+  <row>,
+  <row()>,
+  (<nested>, <nested>)
+)>
+items = [<leaf>, <leaf>]
+first:node = ~items[0]
+next:node = ~>items[1]
+
+---
+
+(source_file
+  (node_literal tag: (quoted_tag))
+  (binding
+    key: (annotated_key
+      name: (identifier)
+      attributes: (attribute_map
+        (node_literal
+          tag: (identifier)
+          attributes: (attribute_map
+            (attribute_assignment
+              key: (attribute_key)
+              datatype: (type_name)
+              value: (number))))))
+    value: (object (node_literal tag: (identifier))))
+  (node_literal
+    tag: (identifier)
+    datatype: (type_name)
+    parameters: (type_parameters
+      (type_parameter (type_name) (type_parameters (type_parameter (type_name))))))
+  (node_literal
+    tag: (quoted_tag)
+    identity: (structural_identity)
+    (node_literal tag: (identifier))
+    (node_literal tag: (identifier))
+    (tuple (node_literal tag: (identifier)) (node_literal tag: (identifier))))
+  (binding
+    key: (identifier)
+    value: (list (node_literal tag: (identifier)) (node_literal tag: (identifier))))
+  (binding
+    key: (typed_key name: (identifier) datatype: (type_name))
+    value: (clone_reference path: (reference_path)))
+  (binding
+    key: (typed_key name: (identifier) datatype: (type_name))
+    value: (pointer_reference path: (reference_path))))
