@@ -255,18 +255,23 @@ test('playground: retains annotation paths on named fields in attribute nodes', 
     assert.deepEqual(sidecars(replay), sidecars(parsed));
   }
 
-  const interior = 'owner@{<cat({a="A", b=' + one + ' ' + two + ' ' + three + ' "B" '
-    + '/@ yaml.tag("!four") @/, c="C"})>} = true';
-  const input = core.compileToTelex(interior);
-  assert.deepEqual(input.compile.errors, []);
-  assert.deepEqual(input.compile.annotations.map(comment => comment.target.path),
-    ['$.owner.@.cat[0].a', ...Array(3).fill('$.owner.@.cat[0].b')]);
-  const output = convert({from:'aeon', to:'aeon', source:interior}).output;
-  const replay = core.compileToTelex(output);
-  assert.deepEqual(replay.compile.errors, []);
-  assert.deepEqual(replay.records, input.records);
-  assert.deepEqual(replay.compile.annotations.map(({raw,target}) => [raw,target]),
-    input.compile.annotations.map(({raw,target}) => [raw,target]));
+  const interior = lastTag => 'owner@{<cat({a="A", b=' + one + ' ' + two + ' ' + three
+    + ' "B" /@ yaml.tag("!' + lastTag + '") @/, c="C"})>} = true';
+  const formatted = ['four', 'four' + '🍎'.repeat(256)].map(lastTag => {
+    const source = interior(lastTag);
+    const input = core.compileToTelex(source);
+    assert.deepEqual(input.compile.errors, []);
+    assert.deepEqual(input.compile.annotations.map(comment => comment.target.path),
+      ['$.owner.@.cat[0].a', ...Array(3).fill('$.owner.@.cat[0].b')]);
+    const output = convert({from:'aeon', to:'aeon', source}).output;
+    const replay = core.compileToTelex(output);
+    assert.deepEqual(replay.compile.errors, []);
+    assert.deepEqual(replay.records, input.records);
+    assert.deepEqual(replay.compile.annotations.map(({raw,target}) => [raw,target]),
+      input.compile.annotations.map(({raw,target}) => [raw,target]));
+    return output;
+  });
+  assert.equal(formatted[1].replace('🍎'.repeat(256), ''), formatted[0]);
 });
 
 test('playground: predefined and custom null reasons survive the node conversion', options, () => {

@@ -364,9 +364,10 @@ function appendAnnotatedAttributeMember(chunks, entry, index, count) {
   } else if (annotations.length === 2) {
     chunks.push(annotations[0], ' ', value, ' ', annotations[1]);
   } else {
-    // Core associates comments with the nearest descendant span. Give the
-    // following binding enough separation to keep this whole group on value.
-    chunks.push(value, ' ', entry.semanticComment, ' '.repeat(entry.semanticComment.length));
+    // Core measures the distance back to the value from each comment's start.
+    // The last comment starts farthest from the value. Its width adds no distance.
+    const padding = entry.semanticComment.length - annotations.at(-1).length + 1;
+    chunks.push(value, ' ', entry.semanticComment, ' '.repeat(padding));
   }
 }
 
