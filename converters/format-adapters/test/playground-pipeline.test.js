@@ -29,10 +29,11 @@ test('pipeline: XML equality distinguishes element tags through Telex', options,
     evaluateTelexQuery() { assert.fail('The incompatible runtime must not evaluate the XML query'); },
   }));
   const stopped = await incompatible(input);
-  assert.equal(stopped.runtimeError.code, 'XML_QUERY_RUNTIME_UNAVAILABLE');
+  assert.equal(stopped.runtimeError, undefined);
   assert.equal(stopped.validation.ok, true);
   assert.ok(stopped.records.some(record => record.tag === 'other'));
-  assert.equal(stopped.query, null);
+  assert.equal(stopped.query.ok, false);
+  assert.equal(stopped.query.errors[0].code, 'XML_QUERY_RUNTIME_UNAVAILABLE');
   const validationOnly = await incompatible({ ...input, runQuery: false });
   assert.equal(validationOnly.runtimeError, undefined);
   assert.equal(validationOnly.validation.ok, true);

@@ -30,7 +30,9 @@ export function createPipelineRunner(load = loadRuntimes) {
     if (!output.validation.ok || !input.runQuery) return output;
     if (input.format === 'xml') {
       try { await runtime.requireXmlQuerySupport(); }
-      catch (error) { return { ...output, runtimeError: diagnostic(error, 'XML_QUERY_RUNTIME_UNAVAILABLE') }; }
+      catch (error) {
+        return { ...output, query: {ok: false, errors: [diagnostic(error, 'XML_QUERY_RUNTIME_UNAVAILABLE')]} };
+      }
     }
     // The bridge returns JSON-safe scalar/object/binding projections as well as
     // addresses and kind metadata. It does not materialize records through JSON.
