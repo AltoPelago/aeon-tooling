@@ -156,7 +156,7 @@ function createTreeEntry(record, segment) {
 }
 
 /** Reconstructs the document body from preorder portable AES records. */
-function buildTreeFromAes(records) {
+function buildTreeFromAes(records, comments) {
   const root = {bindings: new Map()};
   const identities = new Set();
 
@@ -167,12 +167,21 @@ function buildTreeFromAes(records) {
     }
 
     let parent = root;
+    let withinAttribute = false;
+    let insideStructuredAttribute = false;
     for (let i = 0; i < segments.length - 1; i += 1) {
       const segment = segments[i];
       parent = segment.type === 'member' ? parent.bindings?.get(segment.key)
         : segment.type === 'attr' ? parent.attributes?.get(segment.key)
           : parent.elements?.[segment.index];
       if (!parent) throw new Error(`Missing parent for path: ${record.path}`);
+      if (segment.type === 'attr') withinAttribute = true;
+      if (parent.kind === 'NodeLiteral') {
+        insideStructuredAttribute = false;
+      } else if (segment.type === 'attr' || (withinAttribute && segment.type === 'index'
+        && (parent.identity !== undefined || parent.datatype || parent.attributes.size))) {
+        insideStructuredAttribute = true;
+      }
     }
 
     const last = segments.at(-1);
@@ -181,6 +190,16 @@ function buildTreeFromAes(records) {
       if (identities.has(entry.identity)) throw new Error(`Duplicate structural identity at ${record.path}`);
       identities.add(entry.identity);
     }
+    const annotations = comments?.get(record.path);
+    // Attribute-node bindables can anchor direct scalar children. Ordinary
+    // nested members and descendants of a typed value lack that same anchor.
+    if (annotations && withinAttribute && last.type !== 'attr'
+      && (insideStructuredAttribute || last.type === 'member')) {
+      throw new Error(`Cannot preserve an annotation on a nested attribute value at ${record.path}`);
+    }
+    entry.semanticComment = annotations?.join(' ');
+    entry.needsAnnotationHead = entry.semanticComment && last.type === 'index'
+      && (parent.kind === 'NodeLiteral' || last.index > 0);
     if (last.type === 'index') {
       if (!parent.elements || last.index !== parent.elements.length) {
         throw new Error(`Invalid or out-of-order child at ${record.path}`);
@@ -267,6 +286,11 @@ function isSimpleEntry(entry) {
 }
 
 function renderScalar(entry) {
+  const text = renderScalarValue(entry);
+  return entry.semanticComment ? `${entry.semanticComment} ${text}` : text;
+}
+
+function renderScalarValue(entry) {
   switch (entry.kind) {
     case 'StringLiteral':
       return formatString(entry.value);
@@ -298,14 +322,70 @@ function renderScalar(entry) {
   }
 }
 
-function renderAttributes(attrMap, sortKeys) {
-  if (!attrMap || attrMap.size === 0) return '';
-  const entries = Array.from(attrMap.entries());
-  if (sortKeys) {
-    entries.sort(([a], [b]) => compareScalarKeys(a, b));
+function appendMetadata(chunks, entry, sortKeys) {
+  if (entry.identity !== undefined) chunks.push(`\\${entry.identity}\\`);
+  if (entry.attributes.size > 0) {
+    chunks.push('@{');
+    appendCompactBindings(chunks, entry.attributes, sortKeys);
+    chunks.push('}');
   }
-  const parts = entries.map(([key, entry]) => renderBinding(key, entry, 0, sortKeys).join('\n'));
-  return `@{${parts.join(', ')}}`;
+  if (entry.datatype) chunks.push(formatDatatype(entry.datatype));
+}
+
+function appendCompactBindings(chunks, bindings, sortKeys) {
+  const entries = Array.from(bindings.entries());
+  if (sortKeys) entries.sort(([a], [b]) => compareScalarKeys(a, b));
+  entries.forEach(([key, entry], index) => {
+    if (index > 0) chunks.push(', ');
+    if (entry.kind !== 'NodeLiteral') {
+      chunks.push(formatKey(key, Boolean(entry.datatype), entry.attributes.size > 0));
+      appendMetadata(chunks, entry, sortKeys);
+      chunks.push(' = ');
+    }
+    appendCompactValue(chunks, entry, sortKeys, true);
+  });
+}
+
+function appendCompactItems(chunks, entries, sortKeys) {
+  entries.forEach((entry, index) => {
+    if (index > 0) chunks.push(', ');
+    appendCompactValue(chunks, entry, sortKeys, false);
+  });
+}
+
+// Keep each nested attribute in the same output buffer so outer attributes
+// do not join strings that already contain the full inner subtree.
+function appendCompactValue(chunks, entry, sortKeys, named) {
+  if (entry.kind === 'NodeLiteral') {
+    chunks.push('<', formatKey(entry.tag, Boolean(entry.datatype), entry.attributes.size > 0));
+    appendMetadata(chunks, entry, sortKeys);
+    if (entry.elements.length > 0) {
+      chunks.push('(');
+      appendCompactItems(chunks, entry.elements, sortKeys);
+      chunks.push(')');
+    }
+    chunks.push('>');
+    return;
+  }
+
+  if (!named) {
+    const start = chunks.length;
+    appendMetadata(chunks, entry, sortKeys);
+    if (chunks.length === start && entry.needsAnnotationHead) chunks.push('@{}');
+    if (chunks.length > start) chunks.push(' = ');
+  }
+
+  if (entry.kind === 'ObjectNode') {
+    chunks.push('{');
+    appendCompactBindings(chunks, entry.bindings, sortKeys);
+    chunks.push('}');
+  } else if (entry.kind === 'ListNode') {
+    chunks.push('[');
+    appendCompactItems(chunks, entry.elements, sortKeys);
+    chunks.push(']');
+  } else {
+    chunks.push(renderScalar(entry));
+  }
 }
 
 function renderBinding(key, entry, indent, sortKeys) {
@@ -358,15 +438,18 @@ function renderBinding(key, entry, indent, sortKeys) {
 }
 
 function renderMetadata(entry, sortKeys) {
-  const identity = entry.identity === undefined ? '' : `\\${entry.identity}\\`;
-  return identity + renderAttributes(entry.attributes, sortKeys) + formatDatatype(entry.datatype);
+  const chunks = [];
+  appendMetadata(chunks, entry, sortKeys);
+  return chunks.join('');
 }
 
 function renderValue(entry, indent, opts, sortKeys) {
   if (entry.kind === 'NodeLiteral') return renderNodeValue(entry, indent, opts, sortKeys);
 
   const prefix = ' '.repeat(indent);
-  const metadata = renderMetadata(entry, sortKeys);
+  // An explicit head binds comments to this value rather than an adjacent
+  // child or the parent node. An empty attribute head adds no portable records.
+  const metadata = renderMetadata(entry, sortKeys) || (entry.needsAnnotationHead ? '@{}' : '');
   const head = metadata ? `${metadata} = ` : '';
 
   if (entry.kind === 'ObjectNode') {
@@ -441,16 +524,20 @@ function renderNodeValue(entry, indent, opts, sortKeys) {
 }
 
 /**
- * Renders portable AES records into canonical AEON source text.
+ * Renders valid preorder portable AES body records as AEON source.
  *
- * @param {Array<{path: string, kind: string, tag?: string, identity?: string, datatype?: string, value?: string}>} records Valid preorder portable body records.
- * @param {{ includeHeader?: boolean, sortKeys?: boolean }} [options]
- * @returns {string}
+ * @param {Array<{path: string, kind: string, tag?: string, identity?: string, datatype?: string, value?: string}>} records
+ * @param {{includeHeader?: boolean, sortKeys?: boolean}} [options]
  */
 export function aesToAeon(records, options = {}) {
+  return renderAesDocument(records, options);
+}
+
+// JSON, YAML and ALOG share this renderer and pass validated block annotations.
+export function renderAesDocument(records, options, comments) {
   const includeHeader = options.includeHeader !== false;
   const sortKeys = options.sortKeys !== false;
-  const rootBindings = buildTreeFromAes(records);
+  const rootBindings = buildTreeFromAes(records, comments);
 
   const lines = [];
   if (includeHeader) {

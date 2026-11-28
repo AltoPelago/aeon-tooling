@@ -231,6 +231,15 @@ test('playground: intrinsic tags and path annotations survive AEON re-rendering'
     error => error.code === 'UNREPRESENTABLE' && error.path === '$.catalog');
 });
 
+test('playground: refuses annotations on a named field inside an attribute node', options, () => {
+  const source = 'owner@{<cat({a="A", b="B" /@ yaml.tag("!one") @/ /@ yaml.tag("!two") @/})>} = true';
+  const parsed = core.compileToTelex(source);
+  assert.deepEqual(parsed.compile.errors, []);
+  assert.deepEqual(parsed.compile.annotations.map(comment => comment.target.path),
+    ['$.owner.@.cat[0].b', '$.owner.@.cat[0].b']);
+  assert.throws(() => convert({from:'aeon', to:'aeon', source}), /Cannot preserve an annotation on a nested attribute value/);
+});
+
 test('playground: predefined and custom null reasons survive the node conversion', options, () => {
   const source = '<catalog(!none, !notSet, !notApplicable, !tombstone, !"notset", !"custom reason")>';
   const result = convert({from:'aeon', to:'aeon', source});

@@ -254,6 +254,11 @@ attributes and supported datatypes render on the declaration. Anonymous
 datatype and attribute heads are preserved, including `:cdata` on a string
 child.
 
+Path-targeted string annotations render on supported scalar bindings and indexed
+children. The renderer reports an error for annotation paths in attribute
+structures that Core cannot reliably reconstruct, including named fields below
+an attribute node and children of a typed container in an attribute scope.
+
 Generic datatypes, tuples and references require the full AEON canonicalizer.
 Each external exporter enforces its own representability restrictions above.
 Plain JSON, YAML and TOML output have no mapping for AEON nodes.

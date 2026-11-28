@@ -69,13 +69,22 @@ for (const [format, render] of renderers) {
 }
 
 test('JSON AEON renderer denies sidecars when Core cannot bind the nested attribute path', () => {
-  const path = '$.root.@.items[1]';
-  const records = [
-    record('$.root', 'BooleanLiteral', {value:'true'}),
-    record('$.root.@.items', 'ListNode'),
-    tagged('$.root.@.items[0]', 'section'),
-    record(path, 'StringLiteral', {value:'Title'}),
-  ];
-  const annotations = [{kind:'annotation', form:'block', raw:'/@ yaml.tag("!title") @/', target:{kind:'path', path}}];
-  assert.throws(() => renderJson(records, {annotations}), /Cannot preserve an annotation on a nested attribute value/);
+  for (const records of [
+    [
+      record('$.root', 'BooleanLiteral', {value:'true'}),
+      record('$.root.@.items', 'ListNode'),
+      tagged('$.root.@.items[0]', 'section'),
+      record('$.root.@.items[1]', 'StringLiteral', {value:'Title'}),
+    ],
+    [
+      record('$.root', 'BooleanLiteral', {value:'true'}),
+      tagged('$.root.@.section', 'section'),
+      record('$.root.@.section[0]', 'ListNode', {datatype:'list'}),
+      record('$.root.@.section[0][0]', 'StringLiteral', {value:'Title'}),
+    ],
+  ]) {
+    const path = records.at(-1).path;
+    const annotations = [{kind:'annotation', form:'block', raw:'/@ yaml.tag("!title") @/', target:{kind:'path', path}}];
+    assert.throws(() => renderJson(records, {annotations}), /Cannot preserve an annotation on a nested attribute value/);
+  }
 });
