@@ -12,8 +12,7 @@
  * 4. No invented semantics: Element and attribute names never trigger hidden
  *    AEON header/directive semantics (`aeon:mode`, etc.).
  * 5. No structural reinterpretation: Repeated child elements and mixed content
- *    remain ordered indexed children under `NodeHead` (`[0][0]`, `[0][1]`, ...)
- *    rather than being coerced into synthetic arrays or flattened objects.
+ *    remain ordered indexed children under their tagged node.
  */
 
 import { Buffer } from 'node:buffer';
@@ -41,6 +40,10 @@ export const XML_ADAPTER_PRINCIPLES = Object.freeze({
   noInventedSemantics: true,
   noStructuralReinterpretation: true,
 });
+
+export const XML_DOCUMENT_TAG = 'xml';
+export const XML_DECLARATION_TAG = '?xml';
+export const XML_COMMENT_TAG = '!--';
 
 const PREDEFINED_ENTITIES = new Map([
   ['lt', '<'],
@@ -200,6 +203,14 @@ function hasValidColonPlacement(name) {
   return true;
 }
 
+export function isXmlName(name, qualified = true) {
+  if (typeof name !== 'string' || !isNameStartChar(name.codePointAt(0))) return false;
+  for (const ch of name) {
+    if (!isNameChar(ch.codePointAt(0))) return false;
+  }
+  return !qualified || hasValidColonPlacement(name);
+}
+
 function isXmlWhitespace(code) {
   return code === 0x20 || code === 0x09 || code === 0x0a || code === 0x0d;
 }
@@ -273,7 +284,7 @@ function countCodepoints(str) {
  *   includeDeclarationMetadata?: boolean,
  *   limits?: Partial<typeof DEFAULT_XML_AES_LIMITS>
  * }} [options]
- * @returns {Array<{path: string, kind: string, datatype?: string, value?: string}>}
+ * @returns {Array<{path: string, kind: string, tag?: string, datatype?: string, value?: string}>}
  */
 export function xmlToAes(input, options = {}) {
   if (typeof input !== 'string') {
@@ -282,9 +293,9 @@ export function xmlToAes(input, options = {}) {
 
   const limits = normalizeXmlAesLimits(options);
   if (options.mapping !== undefined && !['native', 'root'].includes(options.mapping)) throw new TypeError('Unknown mapping mode');
-  const rootName = options.rootName ?? (options.mapping === 'native' ? 'xml' : '');
-  if (typeof rootName !== 'string') {
-    throw new XmlAesError('Root binding name must be a non-empty string', {
+  const rootName = options.rootName ?? XML_DOCUMENT_TAG;
+  if (typeof rootName !== 'string' || !rootName || rootName === XML_DECLARATION_TAG || !rootName.isWellFormed()) {
+    throw new XmlAesError('The XML document wrapper requires a non-empty Unicode tag distinct from ?xml', {
       code: 'XML_INVALID_ROOT_NAME',
       offset: 0,
       line: 1,
@@ -461,7 +472,7 @@ export function xmlToAes(input, options = {}) {
     return input.startsWith(prefix, pos);
   }
 
-  function readXmlName(path, contextLabel = 'XML name') {
+  function readXmlName(path, contextLabel = 'XML name', qualified = true) {
     const startLoc = currentLoc();
     const startPos = pos;
     if (pos >= len) {
@@ -478,7 +489,7 @@ export function xmlToAes(input, options = {}) {
       advance(1);
     }
     const name = input.slice(startPos, pos);
-    if (!hasValidColonPlacement(name)) {
+    if (qualified && !hasValidColonPlacement(name)) {
       fail(
         `Invalid qualified ${contextLabel} '${name}'`,
         'XML_INVALID_QNAME',
@@ -539,7 +550,7 @@ export function xmlToAes(input, options = {}) {
     );
   }
 
-  function readAttributeValue(path) {
+  function readAttributeValue(path, allowReferences = true) {
     const quoteLoc = currentLoc();
     if (pos >= len || (input[pos] !== '"' && input[pos] !== "'")) {
       fail('Expected quoted attribute value', 'XML_EXPECTED_ATTRIBUTE_VALUE', path, quoteLoc);
@@ -557,6 +568,9 @@ export function xmlToAes(input, options = {}) {
         fail("Unescaped '<' is not allowed inside attribute values", 'XML_UNEXPECTED_LT_IN_ATTRIBUTE', path);
       }
       if (ch === '&') {
+        if (!allowReferences) {
+          fail('XML declaration values must be literal', 'XML_INVALID_DECLARATION', path);
+        }
         out += readEntityOrCharRef(path);
         continue;
       }
@@ -578,19 +592,41 @@ export function xmlToAes(input, options = {}) {
     fail('Unterminated attribute value', 'XML_UNTERMINATED_ATTRIBUTE', path, quoteLoc);
   }
 
-  function skipComment(path) {
+  function readMiscNode(path, valueDepth) {
     const startLoc = currentLoc();
-    // Assumes startsWith('<!--')
-    advanceRawCodeUnits(4);
-    const closeIdx = input.indexOf('-->', pos);
+    checkNodeDepth(valueDepth, path, startLoc);
+    const comment = startsWith('<!--');
+    let tagName = XML_COMMENT_TAG;
+    if (comment) {
+      advanceRawCodeUnits(4);
+    } else {
+      advanceRawCodeUnits(2);
+      const target = readXmlName(path, 'processing instruction target', false);
+      if (target.toLowerCase() === 'xml') {
+        fail('The XML declaration is reserved for the start of the document',
+          target === 'xml' ? 'XML_MISPLACED_DECLARATION' : 'XML_RESERVED_PI_TARGET', path, startLoc);
+      }
+      if (!skipWhitespace() && !startsWith('?>')) {
+        fail('Expected whitespace or ?> after the processing instruction target',
+          'XML_INVALID_PI', path);
+      }
+      tagName = '?' + target;
+    }
+    const closer = comment ? '-->' : '?>';
+    const closeIdx = input.indexOf(closer, pos);
     if (closeIdx === -1) {
-      fail('Unterminated XML comment', 'XML_UNTERMINATED_COMMENT', path, startLoc);
+      fail(comment ? 'Unterminated XML comment' : 'Unterminated processing instruction',
+        comment ? 'XML_UNTERMINATED_COMMENT' : 'XML_UNTERMINATED_PI', path, startLoc);
     }
     const body = input.slice(pos, closeIdx);
-    if (body.includes('--') || body.endsWith('-')) {
+    if (comment && (body.includes('--') || body.endsWith('-'))) {
       fail("XML comment must not contain '--' or end with '--->'", 'XML_INVALID_COMMENT', path, startLoc);
     }
-    advanceRawCodeUnits(body.length + 3);
+    const children = comment || body.length ? [{
+      type: 'text', value: body.replace(/\r\n?/gu, '\n'), loc: currentLoc(),
+    }] : [];
+    advanceRawCodeUnits(body.length + closer.length);
+    return { tagName, attributes: [], children, hasElementChildren: false, loc: startLoc };
   }
 
   function parseXmlDeclaration(rootPath) {
@@ -609,7 +645,10 @@ export function xmlToAes(input, options = {}) {
       const hadWs = skipWhitespace();
       if (startsWith('?>')) {
         advanceRawCodeUnits(2);
-        break;
+        if (!declAttrs.has('version')) {
+          fail("XML declaration requires a 'version' attribute", 'XML_INVALID_DECLARATION', rootPath, startLoc);
+        }
+        return declAttrs;
       }
       if (!hadWs) {
         fail('Expected whitespace between XML declaration attributes', 'XML_INVALID_DECLARATION', rootPath);
@@ -637,7 +676,7 @@ export function xmlToAes(input, options = {}) {
       advanceRawCodeUnits(1);
       skipWhitespace();
       const valLoc = currentLoc();
-      const val = readAttributeValue(rootPath);
+      const val = readAttributeValue(rootPath, false);
 
       if (name === 'version') {
         if (val !== '1.0') {
@@ -655,11 +694,23 @@ export function xmlToAes(input, options = {}) {
       declAttrs.set(name, { value: val, loc: attrLoc });
     }
 
-    if (!declAttrs.has('version')) {
-      fail("XML declaration requires a 'version' attribute", 'XML_INVALID_DECLARATION', rootPath, startLoc);
-    }
+    fail('Unterminated XML declaration', 'XML_INVALID_DECLARATION', rootPath, startLoc);
+  }
 
-    return declAttrs;
+  function checkNodeDepth(valueDepth, path, loc) {
+    if (valueDepth > limits.maxValueNestingDepth) {
+      fail(
+        `XML node nesting exceeds max_value_nesting_depth (${valueDepth} > ${limits.maxValueNestingDepth})`,
+        'XML_LIMIT_EXCEEDED',
+        path,
+        loc,
+        {
+          counter: 'max_value_nesting_depth',
+          observed: valueDepth,
+          limit: limits.maxValueNestingDepth,
+        },
+      );
+    }
   }
 
   /**
@@ -668,19 +719,7 @@ export function xmlToAes(input, options = {}) {
    */
   function parseElement(parentPath, valueDepth) {
     const startLoc = currentLoc();
-    if (valueDepth > limits.maxValueNestingDepth) {
-      fail(
-        `XML element nesting exceeds max_value_nesting_depth (${valueDepth} > ${limits.maxValueNestingDepth})`,
-        'XML_LIMIT_EXCEEDED',
-        parentPath,
-        startLoc,
-        {
-          counter: 'max_value_nesting_depth',
-          observed: valueDepth,
-          limit: limits.maxValueNestingDepth,
-        },
-      );
-    }
+    checkNodeDepth(valueDepth, parentPath, startLoc);
 
     // Assumes input[pos] === '<'
     advanceRawCodeUnits(1);
@@ -743,6 +782,7 @@ export function xmlToAes(input, options = {}) {
     let currentTextHasNonWsCharRef = false;
     let currentTextLoc = currentLoc();
     let hasElementChildren = false;
+    let structuralChildren = 0;
 
     function flushText() {
       if (currentText.length > 0 || currentTextHasCdata) {
@@ -787,12 +827,16 @@ export function xmlToAes(input, options = {}) {
         };
       }
 
-      if (startsWith('<!--')) {
-        skipComment(parentPath);
+      if (startsWith('<!--') || startsWith('<?')) {
+        checkChildCount(++structuralChildren, parentPath, currentLoc());
+        flushText();
+        const element = readMiscNode(parentPath, valueDepth + 1);
+        rawItems.push({ type: 'element', element });
         continue;
       }
 
       if (startsWith('<![CDATA[')) {
+        if (preserveCdata) checkChildCount(++structuralChildren, parentPath, currentLoc());
         if (preserveCdata) flushText();
         if (currentText.length === 0 && !currentTextHasCdata) {
           currentTextLoc = currentLoc();
@@ -826,15 +870,8 @@ export function xmlToAes(input, options = {}) {
         );
       }
 
-      if (startsWith('<?')) {
-        fail(
-          'Processing instructions inside document content are not supported',
-          'XML_PI_UNSUPPORTED',
-          parentPath,
-        );
-      }
-
       if (input[pos] === '<') {
+        checkChildCount(++structuralChildren, parentPath, currentLoc());
         flushText();
         hasElementChildren = true;
         const childElem = parseElement(parentPath, valueDepth + 1);
@@ -880,77 +917,43 @@ export function xmlToAes(input, options = {}) {
     fail(`Unclosed element <${tagName}>`, 'XML_UNCLOSED_ELEMENT', parentPath, startLoc);
   }
 
-  // --- Parse prolog ---
   const rootPath = formatRootMemberPath(rootName);
-  skipWhitespace();
+  const declarationPath = formatRootMemberPath(XML_DECLARATION_TAG);
+  const documentLoc = currentLoc();
+  checkNodeDepth(1, rootPath, documentLoc);
 
   let declarationAttrs = null;
   if (startsWith('<?xml') && (pos + 5 >= len || isXmlWhitespace(input.charCodeAt(pos + 5)) || input.startsWith('<?xml?>', pos))) {
-    declarationAttrs = parseXmlDeclaration(rootPath);
+    declarationAttrs = parseXmlDeclaration(declarationPath);
   }
 
-  while (pos < len) {
-    skipWhitespace();
-    if (startsWith('<!--')) {
-      skipComment(rootPath);
-      continue;
-    }
-    if (startsWith('<!')) {
-      fail(
-        'DTD and DOCTYPE declarations are forbidden',
-        'XML_DTD_FORBIDDEN',
-        rootPath,
-      );
-    }
-    if (startsWith('<?')) {
-      if (startsWith('<?xml') && (pos + 5 >= len || isXmlWhitespace(input.charCodeAt(pos + 5)))) {
-        fail(
-          'XML declaration is only permitted at the start of the document',
-          'XML_MISPLACED_DECLARATION',
-          rootPath,
-        );
-      }
-      fail(
-        'Processing instructions are not supported',
-        'XML_PI_UNSUPPORTED',
-        rootPath,
-      );
-    }
-    break;
-  }
-
-  if (pos >= len) {
-    fail('XML document must contain a root element', 'XML_EMPTY_DOCUMENT', rootPath);
-  }
-  if (input[pos] !== '<' || startsWith('</')) {
-    fail('Expected root element start tag', 'XML_EXPECTED_ROOT_ELEMENT', rootPath);
-  }
-
-  const rootElement = parseElement(rootPath, 1);
-
-  // --- Parse epilog (trailing comments and whitespace only) ---
+  const documentChildren = [];
+  let hasRootElement = false;
   while (pos < len) {
     skipWhitespace();
     if (pos >= len) break;
-    if (startsWith('<!--')) {
-      skipComment(rootPath);
+    const childPath = `${rootPath}[${documentChildren.length}]`;
+    if (startsWith('<!--') || startsWith('<?')) {
+      checkChildCount(documentChildren.length + 1, rootPath, currentLoc());
+      documentChildren.push(readMiscNode(childPath, 2));
       continue;
     }
     if (startsWith('<!')) {
       fail('DTD declarations are forbidden', 'XML_DTD_FORBIDDEN', rootPath);
     }
-    if (startsWith('<?')) {
-      fail('Processing instructions are not supported', 'XML_PI_UNSUPPORTED', rootPath);
+    if (!hasRootElement && input[pos] === '<' && !startsWith('</')) {
+      checkChildCount(documentChildren.length + 1, rootPath, currentLoc());
+      documentChildren.push(parseElement(childPath, 2));
+      hasRootElement = true;
+      continue;
     }
-    if (input[pos] === '<') {
-      fail(
-        'Multiple root elements are not allowed in an XML document',
-        'XML_MULTIPLE_ROOTS',
-        rootPath,
-      );
+    if (!hasRootElement) {
+      fail('Expected root element start tag', 'XML_EXPECTED_ROOT_ELEMENT', rootPath);
     }
+    if (input[pos] === '<') fail('Multiple root elements are not allowed in an XML document', 'XML_MULTIPLE_ROOTS', rootPath);
     fail('Unexpected character data after root element', 'XML_TRAILING_CONTENT', rootPath);
   }
+  if (!hasRootElement) fail('XML document must contain a root element', 'XML_EMPTY_DOCUMENT', rootPath);
 
   // --- Emit portable AES records in canonical depth-first preorder ---
   const records = [];
@@ -1040,99 +1043,54 @@ export function xmlToAes(input, options = {}) {
     records.push(rec);
   }
 
-  function emitElement(elem, nodePath, nodePathDepth, inheritedPreserveWs, rootDeclAttrs = null) {
-    // 1. Outer NodeLiteral container
-    emitRecord({ path: nodePath, kind: 'NodeLiteral' }, nodePathDepth, elem.loc);
-    if (nodePath === rootPath && options.mapping !== 'native' && options.sourceMetadata !== false) {
-      checkKeyLimit('source', rootPath, elem.loc);
-      emitRecord({ path: formatAttributePath(rootPath, 'source'), kind: 'SymbolicLiteral', value: 'XML' }, 2, elem.loc);
+  function emitNode(tag, path, depth, loc) {
+    checkKeyLimit(tag, path, loc);
+    emitRecord({ path, kind: 'NodeLiteral', tag }, depth, loc);
+  }
+
+  function emitAttribute(name, value, ownerPath, depth, loc, kind = 'StringLiteral') {
+    const path = formatAttributePath(ownerPath, name);
+    checkKeyLimit(name, path, loc);
+    emitRecord({ path, kind, value }, depth, loc);
+  }
+
+  function checkChildCount(count, path, loc) {
+    if (count > limits.maxNodeChildren) {
+      fail(`XML node child count exceeds max_node_children (${count} > ${limits.maxNodeChildren})`,
+        'XML_LIMIT_EXCEEDED', path, loc, {
+          counter: 'max_node_children', observed: count, limit: limits.maxNodeChildren,
+        });
     }
+  }
 
-    // 2. Optional XML declaration metadata attached to the root binding (`$.xml.@.*`)
-    if (rootDeclAttrs !== null && includeDeclarationMetadata) {
-      for (const [k, info] of rootDeclAttrs.entries()) {
-        const attrPath = formatAttributePath(nodePath, k);
-        checkKeyLimit(k, attrPath, info.loc);
-        emitRecord(
-          { path: attrPath, kind: 'StringLiteral', value: info.value },
-          nodePathDepth + 1,
-          info.loc,
-        );
-      }
-    }
+  function emitElement(elem, nodePath, nodePathDepth, inheritedPreserveWs) {
+    emitNode(elem.tagName, nodePath, nodePathDepth, elem.loc);
 
-    // 3. Indexed NodeHead at `${nodePath}[0]`
-    const headPath = `${nodePath}[0]`;
-    const headDepth = nodePathDepth + 1;
-    emitRecord(
-      { path: headPath, kind: 'NodeHead', value: elem.tagName },
-      headDepth,
-      elem.loc,
-    );
-
-    // 4. Attributes on the NodeHead (`${headPath}.@.<attr>`)
     let localPreserveWs = inheritedPreserveWs;
     for (const attr of elem.attributes) {
       if (attr.name === 'xml:space') {
         if (attr.value === 'preserve') localPreserveWs = true;
         else if (attr.value === 'default') localPreserveWs = preserveWhitespaceOption;
       }
-      const attrPath = formatAttributePath(headPath, attr.name);
-      checkKeyLimit(attr.name, attrPath, attr.loc);
-      emitRecord(
-        { path: attrPath, kind: 'StringLiteral', value: attr.value },
-        headDepth + 1,
-        attr.loc,
-      );
+      emitAttribute(attr.name, attr.value, nodePath, nodePathDepth + 1, attr.loc);
     }
 
-    // 5. Normalize and emit ordered children under NodeHead (`${headPath}[0]`, `${headPath}[1]`, ...)
     const normalizedChildren = [];
-    if (!elem.hasElementChildren) {
-      // Leaf element: preserve text / CDATA verbatim if present
-      for (const item of elem.children) {
-        if (item.type === 'text' && (item.value.length > 0 || item.hasCdata)) {
-          normalizedChildren.push(item);
-        }
-      }
-    } else {
-      // Element has child elements (element-only or mixed content)
-      for (const item of elem.children) {
-        if (item.type === 'element') {
-          normalizedChildren.push(item);
-        } else if (item.type === 'text') {
-          if (localPreserveWs || item.hasCdata || item.hasNonWsCharRef) {
-            if (item.value.length > 0 || item.hasCdata) {
-              normalizedChildren.push(item);
-            }
-          } else if (!isAllXmlWhitespace(item.value)) {
-            const cleaned = normalizeInterElementMixedText(item.value);
-            if (cleaned.length > 0) {
-              normalizedChildren.push({ ...item, value: cleaned });
-            }
-          }
-        }
+    for (const item of elem.children) {
+      if (item.type === 'element' || !elem.hasElementChildren || localPreserveWs
+        || item.hasCdata || item.hasNonWsCharRef) {
+        normalizedChildren.push(item);
+      } else if (!isAllXmlWhitespace(item.value)) {
+        const cleaned = normalizeInterElementMixedText(item.value);
+        if (cleaned.length > 0) normalizedChildren.push({ ...item, value: cleaned });
       }
     }
-
-    if (normalizedChildren.length > limits.maxNodeChildren) {
-      fail(
-        `Element <${elem.tagName}> child count exceeds max_node_children (${normalizedChildren.length} > ${limits.maxNodeChildren})`,
-        'XML_LIMIT_EXCEEDED',
-        headPath,
-        elem.loc,
-        {
-          counter: 'max_node_children',
-          observed: normalizedChildren.length,
-          limit: limits.maxNodeChildren,
-        },
-      );
-    }
+    checkChildCount(normalizedChildren.length, nodePath, elem.loc);
 
     for (let i = 0; i < normalizedChildren.length; i += 1) {
       const child = normalizedChildren[i];
-      const childPath = `${headPath}[${i}]`;
-      const childDepth = headDepth + 1;
+      const childPath = `${nodePath}[${i}]`;
+      const childDepth = nodePathDepth + 1;
       if (child.type === 'text') {
         emitRecord(
           { path: childPath, kind: 'StringLiteral', ...(child.isCdata ? {datatype: 'cdata'} : {}), value: child.value },
@@ -1140,13 +1098,24 @@ export function xmlToAes(input, options = {}) {
           child.loc,
         );
       } else {
-        emitElement(child.element, childPath, childDepth, localPreserveWs, null);
+        emitElement(child.element, childPath, childDepth, localPreserveWs);
       }
     }
   }
 
-  checkKeyLimit(rootName, rootPath, rootElement.loc);
-  emitElement(rootElement, rootPath, 1, preserveWhitespaceOption, declarationAttrs);
+  if (declarationAttrs !== null && includeDeclarationMetadata) {
+    emitNode(XML_DECLARATION_TAG, declarationPath, 1, documentLoc);
+    for (const [name, attr] of declarationAttrs) {
+      emitAttribute(name, attr.value, declarationPath, 2, attr.loc);
+    }
+  }
+  emitNode(rootName, rootPath, 1, documentLoc);
+  if (options.mapping !== 'native' && options.sourceMetadata !== false) {
+    emitAttribute('source', 'XML', rootPath, 2, documentLoc, 'SymbolicLiteral');
+  }
+  for (const [index, child] of documentChildren.entries()) {
+    emitElement(child, `${rootPath}[${index}]`, 2, preserveWhitespaceOption);
+  }
 
   return records;
 }

@@ -1,7 +1,7 @@
 import { jsonToAes, encodeTelex } from '../../json-core/src/index.js';
 import { tomlToAes } from '../../toml-core/src/index.js';
 import { yamlToAes } from '../../yaml-core/src/index.js';
-import { xmlToAes } from '../../xml-core/src/index.js';
+import { formatTelex as encodeXmlTelex, xmlToAes } from '../../xml-core/src/index.js';
 import { alogToAes } from '../../alog-core/src/index.js';
 
 const importers = { json: jsonToAes, toml: tomlToAes, yaml: yamlToAes, xml: xmlToAes, alog: alogToAes };
@@ -32,6 +32,10 @@ export function importToAes(format, source) {
   return importers[format](source);
 }
 
+export function encodeAdapterTelex(format, records) {
+  return (format === 'xml' ? encodeXmlTelex : encodeTelex)(records);
+}
+
 export async function runPipeline({ format, source, schema, queries }, runtime) {
 
   // 1. Import text directly into portable AES. Values retain their AEON kinds.
@@ -41,7 +45,7 @@ export async function runPipeline({ format, source, schema, queries }, runtime) 
   if (!validation.ok) return { records, validation, queries: [] };
 
   // 3. Telex transports the SAME records to SANSA's complete-AES namespace host.
-  const telex = encodeTelex(records);
+  const telex = encodeAdapterTelex(format, records);
   const mounted = await runtime.namespaceFromTelexSource(telex);
   if (!mounted.ok) throw new Error(`Cannot mount AES for SANSA: ${JSON.stringify(mounted.errors)}`);
   const results = queries.map(({ text }) => {

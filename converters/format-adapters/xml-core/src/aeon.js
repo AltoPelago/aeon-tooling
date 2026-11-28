@@ -82,7 +82,11 @@ export function parseAesPath(path) {
     if (path[i] === '[') {
       const closeIdx = path.indexOf(']', i);
       if (closeIdx === -1) throw new Error(`Unterminated index segment in path: ${path}`);
-      const idx = Number.parseInt(path.slice(i + 1, closeIdx), 10);
+      const digits = path.slice(i + 1, closeIdx);
+      const idx = Number(digits);
+      if (!/^(0|[1-9][0-9]*)$/u.test(digits) || !Number.isSafeInteger(idx)) {
+        throw new Error(`Invalid index segment in path: ${path}`);
+      }
       segments.push({ type: 'index', index: idx });
       i = closeIdx + 1;
       continue;
@@ -114,7 +118,12 @@ function findClosingBracket(path, openBracketIdx) {
   throw new Error(`Unterminated quoted key in path: ${path}`);
 }
 
-function createTreeEntry(record) {
+function createTreeEntry(record, segment) {
+  if (record.kind === 'NodeHead') throw new Error(`Unsupported AES kind: ${record.kind}`);
+  if (record.kind === 'NodeLiteral' && (typeof record.tag !== 'string' || !record.tag
+    || (segment.type !== 'index' && segment.key !== record.tag))) {
+    throw new Error(`Invalid intrinsic node tag at ${record.path}`);
+  }
   let dt = record.datatype ?? null;
   if (dt && Array.isArray(record.clarifiers) && record.clarifiers.length > 0 && !dt.includes('[')) {
     const clar = record.clarifiers.map((c) => c.value).join(', ');
@@ -124,10 +133,10 @@ function createTreeEntry(record) {
     kind: record.kind,
     datatype: dt,
     value: record.value,
+    tag: record.tag,
     attributes: new Map(),
     bindings: record.kind === 'ObjectNode' ? new Map() : null,
-    elements: record.kind === 'ListNode' ? [] : null,
-    nodeHead: null,
+    elements: ['ListNode', 'NodeLiteral'].includes(record.kind) ? [] : null,
   };
 }
 
@@ -145,70 +154,27 @@ function buildTreeFromAes(records) {
       throw new Error('Root path $ cannot be an event record');
     }
 
-    if (segments.length === 1) {
-      const seg = segments[0];
-      if (seg.type !== 'member') {
-        throw new Error(`Top-level segment must be a member: ${record.path}`);
-      }
-      rootBindings.set(seg.key, createTreeEntry(record));
-      continue;
+    if (segments[0].type !== 'member') {
+      throw new Error(`Top-level segment must be a member: ${record.path}`);
     }
-
-    // Navigate to the parent target
-    let current = rootBindings.get(segments[0].key);
-    if (!current) {
-      throw new Error(`Missing root parent for path: ${record.path}`);
+    let current = { bindings: rootBindings };
+    for (const segment of segments.slice(0, -1)) {
+      current = segment.type === 'member' ? current.bindings?.get(segment.key)
+        : segment.type === 'attr' ? current.attributes.get(segment.key)
+          : current.elements?.[segment.index];
+      if (!current) throw new Error(`Missing parent for path: ${record.path}`);
     }
-
-    for (let s = 1; s < segments.length - 1; s += 1) {
-      const seg = segments[s];
-      if (seg.type === 'member') {
-        current = current.bindings.get(seg.key);
-      } else if (seg.type === 'attr') {
-        if (current.kind === 'NodeHead') {
-          current = current.attributes.get(seg.key);
-        } else {
-          current = current.attributes.get(seg.key);
-        }
-      } else if (seg.type === 'index') {
-        if (current.kind === 'NodeLiteral') {
-          if (seg.index !== 0 || !current.nodeHead) {
-            throw new Error(`Missing NodeHead at ${record.path}`);
-          }
-          current = current.nodeHead;
-        } else if (current.kind === 'NodeHead') {
-          current = current.children[seg.index];
-        } else {
-          current = current.elements[seg.index];
-        }
+    const last = segments.at(-1);
+    const entry = createTreeEntry(record, last);
+    if (last.type === 'index') {
+      if (!current.elements || last.index !== current.elements.length) {
+        throw new Error(`Invalid or out-of-order child at ${record.path}`);
       }
-      if (!current) {
-        throw new Error(`Missing intermediate parent for path: ${record.path}`);
-      }
-    }
-
-    const last = segments[segments.length - 1];
-    if (last.type === 'member') {
-      current.bindings.set(last.key, createTreeEntry(record));
-    } else if (last.type === 'attr') {
-      current.attributes.set(last.key, createTreeEntry(record));
-    } else if (last.type === 'index') {
-      if (current.kind === 'NodeLiteral') {
-        if (record.kind !== 'NodeHead' || last.index !== 0) {
-          throw new Error(`Expected NodeHead at index 0 of NodeLiteral: ${record.path}`);
-        }
-        current.nodeHead = {
-          kind: 'NodeHead',
-          tag: record.value,
-          datatype: record.datatype ?? null,
-          attributes: new Map(),
-          children: [],
-        };
-      } else if (current.kind === 'NodeHead') {
-        current.children[last.index] = createTreeEntry(record);
-      } else {
-        current.elements[last.index] = createTreeEntry(record);
-      }
+      current.elements.push(entry);
+    } else {
+      const members = last.type === 'member' ? current.bindings : current.attributes;
+      if (!members || members.has(last.key)) throw new Error(`Invalid or duplicate record at ${record.path}`);
+      members.set(last.key, entry);
     }
   }
 
@@ -375,12 +341,9 @@ function renderBinding(key, entry, indent, sortKeys) {
   }
 
   if (entry.kind === 'NodeLiteral') {
-    const renderedNode = renderNodeValue(entry, indent, { inlineOnly: false }, sortKeys);
-    if (renderedNode.length === 1) {
-      return [`${prefix}${head} = ${renderedNode[0].trimStart()}`];
-    }
-    const [first, ...rest] = renderedNode;
-    return [`${prefix}${head} = ${first.trimStart()}`, ...rest];
+    const lines = renderNodeValue(entry, indent, { inlineOnly: true }, sortKeys);
+    if (lines.length === 1) lines[0] = prefix + lines[0];
+    return lines;
   }
 
   return [`${prefix}${head} = ${renderScalar(entry)}`];
@@ -435,19 +398,11 @@ function renderValue(entry, indent, opts, sortKeys) {
 
 function renderNodeValue(entry, indent, opts, sortKeys) {
   const prefix = ' '.repeat(indent);
-  const headInfo = entry.nodeHead;
-  if (!headInfo) {
-    throw new Error('NodeLiteral is missing its NodeHead child');
-  }
-  const formattedTag = formatKey(
-    headInfo.tag,
-    Boolean(headInfo.datatype),
-    headInfo.attributes.size > 0,
-  );
-  const attrs = renderAttributes(headInfo.attributes, sortKeys);
-  const dt = formatDatatype(headInfo.datatype);
+  const formattedTag = formatKey(entry.tag, Boolean(entry.datatype), entry.attributes.size > 0);
+  const attrs = renderAttributes(entry.attributes, sortKeys);
+  const dt = formatDatatype(entry.datatype);
   const head = `<${formattedTag}${attrs}${dt}`;
-  const children = headInfo.children;
+  const children = entry.elements;
 
   if (children.length === 0) {
     return [`${head}>`];

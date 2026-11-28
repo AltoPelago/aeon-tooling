@@ -29,7 +29,8 @@ adapter library APIs are unchanged. See [mode details and examples](../converter
 ## Common behavior
 
 - Import produces portable AES and can render it as AEON or Telex. The complete
-  source root is placed under the ordinary empty key `""`.
+  source root uses an ordinary empty key `""` for JSON, TOML, YAML and ALOG. XML
+  uses a tagged `xml` wrapper and an optional `"?xml"` declaration node.
 - `source=|JSON|`, `|XML|`, `|TOML|`, `|YAML|` or `|ALOG|` identifies provenance.
   `sourceMetadata: false` omits adapter provenance, not source-authored data.
 - Root mode accepts empty string members. Duplicate decoded keys, malformed
@@ -39,9 +40,8 @@ adapter library APIs are unchanged. See [mode details and examples](../converter
   protects its own runtime and output representation.
 - Numeric adaptation avoids conversion through JavaScript Number serialization.
   Semantic values may retain precision beyond common host numeric types.
-- Source formatting is generally normalized. Comments and source locations are
-  not preserved as round-trip data. XML CDATA has a specific preservation rule
-  below; it does not imply general lexical XML fidelity.
+- Source formatting is generally normalized. The XML adapter preserves comments,
+  processing instructions and CDATA boundaries as described below.
 - Imports are finite-document conversions, except ALOG's additional pull stream.
   Configurable resource limits apply to input, structure, paths, events and
   applicable strings/numbers/collections. Playground input is limited to 1 MiB.
@@ -158,19 +158,19 @@ implementation or a full validating XML processor.
 
 | Feature | Import into AEON/AES | Reverse export in playground |
 |---|---|---|
-| One document element, nested/repeated elements | Ordered `NodeLiteral`/`NodeHead` structure | Supported; one document node required |
-| Element attributes | Strings on NodeHead, never inferred numbers/booleans | String attributes, escaped appropriately |
+| One document element, nested/repeated elements | Tagged `NodeLiteral` records under an ordered `xml` wrapper | Requires the `xml` wrapper and one document element |
+| Element attributes | String attributes on their tagged element | String attributes, escaped appropriately |
 | Mixed text and child elements | Ordered indexed children | Ordered text/nodes |
 | CDATA sections, including empty and adjacent sections | Separate `StringLiteral` children with datatype `cdata` by default | Typed children emit `<![CDATA[...]]>` |
-| XML declaration: version, encoding, standalone | Optional declaration attributes on wrapper | UTF-8 declaration metadata supported; other encoding claims rejected |
+| XML declaration: version, encoding, standalone | Attributes on the separate `"?xml"` root node | Declaration emitted first with UTF-8 text output |
 | Qualified names and `xmlns` declarations | Lexical names/declarations preserved | Preserved; no namespace URI/prefix resolution |
 | Five predefined entity references and numeric character references | Decoded to strings | Escaped output; original reference spelling not retained |
 | Whitespace | Leaf text retained; default inter-element formatting whitespace may be pruned/trimmed | Accepted text payloads preserved; dropped source whitespace cannot be recovered |
 | `xml:space="preserve"`, `preserveWhitespace: true` | Preserve ordinary inter-element text; XML newline normalization still applies | Ordinary text uses character references where needed |
-| Comments | Accepted, discarded | Not reconstructed |
+| Comments | `"!--"` nodes with one string child | Preserved before, after and inside the document element |
 | CDATA delimiters under `preserveCdata: false` | Previous semantic-only mode: CDATA/text coalesce | Original boundaries cannot be recovered |
 | DTDs and declared/external entities | Rejected; never fetched | No DTD/entity declarations emitted |
-| Processing instructions other than XML declaration | Rejected | Not emitted |
+| Processing instructions | `"?target"` nodes with an optional data string | Repeated targets and their order are preserved |
 | XML 1.1, malformed names/tags/attributes, unknown entities, multiple roots | Rejected | Reparsed by the XML importer before returning |
 
 ### CDATA representation and whitespace
@@ -181,15 +181,18 @@ serialization boundary so the XML exporter can distinguish CDATA from ordinary
 text. It does not mean executable code or imply a programming language.
 
 ```aeon
-""@{source = |XML|, version = "1.0"} = <person@{id = "42"}(
-  <name("Alice")>,
-  <active("true")>,
-  :cdata = `
+<"?xml"@{version = "1.0"}>
+<xml@{source = |XML|}(
+  <person@{id = "42"}(
+    <name("Alice")>,
+    <active("true")>,
+    :cdata = `
 
     if (a < b && c > d) {
       return "<success>";
     }
 `
+  )>
 )>
 ```
 
@@ -210,9 +213,9 @@ still happens during import. The exporter splits an authored payload containing
 `:cdata` payload are rejected because XML would normalize them; use ordinary
 text with character references if those characters must survive.
 
-API opt-out: `{ preserveCdata: false }`. CLI opt-out: `--semantic-cdata`.
-`mapping: 'native'` changes the wrapper name only and does not turn off CDATA
-preservation. Existing regression vectors explicitly exercise semantic-only mode.
+Use `{ preserveCdata: false }` or `--semantic-cdata` to coalesce CDATA and text.
+`mapping: 'native'` omits wrapper provenance and keeps CDATA boundaries. The unit
+suite exercises both CDATA modes.
 Existing AEON that already lost its CDATA markers cannot recover those boundaries.
 
 ## &LOG v1 / ALOG

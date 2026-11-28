@@ -21,7 +21,7 @@ its AES/Telex-only APIs reject tagged input. ALOG also exports
 `alogToAesStream` for pull-driven UTF-8 byte input. Packages share renderer and
 codec modules within this tree and are not independently publishable artifacts.
 
-Default AEON shape:
+The JSON example uses an empty-key wrapper.
 
 ```aeon
 ""@{source = |JSON|} = {
@@ -29,9 +29,10 @@ Default AEON shape:
 }
 ```
 
-The imported root lives at `$.[""]`; the source attribute is optional via
-`{ sourceMetadata: false }`. Existing JSON/TOML/XML consumers can explicitly
-select `{ mapping: 'native' }` or CLI `--native` for their previous mapping.
+XML uses the [ordered `xml` wrapper](xml-core/README.md) with an optional
+separate declaration. Use `sourceMetadata: false` to omit adapter provenance.
+JSON and TOML support the native object mapping through `{ mapping: 'native' }`
+or `--native`. For XML this option omits wrapper provenance.
 
 ## Validate and query imported data
 

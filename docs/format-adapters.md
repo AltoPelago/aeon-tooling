@@ -15,7 +15,7 @@ was rewritten and no repository was nested inside tooling.
 
 ## Root and source metadata
 
-All adapters default to a root-preserving mapping, including TOML:
+JSON, TOML, YAML and ALOG place the source value under an ordinary empty key:
 
 ```aeon
 ""@{source = |JSON|} = {
@@ -23,26 +23,22 @@ All adapters default to a root-preserving mapping, including TOML:
 }
 ```
 
-JSON arrays and scalars use the same boundary; XML puts its existing NodeLiteral
-at that boundary. ALOG maps to a list of record lists. The source attribute is an
-ordinary SymbolicLiteral owned by the empty-key binding, never an XML element
-attribute or an imported object's field. Values are `JSON`, `XML`, `TOML`, `YAML`
-and `ALOG`. It records provenance, not an authoritative format discriminator.
-Exporters must still be explicitly selected and validate their supported values.
-Set `sourceMetadata: false` to omit it, for example for cross-format equivalence.
+JSON arrays and scalars use the same boundary. ALOG maps to a list of record
+lists. XML uses a named `xml` node with ordered content and a separate `"?xml"`
+node for the optional declaration. See the [XML adapter mapping](../converters/format-adapters/xml-core/README.md).
 
-Portable AES has no event at `$`: emit the value at `$.[""]`, then its source
-attribute, then descendants. Empty source keys remain ordinary nested keys and
-must still be unique. Paths, schemas, queries and materializers must account for
-this extra member segment. Wrapper and metadata events count toward limits.
+The `source` attribute is a symbolic value on the adapter's wrapper. It records
+provenance. Exporters are selected explicitly and validate their supported values.
+Set `sourceMetadata: false` to omit provenance. XML element attributes stay on
+their element, including an authored `source` attribute.
 
-This is an intentional default change for these experimental adapters. Existing
-JSON/TOML object-root consumers can select `{ mapping: 'native' }`; XML can select
-the same option for its former `xml` binding. CLI equivalents use `--native`.
-XML also retains its explicit `rootName` / `--root` override. Legacy JSON/TOML
-mode retains its original empty-key restrictions for compatibility. New code
-should use root mode. Reverse adapters and automatic format detection are outside
-this change.
+Portable AES has no event at `$`. Each named root, its metadata, and its
+children carry their own paths and count toward limits. Empty keys within
+imported objects remain ordinary members and must be unique.
+
+JSON and TOML consumers can select `{ mapping: 'native' }` or `--native` for the
+native object mapping. For XML, that option omits provenance and keeps the
+ordered wrapper. XML accepts `rootName` or `--root` to rename the import wrapper.
 
 ## ALOG v1 decisions
 

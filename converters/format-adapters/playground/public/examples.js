@@ -51,7 +51,9 @@ count = 42
   ],
   xml: [
     example('xml-elements', 'Declaration, attributes and repeated elements', 'xml', 'aeon', `<?xml version="1.0"?>
+<?application mode="debug"?>
 <person id="42"><name>Alice</name><active>true</active><tag>research</tag><tag>design</tag></person>
+<?application done?>
 `, 'Element order and repetitions survive. XML text and attributes remain strings, including numeric/boolean-looking text.'),
     example('xml-mixed', 'Mixed content, qualified names and entities', 'xml', 'aeon', '<p xmlns:user="urn:people">Hello <user:name>Alice &amp; Bob</user:name>! &#x1F600;</p>\n', 'Ordered text and nodes, namespace spelling and decoded entity/character references. Namespace identity is not resolved.'),
     example('xml-cdata', 'CDATA, whitespace and adjacent sections', 'xml', 'aeon', `<?xml version="1.0"?>
@@ -62,16 +64,17 @@ count = 42
     }
 ]]><![CDATA[]]>after</code>
 `, 'CDATA becomes separate :cdata string children, including the empty section. Swap after conversion to restore the sections.'),
-    example('aeon-xml-native', 'AEON nodes with preserved CDATA', 'aeon', 'xml', `""@{source = |XML|, version = "1.0"} = <person@{id = "42"}(
-  <name("Alice")>,
-  <active("true")>,
-  :cdata = ${JSON.stringify('if (a < b && c > d) { return "<success>"; }')}
+    example('aeon-xml-native', 'AEON nodes with preserved CDATA', 'aeon', 'xml', `<"?xml"@{version = "1.0"}>
+<xml@{source = |XML|}(
+  <person@{id = "42"}(
+    <name("Alice")>,
+    <active("true")>,
+    :cdata = ${JSON.stringify('if (a < b && c > d) { return "<success>"; }')}
+  )>
 )>
 `, 'The document element, string attributes, text children and :cdata marker can all be represented in XML.'),
-    example('aeon-xml-loss', 'Non-string XML attributes and children', 'aeon', 'xml', `"" = <reading@{sequence = 42}(
-  2002-01-01,
-  on,
-  <unit("C")>
+    example('aeon-xml-loss', 'Non-string XML attributes and children', 'aeon', 'xml', `<xml(
+  <reading@{sequence = 42}(2002-01-01, on, <unit("C")>)>
 )>
 `, 'XML attributes and text have string values. The node structure is retained while unsupported scalar values change.', compare(3, 'The numeric attribute, date and toggle become text. XML cannot restore their original scalar types.')),
   ],

@@ -1,5 +1,4 @@
-import { importToAes, loadRuntimes } from '../examples/validate-and-query/pipeline.mjs';
-import { encodeTelex } from '../json-core/src/index.js';
+import { encodeAdapterTelex, importToAes, loadRuntimes } from '../examples/validate-and-query/pipeline.mjs';
 
 const diagnostic = (error, code) => ({ code, message: error.message });
 export function createPipelineRunner(load = loadRuntimes) {
@@ -17,7 +16,7 @@ export function createPipelineRunner(load = loadRuntimes) {
       throw Object.assign(new Error('runQuery must be a boolean.'), { code: 'INVALID_INPUT' });
     }
     const records = importToAes(input.format, input.source);
-    const output = { records, telex: encodeTelex(records), validation: null, query: null };
+    const output = { records, telex: encodeAdapterTelex(input.format, records), validation: null, query: null };
     let runtime;
     try {
       // Failed setup can be retried after a local build without restarting.

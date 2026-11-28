@@ -180,9 +180,10 @@ playground export policies; the forward adapter library APIs are unchanged.
   Binary/octal/hex export uses `0b`/`0o`/`0x` and preserves the radix base and
   leading zeros. Signed 64-bit integer limits apply on import/export. Other
   explicit datatype claims remain outside the lossless export profile.
-- XML requires the adapter's node mapping. Element attributes and text stay
-  strings. Declaration metadata is supported for UTF-8 XML. CDATA boundaries are preserved as `:cdata` string children. Formatting
-  and comments are not preserved.
+- XML requires an `xml` wrapper containing exactly one document element and
+  optional ordered processing instructions and comments. A separate `"?xml"` root
+  node supplies the declaration, which is emitted first. Element attributes and
+  text are strings. Each CDATA section is a `:cdata` string child.
 - ALOG requires nonempty scalar record lists. It preserves scalar values accepted
   by the existing ALOG adapter and rejects nested containers or annotations.
 - AEON output uses the adapters' renderer. Unsupported constructs, including

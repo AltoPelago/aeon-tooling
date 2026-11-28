@@ -79,14 +79,14 @@ export const cases = [
   },
   {
     format: 'xml', source: xml,
-    description: 'Node heads, attribute spaces, string text and preserved CDATA; XML does not infer numeric or boolean types.',
+    description: 'Tagged nodes, attributes, string text and preserved CDATA; XML does not infer numeric or boolean types.',
     schema: readFileSync(new URL('./schemas/xml.aeos', import.meta.url), 'utf8'),
     queries: [
-      { text: `from ${root}[0].*[0] where .@.active == "true" select .@.sku`, expected: ['A1'] },
-      { text: `from ${root}[0][0][0][0][0][0] select ?`, expected: ['9.5'] },
-      { text: `from ${root}.**#cdata select ?`, expected: ['if (a < b) run();'] },
+      { text: `from $.xml[0].* where .@.active == "true" select .@.sku`, expected: ['A1'] },
+      { text: `from $.xml[0][0][0][0] select ?`, expected: ['9.5'] },
+      { text: `from $.xml.**#cdata select ?`, expected: ['if (a < b) run();'] },
     ],
     invalidSource: xml.replace('sku="A1"', 'sku=""'),
-    invalidPath: `${root}[0][0][0].@.sku`,
+    invalidPath: `$.xml[0][0].@.sku`,
   },
 ];
