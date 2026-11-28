@@ -28,6 +28,10 @@ export function createPipelineRunner(load = loadRuntimes) {
     catch (error) { return { ...output, schemaError: diagnostic(error, 'INVALID_SCHEMA') }; }
     output.validation = runtime.validate(records, schema);
     if (!output.validation.ok || !input.runQuery) return output;
+    if (input.format === 'xml') {
+      try { await runtime.requireXmlQuerySupport(); }
+      catch (error) { return { ...output, runtimeError: diagnostic(error, 'XML_QUERY_RUNTIME_UNAVAILABLE') }; }
+    }
     // The bridge returns JSON-safe scalar/object/binding projections as well as
     // addresses and kind metadata. It does not materialize records through JSON.
     output.query = await runtime.evaluateTelexQuery({

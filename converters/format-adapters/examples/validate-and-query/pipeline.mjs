@@ -15,15 +15,34 @@ export async function loadRuntimes() {
       import('../../../../../sansa/src/index.js'),
       import('../../../../../sansa/tools/query-web/runtime.mjs'),
     ]);
+    let xmlQuerySupport;
     return {
       validate: aeos.validate,
       parseSchemaSource: aeos.parseSchemaSource,
       evaluateQuery: sansa.evaluateQuery,
       evaluateTelexQuery: bridge.evaluateQueryForWorkbench,
       namespaceFromTelexSource: bridge.namespaceFromTelexSource,
+      requireXmlQuerySupport() {
+        xmlQuerySupport ??= verifyXmlQuerySupport(bridge.evaluateQueryForWorkbench).catch(error => {
+          xmlQuerySupport = undefined;
+          throw error;
+        });
+        return xmlQuerySupport;
+      },
     };
   } catch (error) {
     throw new Error('Build the sibling aeon TypeScript packages and provide the sibling sansa checkout; see examples/validate-and-query/README.md.', { cause: error });
+  }
+}
+
+export async function verifyXmlQuerySupport(evaluateTelexQuery) {
+  const source = encodeXmlTelex(xmlToAes('<root><first/><second/></root>', {sourceMetadata: false}));
+  const result = await evaluateTelexQuery({
+    sourceKind: 'telex', source, query: 'from $.xml[0] where ?[0] != ?[1] select ?',
+    transformExtensions: false,
+  });
+  if (!result.ok || result.count !== 1) {
+    throw new Error('XML queries require a SANSA Workbench that retains intrinsic tags from portable AES.');
   }
 }
 
@@ -43,6 +62,7 @@ export async function runPipeline({ format, source, schema, queries }, runtime) 
   // 2. Validate those records, before exposing data to application queries.
   const validation = runtime.validate(records, runtime.parseSchemaSource(schema));
   if (!validation.ok) return { records, validation, queries: [] };
+  if (format === 'xml' && queries.length) await runtime.requireXmlQuerySupport();
 
   // 3. Telex transports the SAME records to SANSA's complete-AES namespace host.
   const telex = encodeAdapterTelex(format, records);

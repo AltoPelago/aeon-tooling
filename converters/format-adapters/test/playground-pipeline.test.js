@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { cases } from '../examples/validate-and-query/cases.mjs';
 import { createPipelineRunner } from '../playground/pipeline.mjs';
 import { createPlaygroundServer } from '../playground/server.mjs';
-import { loadRuntimes } from '../examples/validate-and-query/pipeline.mjs';
+import { loadRuntimes, verifyXmlQuerySupport } from '../examples/validate-and-query/pipeline.mjs';
 
 let runtime, unavailable;
 try { runtime = await loadRuntimes(); } catch (error) { unavailable = error.message; }
@@ -11,6 +11,32 @@ const options = { skip: unavailable };
 const inputFor = example => ({ format: example.format, source: example.source,
   schema: example.schema, query: example.queries[0].text, runQuery: true });
 const run = createPipelineRunner(async () => runtime);
+
+test('pipeline: XML equality distinguishes element tags through Telex', options, async () => {
+  const input = inputFor(cases.find(example => example.format === 'xml'));
+  input.schema = 'aeos:schema = { rules:list<object> = [{path:sansa = $.xml, constraints:object = {required:boolean = true}}] }';
+  input.query = 'from $.xml[0] where ?[0] == ?[1] select ?';
+  for (const [source, count] of [['<r><item/><other/></r>', 0], ['<r><item/><item/></r>', 1]]) {
+    const result = await run({ ...input, source });
+    assert.equal(result.validation.ok, true, JSON.stringify(result.validation.errors));
+    assert.equal(result.query?.ok, true, JSON.stringify(result.runtimeError ?? result.query?.errors));
+    assert.equal(result.query.count, count);
+  }
+  input.source = '<r><item/><other/></r>';
+  const incompatible = createPipelineRunner(async () => ({
+    ...runtime,
+    requireXmlQuerySupport: () => verifyXmlQuerySupport(async () => ({ok: true, count: 0})),
+    evaluateTelexQuery() { assert.fail('The incompatible runtime must not evaluate the XML query'); },
+  }));
+  const stopped = await incompatible(input);
+  assert.equal(stopped.runtimeError.code, 'XML_QUERY_RUNTIME_UNAVAILABLE');
+  assert.equal(stopped.validation.ok, true);
+  assert.ok(stopped.records.some(record => record.tag === 'other'));
+  assert.equal(stopped.query, null);
+  const validationOnly = await incompatible({ ...input, runQuery: false });
+  assert.equal(validationOnly.runtimeError, undefined);
+  assert.equal(validationOnly.validation.ok, true);
+});
 
 test('pipeline: every UI example returns AES, validation and JSON-safe typed SANSA results', options, async () => {
   for (const example of cases) {

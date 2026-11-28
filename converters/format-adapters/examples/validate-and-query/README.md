@@ -96,6 +96,9 @@ inventory element is at `$.xml[0]`. Its first item's attributes are at
 exposes intrinsic tag selectors, `$.xml[0].*&tag("item")` selects those item
 nodes by tag.
 
+XML queries require a SANSA Workbench that carries intrinsic tags into portable
+query bindings. The pipeline verifies this capability before running a query.
+
 XML price and active values are strings; the XML query compares `"true"` rather
 than a boolean. YAML date-shaped text is also a string under this profile.
 TOML and ALOG dates remain native dates. AEOS checks these distinctions without
